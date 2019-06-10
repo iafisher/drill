@@ -1,10 +1,12 @@
+use std::fmt;
 use std::io;
 use std::io::Write;
 
-pub trait Question {
+pub trait Question: fmt::Debug {
     fn ask(&self) -> bool;
 }
 
+#[derive(Debug)]
 pub struct Answer<'a> {
     pub variants: Vec<&'a str>,
 }
@@ -20,6 +22,7 @@ impl<'a> Answer<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct ShortAnswerQuestion<'a> {
     text: &'a str,
     answer: Answer<'a>,
@@ -46,6 +49,7 @@ impl<'a> Question for ShortAnswerQuestion<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct Quiz {
     pub questions: Vec<Box<Question>>,
 }
