@@ -2,40 +2,25 @@ use std::fmt;
 use std::io;
 use std::io::Write;
 
-pub trait Question: fmt::Debug {
-    fn ask(&self) -> bool;
+#[derive(Debug)]
+pub enum QuestionKind {
+    ShortAnswer,
 }
 
 #[derive(Debug)]
-pub struct Answer<'a> {
-    pub variants: Vec<&'a str>,
+pub struct Question<'a> {
+    pub kind: QuestionKind,
+    pub text: &'a str,
+    pub answers: Vec<&'a str>,
+
 }
 
-impl<'a> Answer<'a> {
-    pub fn check(&self, guess: &str) -> bool {
-        for variant in self.variants.iter() {
-            if variant.to_lowercase() == guess.to_lowercase() {
-                return true;
-            }
-        }
-        false
+impl<'a> Question<'a> {
+    pub fn new(kind: QuestionKind, text: &'a str, answer: &'a str) -> Self {
+        Self { kind, text, answers: vec![answer] }
     }
-}
 
-#[derive(Debug)]
-pub struct ShortAnswerQuestion<'a> {
-    text: &'a str,
-    answer: Answer<'a>,
-}
-
-impl<'a> ShortAnswerQuestion<'a> {
-    pub fn new(text: &'a str, answer: &'a str) -> Self {
-        Self { text, answer: Answer { variants: vec![answer] } }
-    }
-}
-
-impl<'a> Question for ShortAnswerQuestion<'a> {
-    fn ask(&self) -> bool {
+    pub fn ask(&self) -> bool {
         println!("{}\n", self.text);
 
         print!("> ");
@@ -45,16 +30,25 @@ impl<'a> Question for ShortAnswerQuestion<'a> {
         io::stdin().read_line(&mut guess)
             .expect("Failed to read line");
 
-        self.answer.check(&guess.trim_end())
+        self.check(&guess.trim_end())
+    }
+
+    fn check(&self, guess: &str) -> bool {
+        for answer in self.answers.iter() {
+            if answer.to_lowercase() == guess.to_lowercase() {
+                return true;
+            }
+        }
+        false
     }
 }
 
 #[derive(Debug)]
-pub struct Quiz {
-    pub questions: Vec<Box<Question>>,
+pub struct Quiz<'a> {
+    pub questions: Vec<Question<'a>>,
 }
 
-impl Quiz {
+impl<'a> Quiz<'a> {
     pub fn take(&self) {
         let mut total_correct = 0;
         let mut total = 0;
