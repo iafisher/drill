@@ -12,7 +12,7 @@ pub struct Answer<'a> {
 impl<'a> Answer<'a> {
     pub fn check(&self, guess: &str) -> bool {
         for variant in self.variants.iter() {
-            if *variant == guess {
+            if variant.to_lowercase() == guess.to_lowercase() {
                 return true;
             }
         }
@@ -21,8 +21,14 @@ impl<'a> Answer<'a> {
 }
 
 pub struct ShortAnswerQuestion<'a> {
-    pub text: &'a str,
-    pub answer: Answer<'a>,
+    text: &'a str,
+    answer: Answer<'a>,
+}
+
+impl<'a> ShortAnswerQuestion<'a> {
+    pub fn new(text: &'a str, answer: &'a str) -> Self {
+        Self { text, answer: Answer { variants: vec![answer] } }
+    }
 }
 
 impl<'a> Question for ShortAnswerQuestion<'a> {
@@ -30,7 +36,8 @@ impl<'a> Question for ShortAnswerQuestion<'a> {
         println!("{}\n", self.text);
 
         print!("> ");
-        io::stdout().flush();
+        io::stdout().flush()
+            .expect("Unable to flush standard output");
         let mut guess = String::new();
         io::stdin().read_line(&mut guess)
             .expect("Failed to read line");
@@ -48,6 +55,7 @@ impl Quiz {
         let mut total_correct = 0;
         let mut total = 0;
         for question in self.questions.iter() {
+            println!("\n");
             let correct = question.ask();
 
             total += 1;
@@ -61,7 +69,7 @@ impl Quiz {
 
         if total > 0 {
             let score = (total_correct as f64) / (total as f64) * 100.0;
-            println!("\n{} correct out of {} ({}%).", total, total_correct, score);
+            println!("\n{} correct out of {} ({}%).", total_correct, total, score);
         }
     }
 }
