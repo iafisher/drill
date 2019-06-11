@@ -10,7 +10,7 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 
-use argparse::{ArgumentParser, Store, StoreTrue};
+use argparse::{ArgumentParser, Collect, Store, StoreTrue};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Serialize, Deserialize};
@@ -273,7 +273,7 @@ pub fn yesno(message: &str) -> bool {
 
 
 pub struct QuizOptions {
-    pub path: String,
+    pub paths: Vec<String>,
     pub topic: String,
     pub num_to_ask: u16,
     pub list_topics: bool,
@@ -282,7 +282,7 @@ pub struct QuizOptions {
 
 
 pub fn parse_options() -> QuizOptions {
-    let mut path = String::new();
+    let mut paths = Vec::new();
     let mut topic = String::new();
     let mut num_to_ask = 10;
     let mut list_topics = false;
@@ -291,8 +291,8 @@ pub fn parse_options() -> QuizOptions {
         let mut parser = ArgumentParser::new();
         parser.set_description("Take a pop quiz from the command line.");
 
-        parser.refer(&mut path)
-            .add_argument("quiz", Store, "Path to the quiz file.").required();
+        parser.refer(&mut paths)
+            .add_argument("quizzes", Collect, "Paths to the quiz files.").required();
 
         parser.refer(&mut topic)
             .add_option(&["--topic"], Store, "Restrict questions to a certain topic.");
@@ -308,7 +308,7 @@ pub fn parse_options() -> QuizOptions {
 
         parser.parse_args_or_exit();
     }
-    QuizOptions { path, topic, num_to_ask, list_topics, save_results }
+    QuizOptions { paths, topic, num_to_ask, list_topics, save_results }
 }
 
 
