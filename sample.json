@@ -4,6 +4,7 @@
       "kind": "ShortAnswer",
       "text": "Which English countess is regarded as the first computer programmer?",
       "topic": "computer science",
+      "candidates": [],
       "answers": [
         {
           "variants": ["Ada Lovelace", "Lady Lovelace", "Ada, Countess of Lovelace"]
@@ -14,6 +15,7 @@
       "kind": "ListAnswer",
       "text": "Name the four Home Islands of Japan.",
       "topic": "geography",
+      "candidates": [],
       "answers": [
         {
           "variants": ["Hokkaido"]
@@ -33,6 +35,7 @@
       "kind": "OrderedListAnswer",
       "text": "Who were the first three Presidents of the United States, in order?",
       "topic": "history",
+      "candidates": [],
       "answers": [
         {
           "variants": ["George Washington", "Washington"]
@@ -42,6 +45,17 @@
         },
         {
           "variants": ["Thomas  Jefferson", "Jefferson"]
+        }
+      ]
+    },
+    {
+      "kind": "MultipleChoice",
+      "text": "In what year did the Russo-Japanese War end?",
+      "topic": "history",
+      "candidates": ["1878", "1945", "1918", "1908"],
+      "answers": [
+        {
+          "variants": ["1905"]
         }
       ]
     }

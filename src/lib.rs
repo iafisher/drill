@@ -18,7 +18,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum QuestionKind {
-    ShortAnswer, ListAnswer, OrderedListAnswer,
+    ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice,
 }
 
 
@@ -45,6 +45,7 @@ pub struct Question {
     pub text: String,
     pub topic: String,
     pub answers: Vec<Answer>,
+    pub candidates: Vec<String>,
 }
 
 impl Question {
@@ -117,6 +118,43 @@ impl Question {
                     }
                 }
                 return correct;
+            }
+            QuestionKind::MultipleChoice => {
+                let mut candidates = self.candidates.clone();
+
+                let mut rng = thread_rng();
+                candidates.shuffle(&mut rng);
+                candidates.truncate(3);
+                candidates.push(self.answers[0].variants[0].clone());
+                candidates.shuffle(&mut rng);
+
+                for (i, candidate) in "abcd".chars().zip(candidates.iter()) {
+                    println!("  ({}) {}", i, candidate);
+                }
+
+                println!("");
+                loop {
+                    let guess = prompt("Enter a letter: ");
+                    if guess.len() != 1 {
+                        continue;
+                    }
+
+                    let index = guess.to_ascii_lowercase().as_bytes()[0];
+                    if 97 <= index && index < 101 {
+                        if self.check_any(&candidates[(index - 97) as usize]) {
+                            println!("Correct!");
+                            return true;
+                        } else {
+                            println!(
+                                "Incorrect. The correct answer was {}.",
+                                self.answers[0].variants[0],
+                            );
+                            return false;
+                        }
+                    } else {
+                        continue;
+                    }
+                }
             }
         }
     }
