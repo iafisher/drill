@@ -11,6 +11,7 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Serialize, Deserialize};
 
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum QuestionKind {
     ShortAnswer, ListAnswer, OrderedListAnswer,
@@ -34,6 +35,7 @@ impl<'a> Answer<'a> {
     }
 }
 
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Question<'a> {
     pub kind: QuestionKind,
@@ -41,12 +43,6 @@ pub struct Question<'a> {
     pub topic: &'a str,
     #[serde(borrow)]
     pub answers: Vec<Answer<'a>>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct QuestionResult {
-    pub time_asked: chrono::DateTime<chrono::Utc>,
-    pub result: bool,
 }
 
 impl<'a> Question<'a> {
@@ -138,6 +134,14 @@ impl<'a> Question<'a> {
     }
 }
 
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct QuestionResult {
+    pub time_asked: chrono::DateTime<chrono::Utc>,
+    pub result: bool,
+}
+
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Quiz<'a> {
     #[serde(borrow)]
@@ -194,6 +198,7 @@ impl<'a> Quiz<'a> {
     }
 }
 
+
 pub fn prompt(message: &str) -> String {
     print!("{}", message);
     io::stdout().flush()
@@ -212,11 +217,13 @@ pub fn prompt(message: &str) -> String {
     response.trim_end().to_string()
 }
 
+
 pub struct QuizOptions {
     pub topic: String,
     pub num_to_ask: u16,
     pub list_topics: bool,
 }
+
 
 pub fn parse_options() -> QuizOptions {
     let mut topic = String::new();
@@ -239,6 +246,7 @@ pub fn parse_options() -> QuizOptions {
     }
     QuizOptions { topic, num_to_ask, list_topics }
 }
+
 
 pub fn list_topics(quiz: &Quiz) {
     let mut topics = HashSet::new();

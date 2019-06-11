@@ -2,8 +2,10 @@ use std::fs;
 
 use popquiz::*;
 
+
 const QUIZ_PATH: &str = "/home/iafisher/dev/popquiz/quiz.json";
 const RESULTS_PATH: &str = "/home/iafisher/dev/quiz_results.json";
+
 
 fn main() {
     let options = parse_options();
