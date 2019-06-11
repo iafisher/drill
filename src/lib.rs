@@ -257,7 +257,7 @@ pub fn prompt(message: &str) -> String {
         ::std::process::exit(2);
     }
 
-    response.trim_end().to_string()
+    response.trim().to_string()
 }
 
 
