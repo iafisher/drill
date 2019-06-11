@@ -31,6 +31,7 @@ impl<'a> Answer<'a> {
 pub struct Question<'a> {
     pub kind: QuestionKind,
     pub text: &'a str,
+    pub topic: &'a str,
     #[serde(borrow)]
     pub answers: Vec<Answer<'a>>,
 }
@@ -42,23 +43,6 @@ pub struct QuestionResult {
 }
 
 impl<'a> Question<'a> {
-    pub fn short_answer(text: &'a str, answer: &'a str) -> Self {
-        Self {
-            kind: QuestionKind::ShortAnswer,
-            text,
-            answers: vec![Answer { variants: vec![answer] }]
-        }
-    }
-    pub fn short_answer_multiple(text: &'a str, variants: &[&'a str]) -> Self {
-        let mut answers = Vec::<Answer>::new();
-        for variant in variants.iter() {
-            answers.push(Answer { variants: vec![variant] });
-        }
-        Self {
-            kind: QuestionKind::ShortAnswer, text, answers
-        }
-    }
-
     pub fn ask(&self) -> bool {
         println!("{}\n", self.text);
 

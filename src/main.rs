@@ -19,5 +19,6 @@ fn main() {
             .expect("Unable to serialize results object to JSON");
         fs::write(RESULTS_PATH, serialized_results)
             .expect("Unable to write to quiz file");
+        println!("Results saved to {}.", RESULTS_PATH);
     }
 }
