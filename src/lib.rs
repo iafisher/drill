@@ -8,6 +8,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::io::Write;
+use std::path::Path;
 
 use argparse::{ArgumentParser, Store, StoreTrue};
 use rand::seq::SliceRandom;
@@ -237,6 +238,7 @@ pub fn yesno(message: &str) -> bool {
 
 
 pub struct QuizOptions {
+    pub path: String,
     pub topic: String,
     pub num_to_ask: u16,
     pub list_topics: bool,
@@ -245,6 +247,7 @@ pub struct QuizOptions {
 
 
 pub fn parse_options() -> QuizOptions {
+    let mut path = String::new();
     let mut topic = String::new();
     let mut num_to_ask = 10;
     let mut list_topics = false;
@@ -252,6 +255,9 @@ pub fn parse_options() -> QuizOptions {
     {
         let mut parser = ArgumentParser::new();
         parser.set_description("Take a pop quiz from the command line.");
+
+        parser.refer(&mut path)
+            .add_argument("quiz", Store, "Path to the quiz file.").required();
 
         parser.refer(&mut topic)
             .add_option(&["--topic"], Store, "Restrict questions to a certain topic.");
@@ -267,7 +273,7 @@ pub fn parse_options() -> QuizOptions {
 
         parser.parse_args_or_exit();
     }
-    QuizOptions { topic, num_to_ask, list_topics, save_results }
+    QuizOptions { path, topic, num_to_ask, list_topics, save_results }
 }
 
 
@@ -314,4 +320,19 @@ pub fn save_results(path: &str, results: &Vec<(&Question, QuestionResult)>) {
     fs::write(path, serialized_results)
         .expect("Unable to write to quiz file");
     println!("Results saved to {}.", path);
+}
+
+
+pub fn derive_result_path(path: &str) -> String {
+    let ext = match Path::new(path).extension() {
+        Some(ext) => ext.to_str().unwrap(),
+        None => "",
+    };
+
+    if ext.len() > 0 {
+        let stem: String = path.chars().take(path.len() - ext.len() - 1).collect();
+        format!("{}_results.{}", stem, ext)
+    } else {
+        String::from(path)
+    }
 }
