@@ -1,0 +1,49 @@
+{
+  "questions": [
+    {
+      "kind": "ShortAnswer",
+      "text": "Which English countess is regarded as the first computer programmer?",
+      "topic": "computer science",
+      "answers": [
+        {
+          "variants": ["Ada Lovelace", "Lady Lovelace", "Ada, Countess of Lovelace"]
+        }
+      ]
+    },
+    {
+      "kind": "ListAnswer",
+      "text": "Name the four Home Islands of Japan.",
+      "topic": "geography",
+      "answers": [
+        {
+          "variants": ["Hokkaido"]
+        },
+        {
+          "variants": ["Honshu"]
+        },
+        {
+          "variants": ["Shikoku"]
+        },
+        {
+          "variants": ["Kyushu"]
+        }
+      ]
+    },
+    {
+      "kind": "OrderedListAnswer",
+      "text": "Who were the first three Presidents of the United States, in order?",
+      "topic": "history",
+      "answers": [
+        {
+          "variants": ["George Washington", "Washington"]
+        },
+        {
+          "variants": ["John Adams", "Adams"]
+        },
+        {
+          "variants": ["Thomas  Jefferson", "Jefferson"]
+        }
+      ]
+    }
+  ]
+}
