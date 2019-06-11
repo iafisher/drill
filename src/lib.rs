@@ -1,10 +1,13 @@
 extern crate argparse;
 extern crate chrono;
+extern crate rand;
 
 use std::io;
 use std::io::Write;
 
 use argparse::{ArgumentParser, Store};
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -118,18 +121,15 @@ impl<'a> Quiz<'a> {
         let mut total_correct = 0;
         let mut total = 0;
 
-        for question in self.questions.iter() {
-            if self.filter_question(&question, &options) {
-                continue;
-            }
-
+        let questions = self.choose_questions(&options);
+        for question in questions.iter() {
             println!("\n");
             let correct = question.ask();
             let result = QuestionResult {
                 time_asked: chrono::Utc::now(),
                 result: correct,
             };
-            results.push((question, result));
+            results.push((*question, result));
 
             total += 1;
             if correct {
@@ -143,6 +143,21 @@ impl<'a> Quiz<'a> {
         }
 
         results
+    }
+
+    fn choose_questions(&self, options: &QuizOptions) -> Vec<&Question> {
+        let mut rng = thread_rng();
+
+        let mut candidates = Vec::new();
+        for question in self.questions.iter() {
+            if !self.filter_question(question, options) {
+                candidates.push(question);
+            }
+        }
+
+        candidates.shuffle(&mut rng);
+        candidates.truncate(options.num_to_ask as usize);
+        candidates
     }
 
     fn filter_question(&self, q: &Question, options: &QuizOptions) -> bool {
@@ -170,10 +185,12 @@ pub fn prompt(message: &str) -> String {
 
 pub struct QuizOptions {
     topic: String,
+    num_to_ask: u16,
 }
 
 pub fn parse_config() -> QuizOptions {
     let mut topic = String::new();
+    let mut num_to_ask = 10;
     {
         let mut parser = ArgumentParser::new();
         parser.set_description("Take a pop quiz from the command line.");
@@ -181,7 +198,10 @@ pub fn parse_config() -> QuizOptions {
         parser.refer(&mut topic)
             .add_option(&["--topic"], Store, "Restrict questions to a certain topic.");
 
+        parser.refer(&mut num_to_ask)
+            .add_option(&["-n"], Store, "Number of questions to ask.");
+
         parser.parse_args_or_exit();
     }
-    QuizOptions { topic }
+    QuizOptions { topic, num_to_ask }
 }
