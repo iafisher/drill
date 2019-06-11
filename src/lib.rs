@@ -2,7 +2,9 @@ extern crate argparse;
 extern crate chrono;
 extern crate rand;
 
+use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fs;
 use std::io;
 use std::io::Write;
 
@@ -135,7 +137,7 @@ impl<'a> Question<'a> {
 }
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct QuestionResult {
     pub time_asked: chrono::DateTime<chrono::Utc>,
     pub result: bool,
@@ -218,6 +220,12 @@ pub fn prompt(message: &str) -> String {
 }
 
 
+pub fn yesno(message: &str) -> bool {
+    let response = prompt(message);
+    response.trim_start().to_lowercase().starts_with("y")
+}
+
+
 pub struct QuizOptions {
     pub topic: String,
     pub num_to_ask: u16,
@@ -264,4 +272,31 @@ pub fn list_topics(quiz: &Quiz) {
             println!("  {}", topic);
         }
     }
+}
+
+
+pub fn save_results(path: &str, results: &Vec<(&Question, QuestionResult)>) {
+    let data = fs::read_to_string(path);
+    let mut hash: HashMap<&str, Vec<QuestionResult>> = match data {
+        Ok(ref data) => {
+            serde_json::from_str(&data)
+                .expect("Unable to deserialize JSON to results object")
+        },
+        Err(_) => {
+            HashMap::new()
+        }
+    };
+
+    for (q, qr) in results.iter() {
+        if !hash.contains_key(q.text) {
+            hash.insert(q.text, Vec::new());
+        }
+        hash.get_mut(q.text).unwrap().push((*qr).clone());
+    }
+
+    let serialized_results = serde_json::to_string_pretty(&hash)
+        .expect("Unable to serialize results object to JSON");
+    fs::write(path, serialized_results)
+        .expect("Unable to write to quiz file");
+    println!("Results saved to {}.", path);
 }
