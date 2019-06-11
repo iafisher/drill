@@ -3,11 +3,9 @@ use popquiz::*;
 fn main() {
     let quiz = Quiz {
         questions: vec![
-            Question::new(
-                QuestionKind::ShortAnswer, "What is the capital of Bulgaria?", "Sofia"
-            ),
-            Question::new(
-                QuestionKind::ShortAnswer, "What is the longest river in Asia?", "Yangtze"
+            Question::short_answer("What is the capital of Bulgaria?", "Sofia"),
+            Question::short_answer_multiple(
+                "What is the longest river in Asia?", &["Yangtze", "Yangtze River"]
             ),
         ]
     };
