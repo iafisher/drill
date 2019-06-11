@@ -1,13 +1,14 @@
-use std::fmt;
 use std::io;
 use std::io::Write;
 
-#[derive(Debug)]
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum QuestionKind {
     ShortAnswer,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Question<'a> {
     pub kind: QuestionKind,
     pub text: &'a str,
@@ -43,8 +44,9 @@ impl<'a> Question<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Quiz<'a> {
+    #[serde(borrow)]
     pub questions: Vec<Question<'a>>,
 }
 

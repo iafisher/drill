@@ -12,4 +12,5 @@ fn main() {
         ]
     };
     quiz.take();
+    println!("{}", serde_json::to_string(&quiz).unwrap());
 }
