@@ -2,10 +2,11 @@ extern crate argparse;
 extern crate chrono;
 extern crate rand;
 
+use std::collections::HashSet;
 use std::io;
 use std::io::Write;
 
-use argparse::{ArgumentParser, Store};
+use argparse::{ArgumentParser, Store, StoreTrue};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Serialize, Deserialize};
@@ -184,13 +185,15 @@ pub fn prompt(message: &str) -> String {
 }
 
 pub struct QuizOptions {
-    topic: String,
-    num_to_ask: u16,
+    pub topic: String,
+    pub num_to_ask: u16,
+    pub list_topics: bool,
 }
 
 pub fn parse_options() -> QuizOptions {
     let mut topic = String::new();
     let mut num_to_ask = 10;
+    let mut list_topics = false;
     {
         let mut parser = ArgumentParser::new();
         parser.set_description("Take a pop quiz from the command line.");
@@ -201,7 +204,28 @@ pub fn parse_options() -> QuizOptions {
         parser.refer(&mut num_to_ask)
             .add_option(&["-n"], Store, "Number of questions to ask.");
 
+        parser.refer(&mut list_topics)
+            .add_option(&["--list-topics"], StoreTrue, "List all available topics.");
+
         parser.parse_args_or_exit();
     }
-    QuizOptions { topic, num_to_ask }
+    QuizOptions { topic, num_to_ask, list_topics }
+}
+
+pub fn list_topics(quiz: &Quiz) {
+    let mut topics = HashSet::new();
+    for question in quiz.questions.iter() {
+        if question.topic.len() > 0 {
+            topics.insert(question.topic);
+        }
+    }
+
+    if topics.len() == 0 {
+        println!("No questions have been assigned topics.");
+    } else {
+        println!("Available topics:");
+        for topic in topics.iter() {
+            println!("  {}", topic);
+        }
+    }
 }
