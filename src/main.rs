@@ -6,7 +6,7 @@ const QUIZ_PATH: &str = "/home/iafisher/dev/popquiz/quiz.json";
 const RESULTS_PATH: &str = "/home/iafisher/dev/quiz_results.json";
 
 fn main() {
-    let options = parse_config();
+    let options = parse_options();
 
     let data = fs::read_to_string(QUIZ_PATH)
         .expect("Unable to read from quiz file");

@@ -188,7 +188,7 @@ pub struct QuizOptions {
     num_to_ask: u16,
 }
 
-pub fn parse_config() -> QuizOptions {
+pub fn parse_options() -> QuizOptions {
     let mut topic = String::new();
     let mut num_to_ask = 10;
     {
