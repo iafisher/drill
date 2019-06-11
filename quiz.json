@@ -6,17 +6,20 @@
       "topic": "computer science",
       "answers": [
         {
-          "variants": [
-            "raytracing",
-            "ray tracing",
-            "ray-tracing"
-          ]
+          "variants": ["raytracing", "ray tracing", "ray-tracing"]
         },
         {
-          "variants": [
-            "rasterization",
-            "rasterisation"
-          ]
+          "variants": ["rasterization", "rasterisation"]
+        }
+      ]
+    },
+    {
+      "kind": "ShortAnswer",
+      "text": "What is the primary Latin translation of the Christian Bible, compiled in the third century AD and used by the Catholic Church for centuries?",
+      "topic": "religion",
+      "answers": [
+        {
+          "variants": ["Vulgate"]
         }
       ]
     }

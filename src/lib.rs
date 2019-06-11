@@ -1,7 +1,10 @@
+extern crate argparse;
+extern crate chrono;
+
 use std::io;
 use std::io::Write;
 
-use chrono::prelude::*;
+use argparse::{ArgumentParser, Store};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,7 +41,7 @@ pub struct Question<'a> {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct QuestionResult {
-    pub time_asked: DateTime<Utc>,
+    pub time_asked: chrono::DateTime<chrono::Utc>,
     pub result: bool,
 }
 
@@ -110,15 +113,20 @@ pub struct Quiz<'a> {
 }
 
 impl<'a> Quiz<'a> {
-    pub fn take(&mut self) -> Vec<(&Question, QuestionResult)> {
+    pub fn take(&mut self, options: &QuizOptions) -> Vec<(&Question, QuestionResult)> {
         let mut results = Vec::new();
         let mut total_correct = 0;
         let mut total = 0;
+
         for question in self.questions.iter() {
+            if self.filter_question(&question, &options) {
+                continue;
+            }
+
             println!("\n");
             let correct = question.ask();
             let result = QuestionResult {
-                time_asked: Utc::now(),
+                time_asked: chrono::Utc::now(),
                 result: correct,
             };
             results.push((question, result));
@@ -135,6 +143,10 @@ impl<'a> Quiz<'a> {
         }
 
         results
+    }
+
+    fn filter_question(&self, q: &Question, options: &QuizOptions) -> bool {
+        options.topic.len() > 0 && q.topic != options.topic
     }
 }
 
@@ -154,4 +166,22 @@ pub fn prompt(message: &str) -> String {
     }
 
     response.trim_end().to_string()
+}
+
+pub struct QuizOptions {
+    topic: String,
+}
+
+pub fn parse_config() -> QuizOptions {
+    let mut topic = String::new();
+    {
+        let mut parser = ArgumentParser::new();
+        parser.set_description("Take a pop quiz from the command line.");
+
+        parser.refer(&mut topic)
+            .add_option(&["--topic"], Store, "Restrict questions to a certain topic.");
+
+        parser.parse_args_or_exit();
+    }
+    QuizOptions { topic }
 }
