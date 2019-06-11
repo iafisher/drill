@@ -64,7 +64,7 @@ impl<'a> Question<'a> {
 
         match self.kind {
             QuestionKind::ShortAnswer => {
-                let guess = self.ask_once();
+                let guess = prompt("> ");
                 let result = self.check_any(&guess);
                 if result {
                     println!("Correct!");
@@ -81,7 +81,7 @@ impl<'a> Question<'a> {
 
                 let mut count = 0;
                 while count < self.answers.len() {
-                    let guess = self.ask_once();
+                    let guess = prompt("> ");
                     let index = self.check_one(&guess);
                     if index == self.answers.len() {
                         println!("Incorrect.");
@@ -98,16 +98,6 @@ impl<'a> Question<'a> {
                 return satisfied.iter().all(|x| *x);
             }
         }
-    }
-
-    fn ask_once(&self) -> String {
-        print!("> ");
-        io::stdout().flush()
-            .expect("Unable to flush standard output");
-        let mut guess = String::new();
-        io::stdin().read_line(&mut guess)
-            .expect("Failed to read line");
-        guess.trim_end().to_string()
     }
 
     fn check_any(&self, guess: &str) -> bool {
@@ -162,4 +152,22 @@ impl<'a> Quiz<'a> {
 
         results
     }
+}
+
+pub fn prompt(message: &str) -> String {
+    print!("{}", message);
+    io::stdout().flush()
+        .expect("Unable to flush standard output");
+    let mut response = String::new();
+    io::stdin().read_line(&mut response)
+        .expect("Failed to read line");
+
+    // If the string is completely empty, then the user hit Ctrl+D and we should exit.
+    // A blank line is indicated by "\n" rather than "".
+    if response.len() == 0 {
+        println!("");
+        ::std::process::exit(2);
+    }
+
+    response.trim_end().to_string()
 }
