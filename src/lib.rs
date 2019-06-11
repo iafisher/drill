@@ -1,6 +1,7 @@
 extern crate argparse;
 extern crate chrono;
 extern crate rand;
+extern crate textwrap;
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -49,7 +50,7 @@ pub struct Question<'a> {
 
 impl<'a> Question<'a> {
     pub fn ask(&self) -> bool {
-        println!("{}\n", self.text);
+        prettyprint(&format!("{}\n", self.text));
 
         match self.kind {
             QuestionKind::ShortAnswer => {
@@ -58,9 +59,11 @@ impl<'a> Question<'a> {
                 if result {
                     println!("Correct!");
                 } else {
-                    println!(
-                        "Incorrect. The correct answer was {}.",
-                        self.answers[0].variants[0]
+                    prettyprint(
+                        &format!(
+                            "Incorrect. The correct answer was {}.",
+                            self.answers[0].variants[0]
+                        )
                     );
                 }
                 return result;
@@ -105,9 +108,11 @@ impl<'a> Question<'a> {
                     if answer.check(&guess) {
                         println!("Correct!");
                     } else {
-                        println!(
-                            "Incorrect. The correct answer was {}.",
-                            answer.variants[0]
+                        prettyprint(
+                            &format!(
+                                "Incorrect. The correct answer was {}.",
+                                answer.variants[0]
+                            )
                         );
                         correct = false;
                     }
@@ -217,6 +222,11 @@ pub fn prompt(message: &str) -> String {
     }
 
     response.trim_end().to_string()
+}
+
+
+pub fn prettyprint(message: &str) {
+    println!("{}", textwrap::fill(message, textwrap::termwidth()));
 }
 
 
