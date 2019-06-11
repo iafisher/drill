@@ -23,12 +23,11 @@ pub enum QuestionKind {
 
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Answer<'a> {
-    #[serde(borrow)]
-    pub variants: Vec<&'a str>,
+pub struct Answer {
+    pub variants: Vec<String>,
 }
 
-impl<'a> Answer<'a> {
+impl Answer {
     pub fn check(&self, guess: &str) -> bool {
         for variant in self.variants.iter() {
             if variant.to_lowercase() == guess.to_lowercase() {
@@ -41,15 +40,14 @@ impl<'a> Answer<'a> {
 
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Question<'a> {
+pub struct Question {
     pub kind: QuestionKind,
-    pub text: &'a str,
-    pub topic: &'a str,
-    #[serde(borrow)]
-    pub answers: Vec<Answer<'a>>,
+    pub text: String,
+    pub topic: String,
+    pub answers: Vec<Answer>,
 }
 
-impl<'a> Question<'a> {
+impl Question {
     pub fn ask(&self) -> bool {
         prettyprint(&format!("{}\n", self.text));
 
@@ -151,12 +149,11 @@ pub struct QuestionResult {
 
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Quiz<'a> {
-    #[serde(borrow)]
-    pub questions: Vec<Question<'a>>,
+pub struct Quiz {
+    pub questions: Vec<Question>,
 }
 
-impl<'a> Quiz<'a> {
+impl Quiz {
     pub fn take(&mut self, options: &QuizOptions) -> Vec<(&Question, QuestionResult)> {
         let mut results = Vec::new();
         let mut total_correct = 0;
@@ -281,7 +278,7 @@ pub fn list_topics(quiz: &Quiz) {
     let mut topics = HashSet::new();
     for question in quiz.questions.iter() {
         if question.topic.len() > 0 {
-            topics.insert(question.topic);
+            topics.insert(question.topic.as_str());
         }
     }
 
@@ -309,10 +306,10 @@ pub fn save_results(path: &str, results: &Vec<(&Question, QuestionResult)>) {
     };
 
     for (q, qr) in results.iter() {
-        if !hash.contains_key(q.text) {
-            hash.insert(q.text, Vec::new());
+        if !hash.contains_key(q.text.as_str()) {
+            hash.insert(q.text.as_str(), Vec::new());
         }
-        hash.get_mut(q.text).unwrap().push((*qr).clone());
+        hash.get_mut(q.text.as_str()).unwrap().push((*qr).clone());
     }
 
     let serialized_results = serde_json::to_string_pretty(&hash)
