@@ -20,6 +20,18 @@
           "variants": ["Yangtze River"]
         }
       ]
+    },
+    {
+      "kind": "ListAnswer",
+      "text": "What are the two primary methods of rendering 3D computer graphics?",
+      "answers": [
+        {
+          "variants": ["raytracing", "ray tracing", "ray-tracing"]
+        },
+        {
+          "variants": ["rasterization", "rasterisation"]
+        }
+      ]
     }
   ]
 }

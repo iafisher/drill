@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum QuestionKind {
-    ShortAnswer,
+    ShortAnswer, ListAnswer,
 }
 
 
@@ -57,23 +57,70 @@ impl<'a> Question<'a> {
     pub fn ask(&self) -> bool {
         println!("{}\n", self.text);
 
+        match self.kind {
+            QuestionKind::ShortAnswer => {
+                let guess = self.ask_once();
+                let result = self.check_any(&guess);
+                if result {
+                    println!("Correct!");
+                } else {
+                    println!("Incorrect!");
+                }
+                return result;
+            },
+            QuestionKind::ListAnswer => {
+                let mut satisfied = Vec::<bool>::with_capacity(self.answers.len());
+                for _ in 0..self.answers.len() {
+                    satisfied.push(false);
+                }
+
+                let mut count = 0;
+                while count < self.answers.len() {
+                    let guess = self.ask_once();
+                    let index = self.check_one(&guess);
+                    if index == self.answers.len() {
+                        println!("Incorrect.");
+                        count += 1;
+                    } else if satisfied[index] {
+                        println!("You already said that.");
+                    } else {
+                        satisfied[index] = true;
+                        println!("Correct!");
+                        count += 1;
+                    }
+                }
+
+                return satisfied.iter().all(|x| *x);
+            }
+        }
+    }
+
+    fn ask_once(&self) -> String {
         print!("> ");
         io::stdout().flush()
             .expect("Unable to flush standard output");
         let mut guess = String::new();
         io::stdin().read_line(&mut guess)
             .expect("Failed to read line");
-
-        self.check(&guess.trim_end())
+        guess.trim_end().to_string()
     }
 
-    fn check(&self, guess: &str) -> bool {
+    fn check_any(&self, guess: &str) -> bool {
         for answer in self.answers.iter() {
             if answer.check(guess) {
                 return true;
             }
         }
         false
+    }
+
+    fn check_one(&self, guess: &str) -> usize {
+        for (i, answer) in self.answers.iter().enumerate() {
+            if answer.check(guess) {
+                return i;
+            }
+        }
+        self.answers.len()
     }
 }
 
@@ -93,10 +140,7 @@ impl<'a> Quiz<'a> {
 
             total += 1;
             if correct {
-                println!("\nCorrect!");
                 total_correct += 1;
-            } else {
-                println!("\nIncorrect.");
             }
         }
 
