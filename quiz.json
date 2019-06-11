@@ -5,7 +5,9 @@
       "text": "What is the capital of Bulgaria?",
       "answers": [
         {
-          "variants": ["Sofia"]
+          "variants": [
+            "Sofia"
+          ]
         }
       ]
     },
@@ -14,10 +16,14 @@
       "text": "What is the longest river in Asia?",
       "answers": [
         {
-          "variants": ["Yangtze"]
+          "variants": [
+            "Yangtze"
+          ]
         },
         {
-          "variants": ["Yangtze River"]
+          "variants": [
+            "Yangtze River"
+          ]
         }
       ]
     },
@@ -26,10 +32,17 @@
       "text": "What are the two primary methods of rendering 3D computer graphics?",
       "answers": [
         {
-          "variants": ["raytracing", "ray tracing", "ray-tracing"]
+          "variants": [
+            "raytracing",
+            "ray tracing",
+            "ray-tracing"
+          ]
         },
         {
-          "variants": ["rasterization", "rasterisation"]
+          "variants": [
+            "rasterization",
+            "rasterisation"
+          ]
         }
       ]
     }

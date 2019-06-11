@@ -1,6 +1,7 @@
 use std::io;
 use std::io::Write;
 
+use chrono::prelude::*;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -32,7 +33,12 @@ pub struct Question<'a> {
     pub text: &'a str,
     #[serde(borrow)]
     pub answers: Vec<Answer<'a>>,
+}
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct QuestionResult {
+    pub time_asked: DateTime<Utc>,
+    pub result: bool,
 }
 
 impl<'a> Question<'a> {
@@ -43,7 +49,6 @@ impl<'a> Question<'a> {
             answers: vec![Answer { variants: vec![answer] }]
         }
     }
-
     pub fn short_answer_multiple(text: &'a str, variants: &[&'a str]) -> Self {
         let mut answers = Vec::<Answer>::new();
         for variant in variants.iter() {
@@ -131,12 +136,18 @@ pub struct Quiz<'a> {
 }
 
 impl<'a> Quiz<'a> {
-    pub fn take(&self) {
+    pub fn take(&mut self) -> Vec<(&Question, QuestionResult)> {
+        let mut results = Vec::new();
         let mut total_correct = 0;
         let mut total = 0;
         for question in self.questions.iter() {
             println!("\n");
             let correct = question.ask();
+            let result = QuestionResult {
+                time_asked: Utc::now(),
+                result: correct,
+            };
+            results.push((question, result));
 
             total += 1;
             if correct {
@@ -148,5 +159,7 @@ impl<'a> Quiz<'a> {
             let score = (total_correct as f64) / (total as f64) * 100.0;
             println!("\n{} correct out of {} ({}%).", total_correct, total, score);
         }
+
+        results
     }
 }
