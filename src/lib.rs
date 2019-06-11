@@ -60,7 +60,10 @@ impl<'a> Question<'a> {
                 if result {
                     println!("Correct!");
                 } else {
-                    println!("Incorrect!");
+                    println!(
+                        "Incorrect. The correct answer was {}.",
+                        self.answers[0].variants[0]
+                    );
                 }
                 return result;
             },
@@ -86,7 +89,16 @@ impl<'a> Question<'a> {
                     }
                 }
 
-                return satisfied.iter().all(|x| *x);
+                let all_correct = satisfied.iter().all(|x| *x);
+                if !all_correct {
+                    println!("\nYou missed:");
+                    for (i, correct) in satisfied.iter().enumerate() {
+                        if !correct {
+                            println!("  {}", self.answers[i].variants[0]);
+                        }
+                    }
+                }
+                return all_correct;
             }
             QuestionKind::OrderedListAnswer => {
                 let mut correct = true;
@@ -95,7 +107,10 @@ impl<'a> Question<'a> {
                     if answer.check(&guess) {
                         println!("Correct!");
                     } else {
-                        println!("Incorrect.");
+                        println!(
+                            "Incorrect. The correct answer was {}.",
+                            answer.variants[0]
+                        );
                         correct = false;
                     }
                 }
