@@ -13,7 +13,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum QuestionKind {
-    ShortAnswer, ListAnswer,
+    ShortAnswer, ListAnswer, OrderedListAnswer,
 }
 
 
@@ -87,6 +87,19 @@ impl<'a> Question<'a> {
                 }
 
                 return satisfied.iter().all(|x| *x);
+            }
+            QuestionKind::OrderedListAnswer => {
+                let mut correct = true;
+                for answer in self.answers.iter() {
+                    let guess = prompt("> ");
+                    if answer.check(&guess) {
+                        println!("Correct!");
+                    } else {
+                        println!("Incorrect.");
+                        correct = false;
+                    }
+                }
+                return correct;
             }
         }
     }

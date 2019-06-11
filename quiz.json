@@ -22,6 +22,19 @@
           "variants": ["Vulgate"]
         }
       ]
+    },
+    {
+      "kind": "OrderedListAnswer",
+      "text": "What are the two parts of the Talmud, in order?",
+      "topic": "religion",
+      "answers": [
+        {
+          "variants": ["Mishnah", "Mishna"]
+        },
+        {
+          "variants": ["Gemara", "Gemora", "Gemarah", "Gemorra"]
+        }
+      ]
     }
   ]
 }
