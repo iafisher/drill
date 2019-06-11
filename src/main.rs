@@ -20,7 +20,7 @@ fn main() {
     } else {
         let results = quiz.take(&options);
 
-        if yesno("\nSave results? ") {
+        if options.save_results || yesno("\nSave results? ") {
             save_results(RESULTS_PATH, &results);
         }
     }

@@ -140,7 +140,7 @@ impl<'a> Question<'a> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct QuestionResult {
     pub time_asked: chrono::DateTime<chrono::Utc>,
-    pub result: bool,
+    pub correct: bool,
 }
 
 
@@ -162,7 +162,7 @@ impl<'a> Quiz<'a> {
             let correct = question.ask();
             let result = QuestionResult {
                 time_asked: chrono::Utc::now(),
-                result: correct,
+                correct,
             };
             results.push((*question, result));
 
@@ -230,6 +230,7 @@ pub struct QuizOptions {
     pub topic: String,
     pub num_to_ask: u16,
     pub list_topics: bool,
+    pub save_results: bool,
 }
 
 
@@ -237,6 +238,7 @@ pub fn parse_options() -> QuizOptions {
     let mut topic = String::new();
     let mut num_to_ask = 10;
     let mut list_topics = false;
+    let mut save_results = false;
     {
         let mut parser = ArgumentParser::new();
         parser.set_description("Take a pop quiz from the command line.");
@@ -250,9 +252,12 @@ pub fn parse_options() -> QuizOptions {
         parser.refer(&mut list_topics)
             .add_option(&["--list-topics"], StoreTrue, "List all available topics.");
 
+        parser.refer(&mut save_results)
+            .add_option(&["--save"], StoreTrue, "Save quiz results without prompting.");
+
         parser.parse_args_or_exit();
     }
-    QuizOptions { topic, num_to_ask, list_topics }
+    QuizOptions { topic, num_to_ask, list_topics, save_results }
 }
 
 
