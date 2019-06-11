@@ -1,0 +1,25 @@
+{
+  "questions": [
+    {
+      "kind": "ShortAnswer",
+      "text": "What is the capital of Bulgaria?",
+      "answers": [
+        {
+          "variants": ["Sofia"]
+        }
+      ]
+    },
+    {
+      "kind": "ShortAnswer",
+      "text": "What is the longest river in Asia?",
+      "answers": [
+        {
+          "variants": ["Yangtze"]
+        },
+        {
+          "variants": ["Yangtze River"]
+        }
+      ]
+    }
+  ]
+}

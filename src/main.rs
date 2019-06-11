@@ -1,14 +1,11 @@
+use std::fs;
+
 use popquiz::*;
 
 fn main() {
-    let quiz = Quiz {
-        questions: vec![
-            Question::short_answer("What is the capital of Bulgaria?", "Sofia"),
-            Question::short_answer_multiple(
-                "What is the longest river in Asia?", &["Yangtze", "Yangtze River"]
-            ),
-        ]
-    };
+    let data = fs::read_to_string("/home/iafisher/dev/popquiz/quiz.json")
+        .expect("Unable to read from quiz file");
+    let quiz: Quiz = serde_json::from_str(&data)
+        .expect("Unable to deserialize JSON");
     quiz.take();
-    println!("{}", serde_json::to_string(&quiz).unwrap());
 }
