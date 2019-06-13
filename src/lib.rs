@@ -42,7 +42,7 @@ impl Answer {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Question {
     pub kind: QuestionKind,
-    pub text: String,
+    pub text: Vec<String>,
     pub topic: String,
     pub answers: Vec<Answer>,
     pub candidates: Vec<String>,
@@ -50,7 +50,8 @@ pub struct Question {
 
 impl Question {
     pub fn ask(&self) -> bool {
-        prettyprint(&format!("{}\n", self.text));
+        let mut rng = thread_rng();
+        prettyprint(&format!("{}\n", self.text.choose(&mut rng).unwrap()));
 
         match self.kind {
             QuestionKind::ShortAnswer => {
@@ -344,10 +345,11 @@ pub fn save_results(path: &str, results: &Vec<(&Question, QuestionResult)>) {
     };
 
     for (q, qr) in results.iter() {
-        if !hash.contains_key(q.text.as_str()) {
-            hash.insert(q.text.as_str(), Vec::new());
+        let qtext = q.text[0].as_str();
+        if !hash.contains_key(qtext) {
+            hash.insert(qtext, Vec::new());
         }
-        hash.get_mut(q.text.as_str()).unwrap().push((*qr).clone());
+        hash.get_mut(qtext).unwrap().push((*qr).clone());
     }
 
     let serialized_results = serde_json::to_string_pretty(&hash)
