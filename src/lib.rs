@@ -279,6 +279,7 @@ pub struct QuizOptions {
     pub num_to_ask: u16,
     pub list_topics: bool,
     pub save_results: bool,
+    pub count: bool,
 }
 
 
@@ -288,6 +289,7 @@ pub fn parse_options() -> QuizOptions {
     let mut num_to_ask = 10;
     let mut list_topics = false;
     let mut save_results = false;
+    let mut count = false;
     {
         let mut parser = ArgumentParser::new();
         parser.set_description("Take a pop quiz from the command line.");
@@ -307,9 +309,14 @@ pub fn parse_options() -> QuizOptions {
         parser.refer(&mut save_results)
             .add_option(&["--save"], StoreTrue, "Save quiz results without prompting.");
 
+        parser.refer(&mut count)
+            .add_option(
+                &["--count"], StoreTrue, "Count the number of questions."
+            );
+
         parser.parse_args_or_exit();
     }
-    QuizOptions { paths, topic, num_to_ask, list_topics, save_results }
+    QuizOptions { paths, topic, num_to_ask, list_topics, save_results, count }
 }
 
 

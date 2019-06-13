@@ -20,6 +20,8 @@ fn main() {
     let mut quiz = Quiz { questions: master_list };
     if options.list_topics {
         list_topics(&quiz);
+    } else if options.count {
+        println!("{}", quiz.questions.len());
     } else {
         let results = quiz.take(&options);
 
