@@ -338,7 +338,10 @@ pub fn list_tags(quiz: &Quiz) {
         println!("No questions have been assigned tags.");
     } else {
         println!("Available tags:");
-        for tag in tags.iter() {
+
+        let mut tags_in_order: Vec<&str> = tags.into_iter().collect();
+        tags_in_order.sort();
+        for tag in tags_in_order.iter() {
             println!("  {}", tag);
         }
     }
