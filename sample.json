@@ -4,9 +4,7 @@
       "kind": "ShortAnswer",
       "text": ["Which English countess is regarded as the first computer programmer?"],
       "topic": "computer science",
-      "answers": [
-          ["Ada Lovelace", "Lady Lovelace", "Ada, Countess of Lovelace"]
-      ]
+      "answer": ["Ada Lovelace", "Lady Lovelace", "Ada, Countess of Lovelace"]
     },
     {
       "kind": "ListAnswer",
@@ -32,7 +30,7 @@
       "text": ["In what year did the Russo-Japanese War end?"],
       "topic": "history",
       "candidates": ["1878", "1945", "1918", "1908"],
-      "answers": ["1905"]
+      "answer": "1905"
     }
   ]
 }

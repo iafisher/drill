@@ -379,9 +379,12 @@ pub fn load_quiz(path: &str) -> Quiz {
     if let Some(quiz_as_object) = quiz_as_json.as_object_mut() {
         if let Some(questions) = quiz_as_object.get_mut("questions") {
             if let Some(questions_as_array) = questions.as_array_mut() {
-                for question in questions_as_array.iter_mut() {
-                    if let Some(mut question_as_object) = question.as_object_mut() {
-                        expand_question_json(&mut question_as_object);
+                for i in 0..questions_as_array.len() {
+                    // Expand each individual question object.
+                    if let Some(question) = questions_as_array[i].as_object() {
+                        questions_as_array[i] = serde_json::to_value(
+                            expand_question_json(&question)
+                        ).unwrap();
                     }
                 }
             }
@@ -395,7 +398,10 @@ pub fn load_quiz(path: &str) -> Quiz {
 }
 
 
-fn expand_question_json(question: &mut serde_json::Map<String, serde_json::Value>) {
+type JSONMap = serde_json::Map<String, serde_json::Value>;
+fn expand_question_json(question: &JSONMap) -> JSONMap {
+    let mut ret = question.clone();
+
     let kind = if let Some(kind_value) = question.get("kind") {
         if let Some(kind_value_as_string) = kind_value.as_str() {
             kind_value_as_string
@@ -408,12 +414,13 @@ fn expand_question_json(question: &mut serde_json::Map<String, serde_json::Value
 
     // Only multiple-choice questions require the `candidates` field, so other
     // questions can omit them.
-    if !question.contains_key("candidates") {
-        question.insert(String::from("candidates"), serde_json::json!([]));
+    if !ret.contains_key("candidates") {
+        ret.insert(String::from("candidates"), serde_json::json!([]));
     }
 
-    if let Some(answers) = question.get_mut("answers") {
-        if let Some(answers_as_array) = answers.as_array_mut() {
+    if let Some(answers) = question.get("answers") {
+        if let Some(answers_as_array) = answers.as_array() {
+            ret.remove("answers");
             // Convert answer objects from a [...] to { "variants": [...] }.
             let mut new_answers = Vec::new();
             for i in 0..answers_as_array.len() {
@@ -432,25 +439,34 @@ fn expand_question_json(question: &mut serde_json::Map<String, serde_json::Value
             }
 
             // Replace the old answers array with the newly constructed one.
-            question.insert(
+            ret.insert(
                 String::from("answers"), serde_json::to_value(new_answers).unwrap()
             );
         }
     }
 
-    // Multiple-choice questions may use an `answer` field with a string value rather
-    // than an `answers` field with an array value.
-    // if kind == "MultipleChoice" && !question.contains_key("answers") {
-    //     if let Some(answer) = question.get("answer") {
-    //         if let Some(answer_as_string) = answer.as_str() {
-    //             question.insert(
-    //                 String::from("answers"),
-    //                 serde_json::json!([{"variants": [answer_as_string.clone()]}])
-    //             );
-    //             question.remove("answer");
-    //         }
-    //     }
-    // }
+    // Multiple-choice and short answer questions may use an `answer` field with a
+    // single value rather than an `answers` field with an array of values.
+    if !ret.contains_key("answers") {
+        if let Some(answer) = ret.get("answer") {
+            if answer.is_array() {
+                // If array, make {"variants": answer}
+                ret.insert(
+                    String::from("answers"),
+                    serde_json::json!([{"variants": answer.clone()}])
+                );
+            } else {
+                // If not array, make {"variants": [answer]}
+                ret.insert(
+                    String::from("answers"),
+                    serde_json::json!([{"variants": [answer.clone()]}])
+                );
+            }
+            ret.remove("answer");
+        }
+    }
+
+    ret
 }
 
 
