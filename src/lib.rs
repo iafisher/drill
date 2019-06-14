@@ -45,7 +45,10 @@ pub struct Question {
 impl Question {
     pub fn ask(&self) -> bool {
         let mut rng = thread_rng();
-        prettyprint(&format!("{}\n", self.text.choose(&mut rng).unwrap().white()));
+        prettyprint(
+            &format!("{}\n", self.text.choose(&mut rng).unwrap().white()),
+            Some("  ")
+        );
 
         match self.kind {
             QuestionKind::ShortAnswer => {
@@ -255,8 +258,15 @@ pub fn prompt(message: &str) -> String {
 }
 
 
-pub fn prettyprint(message: &str) {
-    println!("{}", textwrap::fill(message, textwrap::termwidth()));
+pub fn prettyprint(message: &str, prefix: Option<&str>) {
+    let prefix = prefix.unwrap_or("");
+    let filled = textwrap::fill(message, textwrap::termwidth() - prefix.len());
+    let mut indented = textwrap::indent(&filled, prefix);
+    // textwrap::indent will append unwanted newlines sometimes.
+    if !message.ends_with("\n") && indented.ends_with("\n") {
+        indented = indented.trim_end().to_string();
+    }
+    println!("{}", indented);
 }
 
 
@@ -325,7 +335,7 @@ pub fn parse_options() -> QuizOptions {
         parser.parse_args_or_exit();
     }
 
-    QuizOptions { 
+    QuizOptions {
         paths, tags, exclude, num_to_ask, list_tags, save_results, count, no_color,
         in_order,
     }
@@ -518,7 +528,7 @@ fn print_incorrect(answer: &str) {
         let message = &format!(
             "{} The correct answer was {}.", "Incorrect.".red(), answer.green()
         );
-        prettyprint(message);
+        prettyprint(message, None);
     } else {
         println!("{}", "Incorrect.".red());
     }
