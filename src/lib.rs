@@ -220,12 +220,14 @@ impl Quiz {
     }
 
     fn choose_questions(&self, options: &QuizOptions) -> Vec<&Question> {
-        let mut rng = thread_rng();
-
         let mut candidates = self.filter_questions(options);
-        candidates.shuffle(&mut rng);
+        if !options.in_order {
+            let mut rng = thread_rng();
+            candidates.shuffle(&mut rng);
+        }
         if options.num_to_ask > 0 {
-            candidates.truncate(options.num_to_ask as usize); }
+            candidates.truncate(options.num_to_ask as usize);
+        }
         candidates
     }
 
@@ -272,6 +274,7 @@ pub struct QuizOptions {
     pub save_results: bool,
     pub count: bool,
     pub no_color: bool,
+    pub in_order: bool,
 }
 
 
@@ -283,6 +286,7 @@ pub fn parse_options() -> QuizOptions {
     let mut save_results = false;
     let mut count = false;
     let mut no_color = false;
+    let mut in_order = false;
     {
         let mut parser = ArgumentParser::new();
         parser.set_description("Take a pop quiz from the command line.");
@@ -310,9 +314,15 @@ pub fn parse_options() -> QuizOptions {
         parser.refer(&mut no_color)
             .add_option(&["--no-color"], StoreTrue, "Turn off ANSI color in output.");
 
+        parser.refer(&mut in_order)
+            .add_option(&["--in-order"], StoreTrue, "Ask questions in order.");
+
         parser.parse_args_or_exit();
     }
-    QuizOptions { paths, topic, num_to_ask, list_topics, save_results, count, no_color }
+
+    QuizOptions { 
+        paths, topic, num_to_ask, list_topics, save_results, count, no_color, in_order
+    }
 }
 
 
