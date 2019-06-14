@@ -402,26 +402,16 @@ type JSONMap = serde_json::Map<String, serde_json::Value>;
 fn expand_question_json(question: &JSONMap) -> JSONMap {
     let mut ret = question.clone();
 
-    let kind = if let Some(kind_value) = question.get("kind") {
-        if let Some(kind_value_as_string) = kind_value.as_str() {
-            kind_value_as_string
-        } else {
-            ""
-        }
-    } else {
-        ""
-    };
-
     // Only multiple-choice questions require the `candidates` field, so other
     // questions can omit them.
     if !ret.contains_key("candidates") {
         ret.insert(String::from("candidates"), serde_json::json!([]));
     }
 
+    // Convert answer objects from a [...] to { "variants": [...] }.
     if let Some(answers) = question.get("answers") {
         if let Some(answers_as_array) = answers.as_array() {
             ret.remove("answers");
-            // Convert answer objects from a [...] to { "variants": [...] }.
             let mut new_answers = Vec::new();
             for i in 0..answers_as_array.len() {
                 if answers_as_array[i].is_array() {
@@ -442,6 +432,13 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
             ret.insert(
                 String::from("answers"), serde_json::to_value(new_answers).unwrap()
             );
+        }
+    }
+
+    // Text fields of the form `[text]` may be abbreviated as just `text`.
+    if let Some(text) = ret.get("text") {
+        if text.is_string() {
+            ret.insert(String::from("text"), serde_json::json!([text]));
         }
     }
 
