@@ -7,6 +7,7 @@ use argparse::{ArgumentParser, Collect, Store, StoreTrue};
 use colored::*;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use rustyline::error::ReadlineError;
 use serde::{Serialize, Deserialize};
 
 
@@ -224,8 +225,7 @@ impl Quiz {
         let mut candidates = self.filter_questions(options);
         candidates.shuffle(&mut rng);
         if options.num_to_ask > 0 {
-            candidates.truncate(options.num_to_ask as usize);
-        }
+            candidates.truncate(options.num_to_ask as usize); }
         candidates
     }
 
@@ -237,16 +237,18 @@ impl Quiz {
 
 pub fn prompt(message: &str) -> String {
     let mut rl = rustyline::Editor::<()>::new();
-    let response = rl.readline(&format!("{}", message.white()))
-        .expect("Failed to read line");
 
-    // If the string is completely empty, then the user hit Ctrl+D and we should exit.
-    // A blank line is indicated by "\n" rather than "".
-    if response.len() == 0 {
-        println!("");
-        ::std::process::exit(2);
+    let result = rl.readline(&format!("{}", message.white()));
+
+    match result {
+        // Exit if the user hits Ctrl+D or Ctrl+C.
+        Err(ReadlineError::Eof) | Err(ReadlineError::Interrupted) => {
+            ::std::process::exit(2);
+        }
+        _ => {}
     }
 
+    let response = result.expect("Failed to read line");
     response.trim().to_string()
 }
 
@@ -412,6 +414,11 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
     // questions can omit them.
     if !ret.contains_key("candidates") {
         ret.insert(String::from("candidates"), serde_json::json!([]));
+    }
+
+    // The `kind` field defaults to "ShortAnswer".
+    if !ret.contains_key("kind") {
+        ret.insert(String::from("kind"), serde_json::json!("ShortAnswer"));
     }
 
     // Convert answer objects from a [...] to { "variants": [...] }.
