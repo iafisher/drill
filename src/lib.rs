@@ -53,7 +53,7 @@ impl Question {
         match self.kind {
             QuestionKind::ShortAnswer => {
                 let guess = prompt("> ");
-                let result = self.check_any(&guess);
+                let result = guess.is_some() && self.check_any(&guess.unwrap());
                 if result {
                     print_correct();
                 } else {
@@ -69,17 +69,21 @@ impl Question {
 
                 let mut count = 0;
                 while count < self.answer_list.len() {
-                    let guess = prompt("> ");
-                    let index = self.check_one(&guess);
-                    if index == self.answer_list.len() {
-                        print_incorrect("");
-                        count += 1;
-                    } else if satisfied[index] {
-                        println!("{}", "You already said that.".white());
+                    if let Some(guess) = prompt("> ") {
+                        let index = self.check_one(&guess);
+                        if index == self.answer_list.len() {
+                            print_incorrect("");
+                            count += 1;
+                        } else if satisfied[index] {
+                            println!("{}", "You already said that.".white());
+                        } else {
+                            satisfied[index] = true;
+                            print_correct();
+                            count += 1;
+                        }
                     } else {
-                        satisfied[index] = true;
-                        print_correct();
-                        count += 1;
+                        print_incorrect("");
+                        break;
                     }
                 }
 
@@ -97,12 +101,17 @@ impl Question {
             QuestionKind::OrderedListAnswer => {
                 let mut correct = true;
                 for answer in self.answer_list.iter() {
-                    let guess = prompt("> ");
-                    if answer.check(&guess) {
-                        print_correct();
+                    if let Some(guess) = prompt("> ") {
+                        if answer.check(&guess) {
+                            print_correct();
+                        } else {
+                            print_incorrect(&answer.variants[0]);
+                            correct = false;
+                        }
                     } else {
                         print_incorrect(&answer.variants[0]);
                         correct = false;
+                        break;
                     }
                 }
                 return correct;
@@ -122,22 +131,26 @@ impl Question {
 
                 println!("");
                 loop {
-                    let guess = prompt("Enter a letter: ");
-                    if guess.len() != 1 {
-                        continue;
-                    }
+                    if let Some(guess) = prompt("Enter a letter: ") {
+                        if guess.len() != 1 {
+                            continue;
+                        }
 
-                    let index = guess.to_ascii_lowercase().as_bytes()[0];
-                    if 97 <= index && index < 101 {
-                        if self.check_any(&candidates[(index - 97) as usize]) {
-                            print_correct();
-                            return true;
+                        let index = guess.to_ascii_lowercase().as_bytes()[0];
+                        if 97 <= index && index < 101 {
+                            if self.check_any(&candidates[(index - 97) as usize]) {
+                                print_correct();
+                                return true;
+                            } else {
+                                print_incorrect(&self.answer_list[0].variants[0]);
+                                return false;
+                            }
                         } else {
-                            print_incorrect(&self.answer_list[0].variants[0]);
-                            return false;
+                            continue;
                         }
                     } else {
-                        continue;
+                        print_incorrect(&self.answer_list[0].variants[0]);
+                        return false;
                     }
                 }
             }
@@ -240,21 +253,30 @@ impl Quiz {
 }
 
 
-pub fn prompt(message: &str) -> String {
-    let mut rl = rustyline::Editor::<()>::new();
+pub fn prompt(message: &str) -> Option<String> {
+    loop {
+        let mut rl = rustyline::Editor::<()>::new();
 
-    let result = rl.readline(&format!("{}", message.white()));
+        let result = rl.readline(&format!("{}", message.white()));
 
-    match result {
-        // Exit if the user hits Ctrl+D or Ctrl+C.
-        Err(ReadlineError::Eof) | Err(ReadlineError::Interrupted) => {
-            ::std::process::exit(2);
+        match result {
+            // Exit if the user hits Ctrl+C.
+            Err(ReadlineError::Interrupted) => {
+                ::std::process::exit(2);
+            },
+            // Return immediately if the user hits Ctrl+D.
+            Err(ReadlineError::Eof) => {
+                return None;
+            },
+            _ => {}
         }
-        _ => {}
-    }
 
-    let response = result.expect("Failed to read line");
-    response.trim().to_string()
+        let response = result.expect("Failed to read line");
+        let response = response.trim();
+        if response.len() > 0 {
+            return Some(response.to_string());
+        }
+    }
 }
 
 
@@ -272,7 +294,7 @@ pub fn prettyprint(message: &str, prefix: Option<&str>) {
 
 pub fn yesno(message: &str) -> bool {
     let response = prompt(message);
-    response.trim_start().to_lowercase().starts_with("y")
+    response.is_some() && response.unwrap().trim_start().to_lowercase().starts_with("y")
 }
 
 
