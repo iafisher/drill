@@ -231,7 +231,8 @@ impl Quiz {
     }
 
     fn filter_question(&self, q: &Question, options: &QuizOptions) -> bool {
-        options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag))
+        (options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag)))
+            && options.exclude.iter().all(|tag| !q.tags.contains(tag))
     }
 }
 
@@ -268,6 +269,7 @@ pub fn yesno(message: &str) -> bool {
 pub struct QuizOptions {
     pub paths: Vec<String>,
     pub tags: Vec<String>,
+    pub exclude: Vec<String>,
     pub num_to_ask: i16,
     pub list_tags: bool,
     pub save_results: bool,
@@ -280,6 +282,7 @@ pub struct QuizOptions {
 pub fn parse_options() -> QuizOptions {
     let mut paths = Vec::new();
     let mut tags = Vec::new();
+    let mut exclude = Vec::new();
     let mut num_to_ask = -1;
     let mut list_tags = false;
     let mut save_results = false;
@@ -295,6 +298,9 @@ pub fn parse_options() -> QuizOptions {
 
         parser.refer(&mut tags)
             .add_option(&["--tag"], Collect, "Filter questions by tag.");
+
+        parser.refer(&mut exclude)
+            .add_option(&["--exclude"], Collect, "Exclude questions by tag.");
 
         parser.refer(&mut num_to_ask)
             .add_option(&["-n"], Store, "Number of questions to ask.");
@@ -320,7 +326,8 @@ pub fn parse_options() -> QuizOptions {
     }
 
     QuizOptions { 
-        paths, tags, num_to_ask, list_tags, save_results, count, no_color, in_order
+        paths, tags, exclude, num_to_ask, list_tags, save_results, count, no_color,
+        in_order,
     }
 }
 
