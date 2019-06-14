@@ -13,13 +13,13 @@
         "What are the four principal islands of the Japanese archipelago?"
       ],
       "topic": "geography",
-      "answers": ["Hokkaido", "Honshu", "Shikoku", "Kyushu"]
+      "answer_list": ["Hokkaido", "Honshu", "Shikoku", "Kyushu"]
     },
     {
       "kind": "OrderedListAnswer",
       "text": "Who were the first three Presidents of the United States, in order?",
       "topic": "history",
-      "answers": [
+      "answer_list": [
         ["George Washington", "Washington"],
         ["John Adams", "Adams"],
         ["Thomas  Jefferson", "Jefferson"]

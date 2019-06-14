@@ -40,7 +40,7 @@ pub struct Question {
     pub kind: QuestionKind,
     pub text: Vec<String>,
     pub topic: String,
-    pub answers: Vec<Answer>,
+    pub answer_list: Vec<Answer>,
     pub candidates: Vec<String>,
 }
 
@@ -56,21 +56,21 @@ impl Question {
                 if result {
                     print_correct();
                 } else {
-                    print_incorrect(&self.answers[0].variants[0]);
+                    print_incorrect(&self.answer_list[0].variants[0]);
                 }
                 return result;
             },
             QuestionKind::ListAnswer => {
-                let mut satisfied = Vec::<bool>::with_capacity(self.answers.len());
-                for _ in 0..self.answers.len() {
+                let mut satisfied = Vec::<bool>::with_capacity(self.answer_list.len());
+                for _ in 0..self.answer_list.len() {
                     satisfied.push(false);
                 }
 
                 let mut count = 0;
-                while count < self.answers.len() {
+                while count < self.answer_list.len() {
                     let guess = prompt("> ");
                     let index = self.check_one(&guess);
-                    if index == self.answers.len() {
+                    if index == self.answer_list.len() {
                         print_incorrect("");
                         count += 1;
                     } else if satisfied[index] {
@@ -87,7 +87,7 @@ impl Question {
                     println!("{}", "\nYou missed:".white());
                     for (i, correct) in satisfied.iter().enumerate() {
                         if !correct {
-                            println!("  {}", self.answers[i].variants[0].white());
+                            println!("  {}", self.answer_list[i].variants[0].white());
                         }
                     }
                 }
@@ -95,7 +95,7 @@ impl Question {
             }
             QuestionKind::OrderedListAnswer => {
                 let mut correct = true;
-                for answer in self.answers.iter() {
+                for answer in self.answer_list.iter() {
                     let guess = prompt("> ");
                     if answer.check(&guess) {
                         print_correct();
@@ -112,7 +112,7 @@ impl Question {
                 let mut rng = thread_rng();
                 candidates.shuffle(&mut rng);
                 candidates.truncate(3);
-                candidates.push(self.answers[0].variants[0].clone());
+                candidates.push(self.answer_list[0].variants[0].clone());
                 candidates.shuffle(&mut rng);
 
                 for (i, candidate) in "abcd".chars().zip(candidates.iter()) {
@@ -132,7 +132,7 @@ impl Question {
                             print_correct();
                             return true;
                         } else {
-                            print_incorrect(&self.answers[0].variants[0]);
+                            print_incorrect(&self.answer_list[0].variants[0]);
                             return false;
                         }
                     } else {
@@ -144,7 +144,7 @@ impl Question {
     }
 
     fn check_any(&self, guess: &str) -> bool {
-        for answer in self.answers.iter() {
+        for answer in self.answer_list.iter() {
             if answer.check(guess) {
                 return true;
             }
@@ -153,12 +153,12 @@ impl Question {
     }
 
     fn check_one(&self, guess: &str) -> usize {
-        for (i, answer) in self.answers.iter().enumerate() {
+        for (i, answer) in self.answer_list.iter().enumerate() {
             if answer.check(guess) {
                 return i;
             }
         }
-        self.answers.len()
+        self.answer_list.len()
     }
 }
 
@@ -409,9 +409,9 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
     }
 
     // Convert answer objects from a [...] to { "variants": [...] }.
-    if let Some(answers) = question.get("answers") {
-        if let Some(answers_as_array) = answers.as_array() {
-            ret.remove("answers");
+    if let Some(answer_list) = question.get("answer_list") {
+        if let Some(answers_as_array) = answer_list.as_array() {
+            ret.remove("answer_list");
             let mut new_answers = Vec::new();
             for i in 0..answers_as_array.len() {
                 if answers_as_array[i].is_array() {
@@ -428,9 +428,9 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
                 }
             }
 
-            // Replace the old answers array with the newly constructed one.
+            // Replace the old answer_list array with the newly constructed one.
             ret.insert(
-                String::from("answers"), serde_json::to_value(new_answers).unwrap()
+                String::from("answer_list"), serde_json::to_value(new_answers).unwrap()
             );
         }
     }
@@ -443,19 +443,19 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
     }
 
     // Multiple-choice and short answer questions may use an `answer` field with a
-    // single value rather than an `answers` field with an array of values.
-    if !ret.contains_key("answers") {
+    // single value rather than an `answer_list` field with an array of values.
+    if !ret.contains_key("answer_list") {
         if let Some(answer) = ret.get("answer") {
             if answer.is_array() {
                 // If array, make {"variants": answer}
                 ret.insert(
-                    String::from("answers"),
+                    String::from("answer_list"),
                     serde_json::json!([{"variants": answer.clone()}])
                 );
             } else {
                 // If not array, make {"variants": [answer]}
                 ret.insert(
-                    String::from("answers"),
+                    String::from("answer_list"),
                     serde_json::json!([{"variants": [answer.clone()]}])
                 );
             }
