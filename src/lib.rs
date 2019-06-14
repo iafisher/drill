@@ -370,6 +370,90 @@ pub fn derive_result_path(path: &str) -> String {
 }
 
 
+pub fn load_quiz(path: &str) -> Quiz {
+    let data = fs::read_to_string(path)
+        .expect("Unable to read from quiz file");
+    let mut quiz_as_json: serde_json::Value = serde_json::from_str(&data)
+        .expect("Unable to deserialize JSON");
+
+    if let Some(quiz_as_object) = quiz_as_json.as_object_mut() {
+        if let Some(questions) = quiz_as_object.get_mut("questions") {
+            if let Some(questions_as_array) = questions.as_array_mut() {
+                for question in questions_as_array.iter_mut() {
+                    if let Some(mut question_as_object) = question.as_object_mut() {
+                        expand_question_json(&mut question_as_object);
+                    }
+                }
+            }
+        }
+    }
+
+    // TODO: Can I convert from Value to my custom type without serializing the whole
+    // thing to a string?
+    return serde_json::from_str(&quiz_as_json.to_string())
+        .expect("Unable to deserialize expanded JSON to Quiz object");
+}
+
+
+fn expand_question_json(question: &mut serde_json::Map<String, serde_json::Value>) {
+    let kind = if let Some(kind_value) = question.get("kind") {
+        if let Some(kind_value_as_string) = kind_value.as_str() {
+            kind_value_as_string
+        } else {
+            ""
+        }
+    } else {
+        ""
+    };
+
+    // Only multiple-choice questions require the `candidates` field, so other
+    // questions can omit them.
+    if !question.contains_key("candidates") {
+        question.insert(String::from("candidates"), serde_json::json!([]));
+    }
+
+    if let Some(answers) = question.get_mut("answers") {
+        if let Some(answers_as_array) = answers.as_array_mut() {
+            // Convert answer objects from a [...] to { "variants": [...] }.
+            let mut new_answers = Vec::new();
+            for i in 0..answers_as_array.len() {
+                if answers_as_array[i].is_array() {
+                    new_answers.push(
+                        serde_json::json!({"variants": answers_as_array[i].clone()})
+                    );
+                } else if answers_as_array[i].is_string() {
+                    new_answers.push(
+                        serde_json::json!({"variants": [answers_as_array[i].clone()]})
+                    );
+                } else {
+                    // If not an array, don't touch it.
+                    new_answers.push(answers_as_array[i].clone());
+                }
+            }
+
+            // Replace the old answers array with the newly constructed one.
+            question.insert(
+                String::from("answers"), serde_json::to_value(new_answers).unwrap()
+            );
+        }
+    }
+
+    // Multiple-choice questions may use an `answer` field with a string value rather
+    // than an `answers` field with an array value.
+    // if kind == "MultipleChoice" && !question.contains_key("answers") {
+    //     if let Some(answer) = question.get("answer") {
+    //         if let Some(answer_as_string) = answer.as_str() {
+    //             question.insert(
+    //                 String::from("answers"),
+    //                 serde_json::json!([{"variants": [answer_as_string.clone()]}])
+    //             );
+    //             question.remove("answer");
+    //         }
+    //     }
+    // }
+}
+
+
 fn print_correct() {
     println!("{}", "Correct!".green());
 }

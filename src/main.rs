@@ -12,10 +12,7 @@ fn main() {
 
     let mut master_list = Vec::new();
     for path in options.paths.iter() {
-        let data = fs::read_to_string(path)
-            .expect("Unable to read from quiz file");
-        let mut quiz: Quiz = serde_json::from_str(&data)
-            .expect("Unable to deserialize JSON to Quiz object");
+        let mut quiz: Quiz = load_quiz(path);
         master_list.append(&mut quiz.questions);
     }
 

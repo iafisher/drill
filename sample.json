@@ -4,11 +4,8 @@
       "kind": "ShortAnswer",
       "text": ["Which English countess is regarded as the first computer programmer?"],
       "topic": "computer science",
-      "candidates": [],
       "answers": [
-        {
-          "variants": ["Ada Lovelace", "Lady Lovelace", "Ada, Countess of Lovelace"]
-        }
+          ["Ada Lovelace", "Lady Lovelace", "Ada, Countess of Lovelace"]
       ]
     },
     {
@@ -18,37 +15,16 @@
         "What are the four principal islands of the Japanese archipelago?"
       ],
       "topic": "geography",
-      "candidates": [],
-      "answers": [
-        {
-          "variants": ["Hokkaido"]
-        },
-        {
-          "variants": ["Honshu"]
-        },
-        {
-          "variants": ["Shikoku"]
-        },
-        {
-          "variants": ["Kyushu"]
-        }
-      ]
+      "answers": ["Hokkaido", "Honshu", "Shikoku", "Kyushu"]
     },
     {
       "kind": "OrderedListAnswer",
       "text": ["Who were the first three Presidents of the United States, in order?"],
       "topic": "history",
-      "candidates": [],
       "answers": [
-        {
-          "variants": ["George Washington", "Washington"]
-        },
-        {
-          "variants": ["John Adams", "Adams"]
-        },
-        {
-          "variants": ["Thomas  Jefferson", "Jefferson"]
-        }
+        ["George Washington", "Washington"],
+        ["John Adams", "Adams"],
+        ["Thomas  Jefferson", "Jefferson"]
       ]
     },
     {
@@ -56,11 +32,7 @@
       "text": ["In what year did the Russo-Japanese War end?"],
       "topic": "history",
       "candidates": ["1878", "1945", "1918", "1908"],
-      "answers": [
-        {
-          "variants": ["1905"]
-        }
-      ]
+      "answers": ["1905"]
     }
   ]
 }
