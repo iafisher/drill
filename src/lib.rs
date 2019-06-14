@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
@@ -327,10 +326,14 @@ pub fn parse_options() -> QuizOptions {
 
 
 pub fn list_tags(quiz: &Quiz) {
-    let mut tags = HashSet::new();
+    let mut tags = HashMap::<&str, u32>::new();
     for question in quiz.questions.iter() {
         for tag in question.tags.iter() {
-            tags.insert(tag.as_str());
+            if let Some(n) = tags.get(tag.as_str()) {
+                tags.insert(tag.as_str(), n+1);
+            } else {
+                tags.insert(tag.as_str(), 1);
+            }
         }
     }
 
@@ -339,10 +342,10 @@ pub fn list_tags(quiz: &Quiz) {
     } else {
         println!("Available tags:");
 
-        let mut tags_in_order: Vec<&str> = tags.into_iter().collect();
+        let mut tags_in_order: Vec<(&str, u32)> = tags.into_iter().collect();
         tags_in_order.sort();
-        for tag in tags_in_order.iter() {
-            println!("  {}", tag);
+        for (tag, count) in tags_in_order.iter() {
+            println!("  {} ({})", tag, count);
         }
     }
 }
