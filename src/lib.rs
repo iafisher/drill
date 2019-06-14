@@ -38,7 +38,7 @@ impl Answer {
 pub struct Question {
     pub kind: QuestionKind,
     pub text: Vec<String>,
-    pub topic: String,
+    pub tags: Vec<String>,
     pub answer_list: Vec<Answer>,
     pub candidates: Vec<String>,
 }
@@ -212,7 +212,7 @@ impl Quiz {
     pub fn filter_questions(&self, options: &QuizOptions) -> Vec<&Question> {
         let mut candidates = Vec::new();
         for question in self.questions.iter() {
-            if !self.filter_question(question, options) {
+            if self.filter_question(question, options) {
                 candidates.push(question);
             }
         }
@@ -232,7 +232,7 @@ impl Quiz {
     }
 
     fn filter_question(&self, q: &Question, options: &QuizOptions) -> bool {
-        options.topic.len() > 0 && q.topic != options.topic
+        options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag))
     }
 }
 
@@ -268,9 +268,9 @@ pub fn yesno(message: &str) -> bool {
 
 pub struct QuizOptions {
     pub paths: Vec<String>,
-    pub topic: String,
+    pub tags: Vec<String>,
     pub num_to_ask: i16,
-    pub list_topics: bool,
+    pub list_tags: bool,
     pub save_results: bool,
     pub count: bool,
     pub no_color: bool,
@@ -280,9 +280,9 @@ pub struct QuizOptions {
 
 pub fn parse_options() -> QuizOptions {
     let mut paths = Vec::new();
-    let mut topic = String::new();
+    let mut tags = Vec::new();
     let mut num_to_ask = -1;
-    let mut list_topics = false;
+    let mut list_tags = false;
     let mut save_results = false;
     let mut count = false;
     let mut no_color = false;
@@ -294,14 +294,14 @@ pub fn parse_options() -> QuizOptions {
         parser.refer(&mut paths)
             .add_argument("quizzes", Collect, "Paths to the quiz files.").required();
 
-        parser.refer(&mut topic)
-            .add_option(&["--topic"], Store, "Restrict questions to a certain topic.");
+        parser.refer(&mut tags)
+            .add_option(&["--tag"], Collect, "Filter questions by tag.");
 
         parser.refer(&mut num_to_ask)
             .add_option(&["-n"], Store, "Number of questions to ask.");
 
-        parser.refer(&mut list_topics)
-            .add_option(&["--list-topics"], StoreTrue, "List all available topics.");
+        parser.refer(&mut list_tags)
+            .add_option(&["--list-tags"], StoreTrue, "List all available tags.");
 
         parser.refer(&mut save_results)
             .add_option(&["--save"], StoreTrue, "Save quiz results without prompting.");
@@ -321,25 +321,25 @@ pub fn parse_options() -> QuizOptions {
     }
 
     QuizOptions { 
-        paths, topic, num_to_ask, list_topics, save_results, count, no_color, in_order
+        paths, tags, num_to_ask, list_tags, save_results, count, no_color, in_order
     }
 }
 
 
-pub fn list_topics(quiz: &Quiz) {
-    let mut topics = HashSet::new();
+pub fn list_tags(quiz: &Quiz) {
+    let mut tags = HashSet::new();
     for question in quiz.questions.iter() {
-        if question.topic.len() > 0 {
-            topics.insert(question.topic.as_str());
+        for tag in question.tags.iter() {
+            tags.insert(tag.as_str());
         }
     }
 
-    if topics.len() == 0 {
-        println!("No questions have been assigned topics.");
+    if tags.len() == 0 {
+        println!("No questions have been assigned tags.");
     } else {
-        println!("Available topics:");
-        for topic in topics.iter() {
-            println!("  {}", topic);
+        println!("Available tags:");
+        for tag in tags.iter() {
+            println!("  {}", tag);
         }
     }
 }
@@ -429,6 +429,11 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
     // The `kind` field defaults to "ShortAnswer".
     if !ret.contains_key("kind") {
         ret.insert(String::from("kind"), serde_json::json!("ShortAnswer"));
+    }
+
+    // The `tags` field defaults to an empty array.
+    if !ret.contains_key("tags") {
+        ret.insert(String::from("tags"), serde_json::json!([]));
     }
 
     // Convert answer objects from a [...] to { "variants": [...] }.

@@ -17,8 +17,8 @@ fn main() {
     }
 
     let mut quiz = Quiz { questions: master_list };
-    if options.list_topics {
-        list_topics(&quiz);
+    if options.list_tags {
+        list_tags(&quiz);
     } else if options.count {
         println!("{}", quiz.filter_questions(&options).len());
     } else {
