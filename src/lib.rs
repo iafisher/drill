@@ -199,7 +199,7 @@ impl Quiz {
 
         if total > 0 {
             let score = (total_correct as f64) / (total as f64) * 100.0;
-            println!("\n{} correct out of {} ({}%).", total_correct, total, score);
+            println!("\n{} correct out of {} ({:.1}%).", total_correct, total, score);
         }
 
         results
