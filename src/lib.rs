@@ -1,8 +1,3 @@
-extern crate argparse;
-extern crate chrono;
-extern crate rand;
-extern crate textwrap;
-
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
@@ -11,6 +6,7 @@ use std::io::Write;
 use std::path::Path;
 
 use argparse::{ArgumentParser, Collect, Store, StoreTrue};
+use colored::*;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Serialize, Deserialize};
@@ -51,21 +47,16 @@ pub struct Question {
 impl Question {
     pub fn ask(&self) -> bool {
         let mut rng = thread_rng();
-        prettyprint(&format!("{}\n", self.text.choose(&mut rng).unwrap()));
+        prettyprint(&format!("{}\n", self.text.choose(&mut rng).unwrap().white()));
 
         match self.kind {
             QuestionKind::ShortAnswer => {
                 let guess = prompt("> ");
                 let result = self.check_any(&guess);
                 if result {
-                    println!("Correct!");
+                    print_correct();
                 } else {
-                    prettyprint(
-                        &format!(
-                            "Incorrect. The correct answer was {}.",
-                            self.answers[0].variants[0]
-                        )
-                    );
+                    print_incorrect(&self.answers[0].variants[0]);
                 }
                 return result;
             },
@@ -80,23 +71,23 @@ impl Question {
                     let guess = prompt("> ");
                     let index = self.check_one(&guess);
                     if index == self.answers.len() {
-                        println!("Incorrect.");
+                        print_incorrect("");
                         count += 1;
                     } else if satisfied[index] {
-                        println!("You already said that.");
+                        println!("{}", "You already said that.".white());
                     } else {
                         satisfied[index] = true;
-                        println!("Correct!");
+                        print_correct();
                         count += 1;
                     }
                 }
 
                 let all_correct = satisfied.iter().all(|x| *x);
                 if !all_correct {
-                    println!("\nYou missed:");
+                    println!("{}", "\nYou missed:".white());
                     for (i, correct) in satisfied.iter().enumerate() {
                         if !correct {
-                            println!("  {}", self.answers[i].variants[0]);
+                            println!("  {}", self.answers[i].variants[0].white());
                         }
                     }
                 }
@@ -107,14 +98,9 @@ impl Question {
                 for answer in self.answers.iter() {
                     let guess = prompt("> ");
                     if answer.check(&guess) {
-                        println!("Correct!");
+                        print_correct();
                     } else {
-                        prettyprint(
-                            &format!(
-                                "Incorrect. The correct answer was {}.",
-                                answer.variants[0]
-                            )
-                        );
+                        print_incorrect(&answer.variants[0]);
                         correct = false;
                     }
                 }
@@ -143,13 +129,10 @@ impl Question {
                     let index = guess.to_ascii_lowercase().as_bytes()[0];
                     if 97 <= index && index < 101 {
                         if self.check_any(&candidates[(index - 97) as usize]) {
-                            println!("Correct!");
+                            print_correct();
                             return true;
                         } else {
-                            println!(
-                                "Incorrect. The correct answer was {}.",
-                                self.answers[0].variants[0],
-                            );
+                            print_incorrect(&self.answers[0].variants[0]);
                             return false;
                         }
                     } else {
@@ -244,7 +227,7 @@ impl Quiz {
 
 
 pub fn prompt(message: &str) -> String {
-    print!("{}", message);
+    print!("{}", message.white());
     io::stdout().flush()
         .expect("Unable to flush standard output");
     let mut response = String::new();
@@ -280,6 +263,7 @@ pub struct QuizOptions {
     pub list_topics: bool,
     pub save_results: bool,
     pub count: bool,
+    pub no_color: bool,
 }
 
 
@@ -290,6 +274,7 @@ pub fn parse_options() -> QuizOptions {
     let mut list_topics = false;
     let mut save_results = false;
     let mut count = false;
+    let mut no_color = false;
     {
         let mut parser = ArgumentParser::new();
         parser.set_description("Take a pop quiz from the command line.");
@@ -314,9 +299,12 @@ pub fn parse_options() -> QuizOptions {
                 &["--count"], StoreTrue, "Count the number of questions."
             );
 
+        parser.refer(&mut no_color)
+            .add_option(&["--no-color"], StoreTrue, "Turn off ANSI color in output.");
+
         parser.parse_args_or_exit();
     }
-    QuizOptions { paths, topic, num_to_ask, list_topics, save_results, count }
+    QuizOptions { paths, topic, num_to_ask, list_topics, save_results, count, no_color }
 }
 
 
@@ -378,5 +366,22 @@ pub fn derive_result_path(path: &str) -> String {
         format!("{}_results.{}", stem, ext)
     } else {
         String::from(path)
+    }
+}
+
+
+fn print_correct() {
+    println!("{}", "Correct!".green());
+}
+
+
+fn print_incorrect(answer: &str) {
+    if answer.len() > 0 {
+        let message = &format!(
+            "{} The correct answer was {}.", "Incorrect.".red(), answer.green()
+        );
+        prettyprint(message);
+    } else {
+        println!("{}", "Incorrect.".red());
     }
 }

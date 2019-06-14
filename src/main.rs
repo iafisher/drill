@@ -1,5 +1,3 @@
-extern crate dirs;
-
 use std::fs;
 
 use popquiz::*;
@@ -7,6 +5,10 @@ use popquiz::*;
 
 fn main() {
     let options = parse_options();
+
+    if options.no_color {
+        colored::control::set_override(false);
+    }
 
     let mut master_list = Vec::new();
     for path in options.paths.iter() {
