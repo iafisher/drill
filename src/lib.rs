@@ -216,7 +216,9 @@ impl Quiz {
         }
 
         candidates.shuffle(&mut rng);
-        candidates.truncate(options.num_to_ask as usize);
+        if options.num_to_ask > 0 {
+            candidates.truncate(options.num_to_ask as usize);
+        }
         candidates
     }
 
@@ -259,7 +261,7 @@ pub fn yesno(message: &str) -> bool {
 pub struct QuizOptions {
     pub paths: Vec<String>,
     pub topic: String,
-    pub num_to_ask: u16,
+    pub num_to_ask: i16,
     pub list_topics: bool,
     pub save_results: bool,
     pub count: bool,
@@ -270,7 +272,7 @@ pub struct QuizOptions {
 pub fn parse_options() -> QuizOptions {
     let mut paths = Vec::new();
     let mut topic = String::new();
-    let mut num_to_ask = 10;
+    let mut num_to_ask = -1;
     let mut list_topics = false;
     let mut save_results = false;
     let mut count = false;
