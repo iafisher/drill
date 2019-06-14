@@ -208,16 +208,20 @@ impl Quiz {
         results
     }
 
-    fn choose_questions(&self, options: &QuizOptions) -> Vec<&Question> {
-        let mut rng = thread_rng();
-
+    pub fn filter_questions(&self, options: &QuizOptions) -> Vec<&Question> {
         let mut candidates = Vec::new();
         for question in self.questions.iter() {
             if !self.filter_question(question, options) {
                 candidates.push(question);
             }
         }
+        candidates
+    }
 
+    fn choose_questions(&self, options: &QuizOptions) -> Vec<&Question> {
+        let mut rng = thread_rng();
+
+        let mut candidates = self.filter_questions(options);
         candidates.shuffle(&mut rng);
         if options.num_to_ask > 0 {
             candidates.truncate(options.num_to_ask as usize);

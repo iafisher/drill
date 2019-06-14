@@ -20,7 +20,7 @@ fn main() {
     if options.list_topics {
         list_topics(&quiz);
     } else if options.count {
-        println!("{}", quiz.questions.len());
+        println!("{}", quiz.filter_questions(&options).len());
     } else {
         let results = quiz.take(&options);
 
