@@ -182,6 +182,11 @@ impl Quiz {
         let mut total = 0;
 
         let questions = self.choose_questions(&options);
+        if questions.len() == 0 {
+            println!("No questions found.");
+            return Vec::new();
+        }
+
         for question in questions.iter() {
             println!("\n");
             let correct = question.ask();

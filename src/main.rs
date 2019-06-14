@@ -24,13 +24,15 @@ fn main() {
     } else {
         let results = quiz.take(&options);
 
-        if options.save_results || yesno("\nSave results? ") {
+        if results.len() > 0 && (options.save_results || yesno("\nSave results? ")) {
             let mut dirpath = dirs::data_dir().unwrap();
             dirpath.push("iafisher_popquiz");
 
             if !dirpath.as_path().exists() {
-                fs::create_dir(&dirpath)
-                    .expect(&format!("Unable to create data directory at {}", dirpath.to_str().unwrap()));
+                let emsg = format!(
+                    "Unable to create data directory at {}", dirpath.to_str().unwrap()
+                );
+                fs::create_dir(&dirpath).expect(&emsg);
             }
 
             dirpath.push("results.json");
