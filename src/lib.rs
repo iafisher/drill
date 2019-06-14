@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
-use std::io;
-use std::io::Write;
 use std::path::Path;
 
 use argparse::{ArgumentParser, Collect, Store, StoreTrue};
@@ -234,11 +232,8 @@ impl Quiz {
 
 
 pub fn prompt(message: &str) -> String {
-    print!("{}", message.white());
-    io::stdout().flush()
-        .expect("Unable to flush standard output");
-    let mut response = String::new();
-    io::stdin().read_line(&mut response)
+    let mut rl = rustyline::Editor::<()>::new();
+    let response = rl.readline(&format!("{}", message.white()))
         .expect("Failed to read line");
 
     // If the string is completely empty, then the user hit Ctrl+D and we should exit.
