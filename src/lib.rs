@@ -34,6 +34,8 @@ pub struct QuizOptions {
     pub count: bool,
     pub no_color: bool,
     pub in_order: bool,
+    pub delete_results: bool,
+    pub force_delete_results: bool,
 }
 
 
@@ -387,14 +389,19 @@ pub fn parse_options() -> QuizOptions {
     let mut options = QuizOptions {
         paths: Vec::new(), tags: Vec::new(), exclude: Vec::new(), num_to_ask: -1,
         list_tags: false, do_save_results: false, count: false, no_color: false,
-        in_order: false,
+        in_order: false, delete_results: false, force_delete_results: false,
     };
     {
         let mut parser = ArgumentParser::new();
         parser.set_description("Take a pop quiz from the command line.");
 
-        parser.refer(&mut options.paths)
-            .add_argument("quizzes", Collect, "Paths to the quiz files.").required();
+        parser.refer(&mut options.paths).add_argument(
+            "quizzes", Collect, "Paths to the quiz files."
+        ).required();
+
+        parser.refer(&mut options.delete_results).add_option(
+            &["--delete-results"], StoreTrue, "Clear cached results of previous attempts."
+        );
 
         // Make sure to maintain alphabetical order of flags.
         parser.refer(&mut options.count).add_option(
@@ -403,6 +410,12 @@ pub fn parse_options() -> QuizOptions {
 
         parser.refer(&mut options.exclude).add_option(
             &["--exclude"], Collect, "Exclude questions by tag."
+        );
+
+        parser.refer(&mut options.force_delete_results).add_option(
+            &["--force-delete-results"],
+            StoreTrue,
+            "Clear cached results of previous attempts, without prompting for confirmation."
         );
 
         parser.refer(&mut options.in_order).add_option(
@@ -430,6 +443,30 @@ pub fn parse_options() -> QuizOptions {
         );
 
         parser.parse_args_or_exit();
+    }
+
+    if options.delete_results || options.force_delete_results {
+        let which = if options.delete_results {
+            "--delete-results"
+        } else {
+            "--force-delete-results"
+        };
+
+        if options.count {
+            incompatible(&which, "--count");
+        } else if options.exclude.len() > 0 {
+            incompatible(&which, "--exclude");
+        } else if options.in_order {
+            incompatible(&which, "--in-order");
+        } else if options.list_tags {
+            incompatible(&which, "--list-tags");
+        } else if options.num_to_ask != -1 {
+            incompatible(&which, "-n");
+        } else if options.do_save_results {
+            incompatible(&which, "--save");
+        } else if options.tags.len() > 0 {
+            incompatible(&which, "--tag");
+        }
     }
 
     if options.count {
@@ -534,6 +571,16 @@ pub fn save_results(results: &Vec<(&Question, QuestionResult)>) {
         .expect("Unable to write to quiz file");
 
     println!("Results saved to {}", path);
+}
+
+
+/// Delete previously saved results.
+pub fn delete_results() {
+    let mut dirpath = dirs::data_dir().unwrap();
+    dirpath.push("iafisher_popquiz");
+    dirpath.push("results.json");
+    fs::remove_file(&dirpath).expect("Unable to remove file");
+    println!("Successfully deleted {}", dirpath.to_str().unwrap());
 }
 
 

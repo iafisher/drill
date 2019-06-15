@@ -27,6 +27,11 @@ fn main() {
         list_tags(&quiz);
     } else if options.count {
         println!("{}", quiz.filter_questions(&options).len());
+    } else if options.delete_results || options.force_delete_results {
+        let prompt = "Are you sure you want to delete all previous results? ";
+        if options.force_delete_results || yesno(&prompt) {
+            delete_results();
+        }
     } else {
         let results = quiz.take(&options);
         if results.len() > 0 && (options.do_save_results || yesno("\nSave results? ")) {
