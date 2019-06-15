@@ -330,7 +330,7 @@ impl Answer {
 /// then None is returned. If the user pressed Ctrl+C then the entire application exits.
 /// Otherwise, `Some(line)` is returned where `line` is the last line of input the user
 /// entered without leading and trailing whitespace.
-pub fn prompt(message: &str) -> Option<String> {
+fn prompt(message: &str) -> Option<String> {
     loop {
         let mut rl = rustyline::Editor::<()>::new();
         let result = rl.readline(&format!("{}", message.white()));
@@ -358,7 +358,7 @@ pub fn prompt(message: &str) -> Option<String> {
 /// Print `message` to standard output, breaking lines according to the current width
 /// of the terminal. If `prefix` is `Some(string)`, then prepend `string` (usually
 /// whitespace for indentation) to every line.
-pub fn prettyprint(message: &str, prefix: Option<&str>) {
+fn prettyprint(message: &str, prefix: Option<&str>) {
     let prefix = prefix.unwrap_or("");
     let filled = textwrap::fill(message, textwrap::termwidth() - prefix.len());
     let mut indented = textwrap::indent(&filled, prefix);
