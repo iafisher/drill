@@ -32,6 +32,8 @@ fn main() {
         if options.force_delete_results || yesno(&prompt) {
             delete_results();
         }
+    } else if options.print_results {
+        print_results();
     } else {
         let results = quiz.take(&options);
         if results.len() > 0 && (options.do_save_results || yesno("\nSave results? ")) {

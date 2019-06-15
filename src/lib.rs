@@ -4,6 +4,7 @@
  * Author:  Ian Fisher (iafisher@protonmail.com)
  * Version: June 2019
  */
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs;
 
@@ -36,6 +37,7 @@ pub struct QuizOptions {
     pub in_order: bool,
     pub delete_results: bool,
     pub force_delete_results: bool,
+    pub print_results: bool,
 }
 
 
@@ -390,6 +392,7 @@ pub fn parse_options() -> QuizOptions {
         paths: Vec::new(), tags: Vec::new(), exclude: Vec::new(), num_to_ask: -1,
         list_tags: false, do_save_results: false, count: false, no_color: false,
         in_order: false, delete_results: false, force_delete_results: false,
+        print_results: false,
     };
     {
         let mut parser = ArgumentParser::new();
@@ -434,6 +437,10 @@ pub fn parse_options() -> QuizOptions {
             &["--no-color"], StoreTrue, "Turn off ANSI color in output."
         );
 
+        parser.refer(&mut options.print_results).add_option(
+            &["-r", "--results"], StoreTrue, "Print a report of previous results."
+        );
+
         parser.refer(&mut options.do_save_results).add_option(
             &["--save"], StoreTrue, "Save quiz results without prompting."
         );
@@ -462,6 +469,8 @@ pub fn parse_options() -> QuizOptions {
             incompatible(&which, "--list-tags");
         } else if options.num_to_ask != -1 {
             incompatible(&which, "-n");
+        } else if options.print_results {
+            incompatible(&which, "--results");
         } else if options.do_save_results {
             incompatible(&which, "--save");
         } else if options.tags.len() > 0 {
@@ -476,6 +485,8 @@ pub fn parse_options() -> QuizOptions {
             incompatible("--count", "--list-tags");
         } else if options.num_to_ask != -1 {
             incompatible("--count", "-n");
+        } else if options.print_results {
+            incompatible("--count", "--results");
         } else if options.do_save_results {
             incompatible("--count", "--save");
         }
@@ -488,10 +499,26 @@ pub fn parse_options() -> QuizOptions {
             incompatible("--list-tags", "--in-order");
         } else if options.num_to_ask != -1 {
             incompatible("--list-tags", "-n");
+        } else if options.print_results {
+            incompatible("--list-tags", "--results");
         } else if options.do_save_results {
             incompatible("--list-tags", "--save");
         } else if options.tags.len() > 0 {
             incompatible("--list-tags", "--tag");
+        }
+    }
+
+    if options.print_results {
+        if options.exclude.len() > 0 {
+            incompatible("--results", "--exclude");
+        } else if options.in_order {
+            incompatible("--results", "--in-order");
+        } else if options.num_to_ask != -1 {
+            incompatible("--results", "-n");
+        } else if options.do_save_results {
+            incompatible("--results", "--save");
+        } else if options.tags.len() > 0 {
+            incompatible("--results", "--tag");
         }
     }
 
@@ -531,8 +558,7 @@ pub fn list_tags(quiz: &Quiz) {
 /// results if previous results have been saved.
 pub fn save_results(results: &Vec<(&Question, QuestionResult)>) {
     // Create the data directory if it does not already exist.
-    let mut dirpath = dirs::data_dir().unwrap();
-    dirpath.push("iafisher_popquiz");
+    let dirpath = get_results_dir_path();
     if !dirpath.as_path().exists() {
         let emsg = format!(
             "Unable to create data directory at {}", dirpath.to_str().unwrap()
@@ -540,11 +566,9 @@ pub fn save_results(results: &Vec<(&Question, QuestionResult)>) {
         fs::create_dir(&dirpath).expect(&emsg);
     }
 
-    dirpath.push("results.json");
-    let path = dirpath.to_str().unwrap();
-
     // Load old data, if it exists.
-    let data = fs::read_to_string(path);
+    let path = get_results_path();
+    let data = fs::read_to_string(&path);
     let mut hash: HashMap<&str, Vec<QuestionResult>> = match data {
         Ok(ref data) => {
             serde_json::from_str(&data)
@@ -567,20 +591,44 @@ pub fn save_results(results: &Vec<(&Question, QuestionResult)>) {
 
     let serialized_results = serde_json::to_string_pretty(&hash)
         .expect("Unable to serialize results object to JSON");
-    fs::write(path, serialized_results)
+    fs::write(&path, serialized_results)
         .expect("Unable to write to quiz file");
 
-    println!("Results saved to {}", path);
+    println!("Results saved to {}", path.to_str().unwrap());
 }
 
 
 /// Delete previously saved results.
 pub fn delete_results() {
-    let mut dirpath = dirs::data_dir().unwrap();
-    dirpath.push("iafisher_popquiz");
-    dirpath.push("results.json");
-    fs::remove_file(&dirpath).expect("Unable to remove file");
-    println!("Successfully deleted {}", dirpath.to_str().unwrap());
+    let path = get_results_path();
+    fs::remove_file(&path).expect("Unable to remove file");
+    println!("Successfully deleted {}", path.to_str().unwrap());
+}
+
+
+pub fn print_results() {
+    let path = get_results_path();
+
+    match fs::read_to_string(&path) {
+        Ok(data) => {
+            match serde_json::from_str(&data) {
+                Ok(results) => {
+                    print_results_from_json_value(results);
+                },
+                Err(e) => {
+                    eprintln!("Error: could not deserialize quiz results.");
+                    eprintln!("  Reason: {}", e);
+                }
+            }
+        },
+        Err(e) => {
+            eprintln!(
+                "Error: could not open results file at {} for reading.",
+                path.to_str().unwrap()
+            );
+            eprintln!("  Reason: {}", e);
+        }
+    }
 }
 
 
@@ -695,6 +743,86 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
     }
 
     ret
+}
+
+
+type ResultsMap = HashMap<String, Vec<QuestionResult>>;
+
+/// Helper function for `print_results` that operates directly on the JSON.
+fn print_results_from_json_value(value: serde_json::Value) {
+    match serde_json::from_value::<ResultsMap>(value) {
+        Ok(results) => {
+            let mut aggregated: Vec<(f64, String)> = Vec::new();
+            for (key, result) in results.iter() {
+                aggregated.push((aggregate_results(&result), key.clone()));
+            }
+
+            aggregated.sort_by(cmp_f64_tuple_reversed);
+
+            for (score, question) in aggregated.iter() {
+                println!("{:>5.1}%  {}", score, question);
+            }
+        },
+        Err(e) => {
+            eprintln!("Error: could not parse quiz results.");
+            eprintln!("Reason: {}", e);
+        }
+    }
+}
+
+
+/// Return the percentage of correct responses in the vector of results.
+fn aggregate_results(results: &Vec<QuestionResult>) -> f64 {
+    let mut count = 0;
+    for result in results.iter() {
+        if result.correct {
+            count += 1;
+        }
+    }
+
+    if results.len() == 0 {
+        // Just to be safe, although this should never happen.
+        100.0
+    } else {
+        100.0 * (count as f64) / (results.len() as f64)
+    }
+}
+
+
+/// Compare two tuples with floating-point numbers.
+///
+/// The comparison is reversed to produce descending order when sorting.
+///
+/// Courtesy of https://users.rust-lang.org/t/sorting-vector-of-vectors-of-f64/16264
+fn cmp_f64_tuple_reversed(a: &(f64, String), b: &(f64, String)) -> Ordering {
+    if a.0 < b.0 {
+        return Ordering::Greater;
+    } else if a.0 > b.0 {
+        return Ordering::Less;
+    } else {
+        if a.1 < b.1 {
+            return Ordering::Greater;
+        } else if a.1 > b.1 {
+            return Ordering::Less;
+        }
+        return Ordering::Equal;
+    }
+}
+
+
+/// Return the path to the file where quiz results are stored.
+fn get_results_path() -> ::std::path::PathBuf {
+    let mut dirpath = get_results_dir_path();
+    dirpath.push("results.json");
+    dirpath
+}
+
+
+/// Return the path to the directory where quiz results are stored.
+fn get_results_dir_path() -> ::std::path::PathBuf {
+    let mut dirpath = dirs::data_dir().unwrap();
+    dirpath.push("iafisher_popquiz");
+    dirpath
 }
 
 
