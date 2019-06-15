@@ -384,62 +384,81 @@ pub fn yesno(message: &str) -> bool {
 
 /// Parse command-line arguments.
 pub fn parse_options() -> QuizOptions {
-    let mut paths = Vec::new();
-    let mut tags = Vec::new();
-    let mut exclude = Vec::new();
-    let mut num_to_ask = -1;
-    let mut list_tags = false;
-    let mut do_save_results = false;
-    let mut count = false;
-    let mut no_color = false;
-    let mut in_order = false;
+    let mut options = QuizOptions {
+        paths: Vec::new(), tags: Vec::new(), exclude: Vec::new(), num_to_ask: -1,
+        list_tags: false, do_save_results: false, count: false, no_color: false,
+        in_order: false,
+    };
     {
         let mut parser = ArgumentParser::new();
         parser.set_description("Take a pop quiz from the command line.");
 
-        parser.refer(&mut paths)
+        parser.refer(&mut options.paths)
             .add_argument("quizzes", Collect, "Paths to the quiz files.").required();
 
         // Make sure to maintain alphabetical order of flags.
-        parser.refer(&mut count).add_option(
+        parser.refer(&mut options.count).add_option(
             &["--count"], StoreTrue, "Count the number of questions."
         );
 
-        parser.refer(&mut exclude).add_option(
+        parser.refer(&mut options.exclude).add_option(
             &["--exclude"], Collect, "Exclude questions by tag."
         );
 
-        parser.refer(&mut in_order).add_option(
+        parser.refer(&mut options.in_order).add_option(
             &["--in-order"], StoreTrue, "Ask questions in order."
         );
 
-        parser.refer(&mut list_tags).add_option(
+        parser.refer(&mut options.list_tags).add_option(
             &["--list-tags"], StoreTrue, "List all available tags."
         );
 
-        parser.refer(&mut num_to_ask).add_option(
+        parser.refer(&mut options.num_to_ask).add_option(
             &["-n"], Store, "Number of questions to ask."
         );
 
-        parser.refer(&mut no_color).add_option(
+        parser.refer(&mut options.no_color).add_option(
             &["--no-color"], StoreTrue, "Turn off ANSI color in output."
         );
 
-        parser.refer(&mut do_save_results).add_option(
+        parser.refer(&mut options.do_save_results).add_option(
             &["--save"], StoreTrue, "Save quiz results without prompting."
         );
 
-        parser.refer(&mut tags).add_option(
+        parser.refer(&mut options.tags).add_option(
             &["--tag"], Collect, "Filter questions by tag."
         );
 
         parser.parse_args_or_exit();
     }
 
-    QuizOptions {
-        paths, tags, exclude, num_to_ask, list_tags, do_save_results, count, no_color,
-        in_order,
+    if options.count {
+        if options.in_order {
+            incompatible("--count", "--in-order");
+        } else if options.list_tags {
+            incompatible("--count", "--list-tags");
+        } else if options.num_to_ask != -1 {
+            incompatible("--count", "-n");
+        } else if options.do_save_results {
+            incompatible("--count", "--save");
+        }
     }
+
+    if options.list_tags {
+        if options.exclude.len() > 0 {
+            incompatible("--list-tags", "--exclude");
+        } else if options.in_order {
+            incompatible("--list-tags", "--in-order");
+        } else if options.num_to_ask != -1 {
+            incompatible("--list-tags", "-n");
+        } else if options.do_save_results {
+            incompatible("--list-tags", "--save");
+        } else if options.tags.len() > 0 {
+            incompatible("--list-tags", "--tag");
+        }
+    }
+
+    options
 }
 
 
@@ -649,4 +668,11 @@ fn print_incorrect(answer: &str) {
     } else {
         println!("{}", "Incorrect.".red());
     }
+}
+
+
+/// Display a message for incompatible command-line flags, and exit.
+fn incompatible(flag1: &str, flag2: &str) {
+    eprintln!("{} and {} are incompatible.", flag1, flag2);
+    ::std::process::exit(1);
 }
