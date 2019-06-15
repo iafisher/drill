@@ -40,37 +40,37 @@ pub struct QuizOptions {
 /// Represents a question.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Question {
-    pub kind: QuestionKind,
+    kind: QuestionKind,
     /// The text of the question. It is a vector instead of a string so that multiple
     /// variants of the same question can be stored.
-    pub text: Vec<String>,
+    text: Vec<String>,
     /// User-defined tags for the question.
-    pub tags: Vec<String>,
+    tags: Vec<String>,
     /// Correct answers to the question. When `kind` is equal to `ShortAnswer` or
     /// `MultipleChoice`, this vector should have only one element.
-    pub answer_list: Vec<Answer>,
+    answer_list: Vec<Answer>,
     /// Candidate answers to the question. This field is only used when `kind` is set to
     /// `MultipleChoice`, in which case the candidates are incorrect answers to the
     /// question.
-    pub candidates: Vec<String>,
+    candidates: Vec<String>,
 }
 
 
 /// An enumeration for the `kind` field of `Question` objects.
 #[derive(Serialize, Deserialize, Debug)]
-pub enum QuestionKind {
+enum QuestionKind {
     ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice,
 }
 
 
 /// Represents an answer.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Answer {
+struct Answer {
     /// Each member of the `variants` vector should be an equivalent answer, e.g.
     /// `vec!["Mount Everest", "Everest"]`, not different answers to the same question.
     /// The first element of the vector is taken to be the canonical form of the answer
     /// for display.
-    pub variants: Vec<String>,
+    variants: Vec<String>,
 }
 
 
@@ -83,6 +83,11 @@ pub struct QuestionResult {
 
 
 impl Quiz {
+    /// Construct a new `Quiz` object from a vector of `Questions`.
+    pub fn new(questions: Vec<Question>) -> Self {
+        Quiz { questions }
+    }
+
     /// Take the quiz and return pairs of questions and results.
     pub fn take(&mut self, options: &QuizOptions) -> Vec<(&Question, QuestionResult)> {
         let mut results = Vec::new();

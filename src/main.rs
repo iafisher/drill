@@ -20,7 +20,7 @@ fn main() {
         let mut quiz: Quiz = load_quiz(path);
         master_list.append(&mut quiz.questions);
     }
-    let mut quiz = Quiz { questions: master_list };
+    let mut quiz = Quiz::new(master_list);
 
     // The main program.
     if options.list_tags {
