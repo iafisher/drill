@@ -633,11 +633,9 @@ pub fn print_results() {
 
 
 /// Load a `Quiz` object from the file at `path`.
-pub fn load_quiz(path: &str) -> Quiz {
-    let data = fs::read_to_string(path)
-        .expect("Unable to read from quiz file");
-    let mut quiz_as_json: serde_json::Value = serde_json::from_str(&data)
-        .expect("Unable to deserialize JSON");
+pub fn load_quiz(path: &str) -> Result<Quiz, Box<::std::error::Error>> {
+    let data = fs::read_to_string(path)?;
+    let mut quiz_as_json: serde_json::Value = serde_json::from_str(&data)?;
 
     // Expand each JSON object before doing strongly-typed deserialization.
     if let Some(quiz_as_object) = quiz_as_json.as_object_mut() {
@@ -655,10 +653,8 @@ pub fn load_quiz(path: &str) -> Quiz {
         }
     }
 
-    // TODO: Can I convert from Value to my custom type without serializing the whole
-    // thing to a string?
-    return serde_json::from_str(&quiz_as_json.to_string())
-        .expect("Unable to deserialize expanded JSON to Quiz object");
+    let ret = serde_json::from_value(quiz_as_json)?;
+    Ok(ret)
 }
 
 

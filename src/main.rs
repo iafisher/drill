@@ -17,8 +17,15 @@ fn main() {
     // Consolidate the individual quiz files into a single `Quiz` object.
     let mut master_list = Vec::new();
     for path in options.paths.iter() {
-        let mut quiz: Quiz = load_quiz(path);
-        master_list.append(&mut quiz.questions);
+        match load_quiz(path) {
+            Ok(mut quiz) => {
+                master_list.append(&mut quiz.questions);
+            },
+            Err(e) => {
+                eprintln!("Error on {}: {}", path, e);
+                ::std::process::exit(2);
+            }
+        }
     }
     let mut quiz = Quiz::new(master_list);
 
