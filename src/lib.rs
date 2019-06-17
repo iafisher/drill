@@ -60,6 +60,9 @@ pub struct QuizTakeOptions {
     /// Ask the questions in the order they appear in the quiz file.
     #[structopt(long = "in-order")]
     in_order: bool,
+    /// Only ask questions that have never been asked before.
+    #[structopt(long = "never")]
+    never: bool,
 }
 
 #[derive(StructOpt)]
@@ -75,6 +78,9 @@ pub struct QuizCountOptions {
     /// List tags instead of counting questions.
     #[structopt(long = "list-tags")]
     list_tags: bool,
+    /// Only count questions that have never been asked before.
+    #[structopt(long = "never")]
+    never: bool,
 }
 
 impl From<QuizCountOptions> for QuizTakeOptions {
@@ -82,6 +88,7 @@ impl From<QuizCountOptions> for QuizTakeOptions {
         QuizTakeOptions {
             paths: options.paths, tags: options.tags, exclude: options.exclude,
             num_to_ask: -1, save: false, no_color: false, in_order: false,
+            never: options.never,
         }
     }
 }
@@ -278,6 +285,8 @@ impl Quiz {
         (options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag)))
             // `q` must not have any excluded tags.
             && options.exclude.iter().all(|tag| !q.tags.contains(tag))
+            && (!options.never || q.prior_results.is_none()
+                || q.prior_results.as_ref().unwrap().len() == 0)
     }
 }
 
