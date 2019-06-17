@@ -6,7 +6,7 @@ Create a quiz file in the format described in the section below, and then instal
 ```shell
 $ git clone https://github.com/iafisher/popquiz.git
 $ cd popquiz
-$ cargo run -- path/to/quiz.json
+$ cargo run -- take path/to/quiz.json
 ```
 
 You must have Rust and Cargo installed.
