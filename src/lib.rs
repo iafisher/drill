@@ -23,8 +23,7 @@ struct Quiz {
 }
 
 
-/// Holds the command-line configuration for the application. See `parse_options` for
-/// the meaning of each field.
+/// Holds the command-line configuration for the application.
 #[derive(StructOpt)]
 #[structopt(name = "popquiz", about = "Take quizzes from the command line.")]
 pub enum QuizOptions {
@@ -179,7 +178,17 @@ pub fn main_results(options: QuizResultsOptions) {
             delete_results();
         }
     } else {
-        print_results();
+        let results = load_results();
+        let mut aggregated: Vec<(f64, String)> = Vec::new();
+        for (key, result) in results.iter() {
+            aggregated.push((aggregate_results(&result), key.clone()));
+        }
+
+        aggregated.sort_by(cmp_f64_tuple_reversed);
+
+        for (score, question) in aggregated.iter() {
+            println!("{:>5.1}%  {}", score, question);
+        }
     }
 }
 
@@ -591,18 +600,19 @@ fn delete_results() {
 }
 
 
-fn print_results() {
+fn load_results() -> HashMap<String, Vec<QuestionResult>> {
     let path = get_results_path();
 
     match fs::read_to_string(&path) {
         Ok(data) => {
             match serde_json::from_str(&data) {
                 Ok(results) => {
-                    print_results_from_json_value(results);
+                    results
                 },
                 Err(e) => {
                     eprintln!("Error: could not deserialize quiz results.");
                     eprintln!("  Reason: {}", e);
+                    ::std::process::exit(2);
                 }
             }
         },
@@ -612,6 +622,7 @@ fn print_results() {
                 path.to_str().unwrap()
             );
             eprintln!("  Reason: {}", e);
+            ::std::process::exit(2);
         }
     }
 }
@@ -742,31 +753,6 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
     }
 
     ret
-}
-
-
-type ResultsMap = HashMap<String, Vec<QuestionResult>>;
-
-/// Helper function for `print_results` that operates directly on the JSON.
-fn print_results_from_json_value(value: serde_json::Value) {
-    match serde_json::from_value::<ResultsMap>(value) {
-        Ok(results) => {
-            let mut aggregated: Vec<(f64, String)> = Vec::new();
-            for (key, result) in results.iter() {
-                aggregated.push((aggregate_results(&result), key.clone()));
-            }
-
-            aggregated.sort_by(cmp_f64_tuple_reversed);
-
-            for (score, question) in aggregated.iter() {
-                println!("{:>5.1}%  {}", score, question);
-            }
-        },
-        Err(e) => {
-            eprintln!("Error: could not parse quiz results.");
-            eprintln!("Reason: {}", e);
-        }
-    }
 }
 
 
