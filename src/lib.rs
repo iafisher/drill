@@ -18,8 +18,8 @@ use structopt::StructOpt;
 
 /// Represents an entire quiz.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Quiz {
-    pub questions: Vec<Question>,
+struct Quiz {
+    questions: Vec<Question>,
 }
 
 
@@ -42,40 +42,40 @@ pub enum QuizOptions {
 #[derive(StructOpt)]
 pub struct QuizTakeOptions {
     /// Paths to the quiz files.
-    pub paths: Vec<String>,
+    paths: Vec<String>,
     /// Only include questions with the given tag.
     #[structopt(long = "tag")]
-    pub tags: Vec<String>,
+    tags: Vec<String>,
     /// Exclude questions with the given tag.
     #[structopt(long = "exclude")]
-    pub exclude: Vec<String>,
+    exclude: Vec<String>,
     /// Limit the total number of questions.
     #[structopt(short = "n", default_value = "-1")]
-    pub num_to_ask: i16,
+    num_to_ask: i16,
     /// Save results without prompting.
     #[structopt(long = "save")]
-    pub save: bool,
+    save: bool,
     /// Do not emit colorized output.
     #[structopt(long = "no-color")]
-    pub no_color: bool,
+    no_color: bool,
     /// Ask the questions in the order they appear in the quiz file.
     #[structopt(long = "in-order")]
-    pub in_order: bool,
+    in_order: bool,
 }
 
 #[derive(StructOpt)]
 pub struct QuizCountOptions {
     /// Paths to the quiz files.
-    pub paths: Vec<String>,
+    paths: Vec<String>,
     /// Only include questions with the given tag.
     #[structopt(long = "tag")]
-    pub tags: Vec<String>,
+    tags: Vec<String>,
     /// Exclude questions with the given tag.
     #[structopt(long = "exclude")]
-    pub exclude: Vec<String>,
+    exclude: Vec<String>,
     /// List tags instead of counting questions.
     #[structopt(long = "list-tags")]
-    pub list_tags: bool,
+    list_tags: bool,
 }
 
 impl From<QuizCountOptions> for QuizTakeOptions {
@@ -90,15 +90,15 @@ impl From<QuizCountOptions> for QuizTakeOptions {
 #[derive(StructOpt)]
 pub struct QuizResultsOptions {
     #[structopt(long = "--delete")]
-    pub delete_results: bool,
+    delete_results: bool,
     #[structopt(long = "--force-delete")]
-    pub force_delete_results: bool,
+    force_delete_results: bool,
 }
 
 
 /// Represents a question.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Question {
+struct Question {
     kind: QuestionKind,
     /// The text of the question. It is a vector instead of a string so that multiple
     /// variants of the same question can be stored.
@@ -135,9 +135,9 @@ struct Answer {
 
 /// Represents the result of answering a question on a particular occasion.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct QuestionResult {
-    pub time_asked: chrono::DateTime<chrono::Utc>,
-    pub correct: bool,
+struct QuestionResult {
+    time_asked: chrono::DateTime<chrono::Utc>,
+    correct: bool,
 }
 
 
@@ -186,12 +186,12 @@ pub fn main_results(options: QuizResultsOptions) {
 
 impl Quiz {
     /// Construct a new `Quiz` object from a vector of `Questions`.
-    pub fn new(questions: Vec<Question>) -> Self {
+    fn new(questions: Vec<Question>) -> Self {
         Quiz { questions }
     }
 
     /// Take the quiz and return pairs of questions and results.
-    pub fn take(&mut self, options: &QuizTakeOptions) -> Vec<(&Question, QuestionResult)> {
+    fn take(&mut self, options: &QuizTakeOptions) -> Vec<(&Question, QuestionResult)> {
         let mut results = Vec::new();
         let mut total_correct = 0;
         let mut total_ungraded = 0;
@@ -238,7 +238,7 @@ impl Quiz {
     /// Return the questions filtered by the given command-line options (e.g., `--tag`
     /// and `--exclude`). Note that the `-n` flag is not applied, unlike in the
     /// `choose_questions` method.
-    pub fn filter_questions(&self, options: &QuizTakeOptions) -> Vec<&Question> {
+    fn filter_questions(&self, options: &QuizTakeOptions) -> Vec<&Question> {
         let mut candidates = Vec::new();
         for question in self.questions.iter() {
             if self.filter_question(question, options) {
@@ -274,7 +274,7 @@ impl Quiz {
 impl Question {
     /// Ask the question, get an answer, and return `true` if the user got the question
     /// right.
-    pub fn ask(&self) -> Option<bool> {
+    fn ask(&self) -> Option<bool> {
         let mut rng = thread_rng();
         let text = self.text.choose(&mut rng).unwrap();
         prettyprint(&format!("{}\n", text.white()), Some("  "));
@@ -442,7 +442,7 @@ impl Question {
 
 impl Answer {
     /// Return `true` if the given string is equivalent to the Answer object.
-    pub fn check(&self, guess: &str) -> bool {
+    fn check(&self, guess: &str) -> bool {
         for variant in self.variants.iter() {
             if variant.to_lowercase() == guess.to_lowercase() {
                 return true;
@@ -499,7 +499,7 @@ fn prettyprint(message: &str, prefix: Option<&str>) {
 
 
 /// Prompt the user with a yes-no question and return `true` if they enter yes.
-pub fn yesno(message: &str) -> bool {
+fn yesno(message: &str) -> bool {
     let response = prompt(message);
     response.is_some() && response.unwrap().trim_start().to_lowercase().starts_with("y")
 }
@@ -512,7 +512,7 @@ pub fn parse_options() -> QuizOptions {
 
 
 /// Print a list of tags.
-pub fn list_tags(quiz: &Quiz) {
+fn list_tags(quiz: &Quiz) {
     // Count how many times each tag has been used.
     let mut tags = HashMap::<&str, u32>::new();
     for question in quiz.questions.iter() {
@@ -541,7 +541,7 @@ pub fn list_tags(quiz: &Quiz) {
 
 /// Save `results` to a file in the popquiz application's data directory, appending the
 /// results if previous results have been saved.
-pub fn save_results(results: &Vec<(&Question, QuestionResult)>) {
+fn save_results(results: &Vec<(&Question, QuestionResult)>) {
     // Create the data directory if it does not already exist.
     let dirpath = get_results_dir_path();
     if !dirpath.as_path().exists() {
@@ -584,14 +584,14 @@ pub fn save_results(results: &Vec<(&Question, QuestionResult)>) {
 
 
 /// Delete previously saved results.
-pub fn delete_results() {
+fn delete_results() {
     let path = get_results_path();
     fs::remove_file(&path).expect("Unable to remove file");
     println!("Successfully deleted {}", path.to_str().unwrap());
 }
 
 
-pub fn print_results() {
+fn print_results() {
     let path = get_results_path();
 
     match fs::read_to_string(&path) {
@@ -618,7 +618,7 @@ pub fn print_results() {
 
 
 /// Load a single `Quiz` object from a vector of paths to quiz files.
-pub fn load_quizzes(paths: &Vec<String>) -> Quiz {
+fn load_quizzes(paths: &Vec<String>) -> Quiz {
     let mut master_list = Vec::new();
     for path in paths.iter() {
         match load_quiz(path) {
@@ -636,7 +636,7 @@ pub fn load_quizzes(paths: &Vec<String>) -> Quiz {
 
 
 /// Load a `Quiz` object from the file at `path`.
-pub fn load_quiz(path: &str) -> Result<Quiz, Box<::std::error::Error>> {
+fn load_quiz(path: &str) -> Result<Quiz, Box<::std::error::Error>> {
     let data = fs::read_to_string(path)?;
     let mut quiz_as_json: serde_json::Value = serde_json::from_str(&data)?;
 
