@@ -17,7 +17,7 @@ You create the quizzes yourself as JSON files. This section documents the format
 
 The root JSON object should have a single `questions` field mapping to an array of question objects:
 
-```json
+```
 {
   "questions": [
     ...
@@ -94,4 +94,16 @@ The format of ordered list questions is almost the same as for unordered list qu
 The `candidates` field is for the incorrect answers to be displayed as options. It should **not** contain the correct answer, which goes in the `answer` field and must be a string.
 
 
-For a complete example, see `sample.json` in the root of this repository.
+## Ungraded questions
+```json
+{
+  "kind": "Ungraded",
+  "text": "Describe the late medieval period in England.",
+  "answer": "The late medieval period in England was an era of domestic turmoil and recurring war abroad in France. Beginning in the reign of the unstable Henry VI of the House of Lancaster, the legitimacy of the Lancastrian monopoly..."
+}
+```
+
+For ungraded questions, popquiz will prompt for an answer, but it will not check the user's response, and the question will not count towards either the total correct or total incorrect for the quiz. After the user enters her answer, the text in the `answer` field will be displayed as a sample correct answer. The `Ungraded` kind is intended for long-answer questions which could not reasonably be graded automatically.
+
+
+For a complete example of a quiz file, see `sample.json` in the root of this repository.

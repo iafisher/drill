@@ -63,7 +63,7 @@ pub struct Question {
 /// An enumeration for the `kind` field of `Question` objects.
 #[derive(Serialize, Deserialize, Debug)]
 enum QuestionKind {
-    ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice,
+    ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice, Ungraded,
 }
 
 
@@ -96,6 +96,7 @@ impl Quiz {
     pub fn take(&mut self, options: &QuizOptions) -> Vec<(&Question, QuestionResult)> {
         let mut results = Vec::new();
         let mut total_correct = 0;
+        let mut total_ungraded = 0;
         let mut total = 0;
 
         let questions = self.choose_questions(&options);
@@ -106,22 +107,31 @@ impl Quiz {
 
         for question in questions.iter() {
             println!("\n");
-            let correct = question.ask();
-            let result = QuestionResult {
-                time_asked: chrono::Utc::now(),
-                correct,
-            };
-            results.push((*question, result));
+            if let Some(correct) = question.ask() {
+                let result = QuestionResult {
+                    time_asked: chrono::Utc::now(),
+                    correct,
+                };
+                results.push((*question, result));
 
-            total += 1;
-            if correct {
-                total_correct += 1;
+                total += 1;
+                if correct {
+                    total_correct += 1;
+                }
+            } else {
+                total_ungraded += 1;
             }
         }
 
         if total > 0 {
             let score = (total_correct as f64) / (total as f64) * 100.0;
-            println!("\n{} correct out of {} ({:.1}%).", total_correct, total, score);
+            print!("\n\n{} correct out of {} ({:.1}%)", total_correct, total, score);
+            if total_ungraded > 0 {
+                print!(", {} ungraded", total_ungraded);
+            }
+            println!(".");
+        } else if total_ungraded > 0 {
+            println!("\n\n{} ungraded.", total_ungraded);
         }
 
         results
@@ -166,23 +176,27 @@ impl Quiz {
 impl Question {
     /// Ask the question, get an answer, and return `true` if the user got the question
     /// right.
-    pub fn ask(&self) -> bool {
+    pub fn ask(&self) -> Option<bool> {
         let mut rng = thread_rng();
         let text = self.text.choose(&mut rng).unwrap();
         prettyprint(&format!("{}\n", text.white()), Some("  "));
 
         match self.kind {
             QuestionKind::ShortAnswer => {
-                self.ask_short_answer()
+                Some(self.ask_short_answer())
             },
             QuestionKind::ListAnswer => {
-                self.ask_list_answer()
+                Some(self.ask_list_answer())
             },
             QuestionKind::OrderedListAnswer => {
-                self.ask_ordered_list_answer()
+                Some(self.ask_ordered_list_answer())
             }
             QuestionKind::MultipleChoice => {
-                self.ask_multiple_choice()
+                Some(self.ask_multiple_choice())
+            },
+            QuestionKind::Ungraded => {
+                self.ask_ungraded();
+                None
             }
         }
     }
@@ -296,6 +310,13 @@ impl Question {
                 return false;
             }
         }
+    }
+
+    /// Implementation of `ask` assuming that `self.kind` is `Ungraded`.
+    fn ask_ungraded(&self) {
+        prompt("> ");
+        println!("\n{}", "Sample correct answer:\n".white());
+        prettyprint(&self.answer_list[0].variants[0], Some("  "));
     }
 
     /// Return `true` if `guess` matches any of the answers in `self.answer_list`.
