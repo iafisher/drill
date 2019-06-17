@@ -111,10 +111,8 @@ struct Question {
     /// `MultipleChoice`, in which case the candidates are incorrect answers to the
     /// question.
     candidates: Vec<String>,
-    /// The percentage of previous attempts that were correct, as a real number in the
-    /// range [0, 1]. This value does not come from the quiz JSON file, but from the
-    /// popquiz application's internal results file. See `load_quiz` for details.
-    score: Option<f64>,
+    /// Prior results of answering the question.
+    prior_results: Option<Vec<QuestionResult>>,
 }
 
 
@@ -681,7 +679,7 @@ fn load_quiz(path: &str, old_results: &StoredResults) -> Result<Quiz, Box<::std:
     // Attach previous results to the `Question` objects.
     for question in ret.questions.iter_mut() {
         if let Some(results) = old_results.get(&question.text[0]) {
-            question.score = Some(aggregate_results(results));
+            question.prior_results = Some(results.clone());
         }
     }
 
