@@ -5,7 +5,6 @@ authors = ["Ian Fisher <iafisher@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
-argparse = "0.2.2"
 chrono = { version = "0.4", features = ["serde"] }
 colored = "1.8.0"
 dirs = "1.0"
@@ -13,4 +12,5 @@ rand = "0.6"
 rustyline = "4.1.0"
 serde = { version = "1.0.92", features = ["derive"] }
 serde_json = "1.0.39"
+structopt = "0.2"
 textwrap = { version = "0.11", features = ["term_size"] }

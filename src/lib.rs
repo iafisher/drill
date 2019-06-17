@@ -8,12 +8,12 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs;
 
-use argparse::{ArgumentParser, Collect, Store, StoreTrue};
 use colored::*;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rustyline::error::ReadlineError;
 use serde::{Serialize, Deserialize};
+use structopt::StructOpt;
 
 
 /// Represents an entire quiz.
@@ -25,19 +25,60 @@ pub struct Quiz {
 
 /// Holds the command-line configuration for the application. See `parse_options` for
 /// the meaning of each field.
-pub struct QuizOptions {
+#[derive(StructOpt)]
+#[structopt(name = "popquiz", about = "Take quizzes from the command line.")]
+pub enum QuizOptions {
+    #[structopt(name = "take")]
+    Take(QuizTakeOptions),
+    #[structopt(name = "count")]
+    Count(QuizCountOptions),
+    #[structopt(name = "results")]
+    Results(QuizResultsOptions),
+}
+
+#[derive(StructOpt)]
+pub struct QuizTakeOptions {
     pub paths: Vec<String>,
+    #[structopt(long = "tag")]
     pub tags: Vec<String>,
+    #[structopt(long = "exclude")]
     pub exclude: Vec<String>,
+    #[structopt(short = "n", default_value = "-1")]
     pub num_to_ask: i16,
-    pub list_tags: bool,
-    pub do_save_results: bool,
-    pub count: bool,
+    #[structopt(long = "save")]
+    pub save: bool,
+    #[structopt(long = "no-color")]
     pub no_color: bool,
+    #[structopt(long = "in-order")]
     pub in_order: bool,
+}
+
+#[derive(StructOpt)]
+pub struct QuizCountOptions {
+    pub paths: Vec<String>,
+    #[structopt(long = "tag")]
+    pub tags: Vec<String>,
+    #[structopt(long = "exclude")]
+    pub exclude: Vec<String>,
+    #[structopt(long = "list-tags")]
+    pub list_tags: bool,
+}
+
+impl From<QuizCountOptions> for QuizTakeOptions {
+    fn from(options: QuizCountOptions) -> Self {
+        QuizTakeOptions {
+            paths: options.paths, tags: options.tags, exclude: options.exclude,
+            num_to_ask: -1, save: false, no_color: false, in_order: false,
+        }
+    }
+}
+
+#[derive(StructOpt)]
+pub struct QuizResultsOptions {
+    #[structopt(long = "--delete")]
     pub delete_results: bool,
+    #[structopt(long = "--force-delete")]
     pub force_delete_results: bool,
-    pub print_results: bool,
 }
 
 
@@ -86,6 +127,49 @@ pub struct QuestionResult {
 }
 
 
+// One main function for each subcommand.
+
+
+/// The main function for the `take` subcommand.
+pub fn main_take(options: QuizTakeOptions) {
+    if options.no_color {
+        colored::control::set_override(false);
+    }
+
+    let mut quiz = load_quizzes(&options.paths);
+    let results = quiz.take(&options);
+    if results.len() > 0 && (options.save || yesno("\nSave results? ")) {
+        save_results(&results);
+    }
+}
+
+
+/// The main function for the `count` subcommand.
+pub fn main_count(options: QuizCountOptions) {
+    let quiz = load_quizzes(&options.paths);
+
+    if options.list_tags {
+        list_tags(&quiz);
+    } else {
+        let filtered = quiz.filter_questions(&QuizTakeOptions::from(options));
+        println!("{}", filtered.len());
+    }
+}
+
+
+/// The main function for the `results` subcommand.
+pub fn main_results(options: QuizResultsOptions) {
+    if options.delete_results || options.force_delete_results {
+        let prompt = "Are you sure you want to delete all previous results? ";
+        if options.force_delete_results || yesno(&prompt) {
+            delete_results();
+        }
+    } else {
+        print_results();
+    }
+}
+
+
 impl Quiz {
     /// Construct a new `Quiz` object from a vector of `Questions`.
     pub fn new(questions: Vec<Question>) -> Self {
@@ -93,7 +177,7 @@ impl Quiz {
     }
 
     /// Take the quiz and return pairs of questions and results.
-    pub fn take(&mut self, options: &QuizOptions) -> Vec<(&Question, QuestionResult)> {
+    pub fn take(&mut self, options: &QuizTakeOptions) -> Vec<(&Question, QuestionResult)> {
         let mut results = Vec::new();
         let mut total_correct = 0;
         let mut total_ungraded = 0;
@@ -140,7 +224,7 @@ impl Quiz {
     /// Return the questions filtered by the given command-line options (e.g., `--tag`
     /// and `--exclude`). Note that the `-n` flag is not applied, unlike in the
     /// `choose_questions` method.
-    pub fn filter_questions(&self, options: &QuizOptions) -> Vec<&Question> {
+    pub fn filter_questions(&self, options: &QuizTakeOptions) -> Vec<&Question> {
         let mut candidates = Vec::new();
         for question in self.questions.iter() {
             if self.filter_question(question, options) {
@@ -151,7 +235,7 @@ impl Quiz {
     }
 
     /// Choose a set of questions, filtered by the command-line options.
-    fn choose_questions(&self, options: &QuizOptions) -> Vec<&Question> {
+    fn choose_questions(&self, options: &QuizTakeOptions) -> Vec<&Question> {
         let mut candidates = self.filter_questions(options);
         if !options.in_order {
             let mut rng = thread_rng();
@@ -164,7 +248,7 @@ impl Quiz {
     }
 
     /// Return `true` if `q` satisfies the constraints in `options`.
-    fn filter_question(&self, q: &Question, options: &QuizOptions) -> bool {
+    fn filter_question(&self, q: &Question, options: &QuizTakeOptions) -> bool {
         // Either no tags were specified, or `q` has all the specified tags.
         (options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag)))
             // `q` must not have any excluded tags.
@@ -409,145 +493,11 @@ pub fn yesno(message: &str) -> bool {
 
 /// Parse command-line arguments.
 pub fn parse_options() -> QuizOptions {
-    let mut options = QuizOptions {
-        paths: Vec::new(), tags: Vec::new(), exclude: Vec::new(), num_to_ask: -1,
-        list_tags: false, do_save_results: false, count: false, no_color: false,
-        in_order: false, delete_results: false, force_delete_results: false,
-        print_results: false,
-    };
-    {
-        let mut parser = ArgumentParser::new();
-        parser.set_description("Take a pop quiz from the command line.");
-
-        parser.refer(&mut options.paths).add_argument(
-            "quizzes", Collect, "Paths to the quiz files."
-        ).required();
-
-        parser.refer(&mut options.delete_results).add_option(
-            &["--delete-results"], StoreTrue, "Clear cached results of previous attempts."
-        );
-
-        // Make sure to maintain alphabetical order of flags.
-        parser.refer(&mut options.count).add_option(
-            &["--count"], StoreTrue, "Count the number of questions."
-        );
-
-        parser.refer(&mut options.exclude).add_option(
-            &["--exclude"], Collect, "Exclude questions by tag."
-        );
-
-        parser.refer(&mut options.force_delete_results).add_option(
-            &["--force-delete-results"],
-            StoreTrue,
-            "Clear cached results of previous attempts, without prompting for confirmation."
-        );
-
-        parser.refer(&mut options.in_order).add_option(
-            &["--in-order"], StoreTrue, "Ask questions in order."
-        );
-
-        parser.refer(&mut options.list_tags).add_option(
-            &["--list-tags"], StoreTrue, "List all available tags."
-        );
-
-        parser.refer(&mut options.num_to_ask).add_option(
-            &["-n"], Store, "Number of questions to ask."
-        );
-
-        parser.refer(&mut options.no_color).add_option(
-            &["--no-color"], StoreTrue, "Turn off ANSI color in output."
-        );
-
-        parser.refer(&mut options.print_results).add_option(
-            &["-r", "--results"], StoreTrue, "Print a report of previous results."
-        );
-
-        parser.refer(&mut options.do_save_results).add_option(
-            &["--save"], StoreTrue, "Save quiz results without prompting."
-        );
-
-        parser.refer(&mut options.tags).add_option(
-            &["--tag"], Collect, "Filter questions by tag."
-        );
-
-        parser.parse_args_or_exit();
-    }
-
-    if options.delete_results || options.force_delete_results {
-        let which = if options.delete_results {
-            "--delete-results"
-        } else {
-            "--force-delete-results"
-        };
-
-        if options.count {
-            incompatible(&which, "--count");
-        } else if options.exclude.len() > 0 {
-            incompatible(&which, "--exclude");
-        } else if options.in_order {
-            incompatible(&which, "--in-order");
-        } else if options.list_tags {
-            incompatible(&which, "--list-tags");
-        } else if options.num_to_ask != -1 {
-            incompatible(&which, "-n");
-        } else if options.print_results {
-            incompatible(&which, "--results");
-        } else if options.do_save_results {
-            incompatible(&which, "--save");
-        } else if options.tags.len() > 0 {
-            incompatible(&which, "--tag");
-        }
-    }
-
-    if options.count {
-        if options.in_order {
-            incompatible("--count", "--in-order");
-        } else if options.list_tags {
-            incompatible("--count", "--list-tags");
-        } else if options.num_to_ask != -1 {
-            incompatible("--count", "-n");
-        } else if options.print_results {
-            incompatible("--count", "--results");
-        } else if options.do_save_results {
-            incompatible("--count", "--save");
-        }
-    }
-
-    if options.list_tags {
-        if options.exclude.len() > 0 {
-            incompatible("--list-tags", "--exclude");
-        } else if options.in_order {
-            incompatible("--list-tags", "--in-order");
-        } else if options.num_to_ask != -1 {
-            incompatible("--list-tags", "-n");
-        } else if options.print_results {
-            incompatible("--list-tags", "--results");
-        } else if options.do_save_results {
-            incompatible("--list-tags", "--save");
-        } else if options.tags.len() > 0 {
-            incompatible("--list-tags", "--tag");
-        }
-    }
-
-    if options.print_results {
-        if options.exclude.len() > 0 {
-            incompatible("--results", "--exclude");
-        } else if options.in_order {
-            incompatible("--results", "--in-order");
-        } else if options.num_to_ask != -1 {
-            incompatible("--results", "-n");
-        } else if options.do_save_results {
-            incompatible("--results", "--save");
-        } else if options.tags.len() > 0 {
-            incompatible("--results", "--tag");
-        }
-    }
-
-    options
+    QuizOptions::from_args()
 }
 
 
-/// Print all the tags that are attached to any question in `quiz`.
+/// Print a list of tags.
 pub fn list_tags(quiz: &Quiz) {
     // Count how many times each tag has been used.
     let mut tags = HashMap::<&str, u32>::new();
@@ -650,6 +600,24 @@ pub fn print_results() {
             eprintln!("  Reason: {}", e);
         }
     }
+}
+
+
+/// Load a single `Quiz` object from a vector of paths to quiz files.
+pub fn load_quizzes(paths: &Vec<String>) -> Quiz {
+    let mut master_list = Vec::new();
+    for path in paths.iter() {
+        match load_quiz(path) {
+            Ok(mut quiz) => {
+                master_list.append(&mut quiz.questions);
+            },
+            Err(e) => {
+                eprintln!("Error on {}: {}", path, e);
+                ::std::process::exit(2);
+            }
+        }
+    }
+    Quiz::new(master_list)
 }
 
 
@@ -860,11 +828,4 @@ fn print_incorrect(answer: &str) {
     } else {
         println!("{}", "Incorrect.".red());
     }
-}
-
-
-/// Display a message for incompatible command-line flags, and exit.
-fn incompatible(flag1: &str, flag2: &str) {
-    eprintln!("{} and {} are incompatible.", flag1, flag2);
-    ::std::process::exit(1);
 }
