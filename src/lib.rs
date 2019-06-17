@@ -111,6 +111,10 @@ struct Question {
     /// `MultipleChoice`, in which case the candidates are incorrect answers to the
     /// question.
     candidates: Vec<String>,
+    /// The percentage of previous attempts that were correct, as a real number in the
+    /// range [0, 1]. This value does not come from the quiz JSON file, but from the
+    /// popquiz application's internal results file. See `load_quiz` for details.
+    score: Option<f64>,
 }
 
 
@@ -600,7 +604,10 @@ fn delete_results() {
 }
 
 
-fn load_results() -> HashMap<String, Vec<QuestionResult>> {
+type StoredResults = HashMap<String, Vec<QuestionResult>>;
+
+
+fn load_results() -> StoredResults {
     let path = get_results_path();
 
     match fs::read_to_string(&path) {
@@ -630,9 +637,11 @@ fn load_results() -> HashMap<String, Vec<QuestionResult>> {
 
 /// Load a single `Quiz` object from a vector of paths to quiz files.
 fn load_quizzes(paths: &Vec<String>) -> Quiz {
+    let results = load_results();
+
     let mut master_list = Vec::new();
     for path in paths.iter() {
-        match load_quiz(path) {
+        match load_quiz(path, &results) {
             Ok(mut quiz) => {
                 master_list.append(&mut quiz.questions);
             },
@@ -647,7 +656,7 @@ fn load_quizzes(paths: &Vec<String>) -> Quiz {
 
 
 /// Load a `Quiz` object from the file at `path`.
-fn load_quiz(path: &str) -> Result<Quiz, Box<::std::error::Error>> {
+fn load_quiz(path: &str, old_results: &StoredResults) -> Result<Quiz, Box<::std::error::Error>> {
     let data = fs::read_to_string(path)?;
     let mut quiz_as_json: serde_json::Value = serde_json::from_str(&data)?;
 
@@ -667,7 +676,15 @@ fn load_quiz(path: &str) -> Result<Quiz, Box<::std::error::Error>> {
         }
     }
 
-    let ret = serde_json::from_value(quiz_as_json)?;
+    let mut ret: Quiz = serde_json::from_value(quiz_as_json)?;
+
+    // Attach previous results to the `Question` objects.
+    for question in ret.questions.iter_mut() {
+        if let Some(results) = old_results.get(&question.text[0]) {
+            question.score = Some(aggregate_results(results));
+        }
+    }
+
     Ok(ret)
 }
 
