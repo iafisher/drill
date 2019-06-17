@@ -28,38 +28,52 @@ pub struct Quiz {
 #[derive(StructOpt)]
 #[structopt(name = "popquiz", about = "Take quizzes from the command line.")]
 pub enum QuizOptions {
+    /// Take a quiz.
     #[structopt(name = "take")]
     Take(QuizTakeOptions),
+    /// Count questions or tags.
     #[structopt(name = "count")]
     Count(QuizCountOptions),
+    /// Report results of previous attempts.
     #[structopt(name = "results")]
     Results(QuizResultsOptions),
 }
 
 #[derive(StructOpt)]
 pub struct QuizTakeOptions {
+    /// Paths to the quiz files.
     pub paths: Vec<String>,
+    /// Only include questions with the given tag.
     #[structopt(long = "tag")]
     pub tags: Vec<String>,
+    /// Exclude questions with the given tag.
     #[structopt(long = "exclude")]
     pub exclude: Vec<String>,
+    /// Limit the total number of questions.
     #[structopt(short = "n", default_value = "-1")]
     pub num_to_ask: i16,
+    /// Save results without prompting.
     #[structopt(long = "save")]
     pub save: bool,
+    /// Do not emit colorized output.
     #[structopt(long = "no-color")]
     pub no_color: bool,
+    /// Ask the questions in the order they appear in the quiz file.
     #[structopt(long = "in-order")]
     pub in_order: bool,
 }
 
 #[derive(StructOpt)]
 pub struct QuizCountOptions {
+    /// Paths to the quiz files.
     pub paths: Vec<String>,
+    /// Only include questions with the given tag.
     #[structopt(long = "tag")]
     pub tags: Vec<String>,
+    /// Exclude questions with the given tag.
     #[structopt(long = "exclude")]
     pub exclude: Vec<String>,
+    /// List tags instead of counting questions.
     #[structopt(long = "list-tags")]
     pub list_tags: bool,
 }
