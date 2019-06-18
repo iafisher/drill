@@ -395,9 +395,13 @@ impl Question {
         let mut candidates = self.candidates.clone();
 
         let mut rng = thread_rng();
+        // Shuffle once so that we don't always pick the first three candidates listed.
         candidates.shuffle(&mut rng);
         candidates.truncate(3);
-        candidates.push(self.answer_list[0].variants[0].clone());
+
+        let answer = self.answer_list[0].variants.choose(&mut rng).unwrap();
+        candidates.push(answer.clone());
+        // Shuffle again so that the position of the correct answer is random.
         candidates.shuffle(&mut rng);
 
         for (i, candidate) in "abcd".chars().zip(candidates.iter()) {

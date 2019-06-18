@@ -91,7 +91,7 @@ The format of ordered list questions is almost the same as for unordered list qu
 }
 ```
 
-The `candidates` field is for the incorrect answers to be displayed as options. It should **not** contain the correct answer, which goes in the `answer` field and must be a string.
+The `candidates` field is for the incorrect answers to be displayed as options. It should **not** contain the correct answer, which goes in the `answer` field. The `answer` field may be an array of variants in the correct answer, in which case a random variant will be selected each time the question is asked.
 
 
 ## Ungraded questions
