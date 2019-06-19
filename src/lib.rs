@@ -23,6 +23,53 @@ struct Quiz {
 }
 
 
+/// Represents a question.
+#[derive(Serialize, Deserialize, Debug)]
+struct Question {
+    kind: QuestionKind,
+    /// The text of the question. It is a vector instead of a string so that multiple
+    /// variants of the same question can be stored.
+    text: Vec<String>,
+    /// User-defined tags for the question.
+    tags: Vec<String>,
+    /// Correct answers to the question. When `kind` is equal to `ShortAnswer` or
+    /// `MultipleChoice`, this vector should have only one element.
+    answer_list: Vec<Answer>,
+    /// Candidate answers to the question. This field is only used when `kind` is set to
+    /// `MultipleChoice`, in which case the candidates are incorrect answers to the
+    /// question.
+    candidates: Vec<String>,
+    /// Prior results of answering the question.
+    prior_results: Option<Vec<QuestionResult>>,
+}
+
+
+/// An enumeration for the `kind` field of `Question` objects.
+#[derive(Serialize, Deserialize, Debug)]
+enum QuestionKind {
+    ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice, Ungraded,
+}
+
+
+/// Represents an answer.
+#[derive(Serialize, Deserialize, Debug)]
+struct Answer {
+    /// Each member of the `variants` vector should be an equivalent answer, e.g.
+    /// `vec!["Mount Everest", "Everest"]`, not different answers to the same question.
+    /// The first element of the vector is taken to be the canonical form of the answer
+    /// for display.
+    variants: Vec<String>,
+}
+
+
+/// Represents the result of answering a question on a particular occasion.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct QuestionResult {
+    time_asked: chrono::DateTime<chrono::Utc>,
+    correct: bool,
+}
+
+
 /// Holds the command-line configuration for the application.
 #[derive(StructOpt)]
 #[structopt(name = "popquiz", about = "Take quizzes from the command line.")]
@@ -99,53 +146,6 @@ pub struct QuizResultsOptions {
     delete_results: bool,
     #[structopt(long = "--force-delete")]
     force_delete_results: bool,
-}
-
-
-/// Represents a question.
-#[derive(Serialize, Deserialize, Debug)]
-struct Question {
-    kind: QuestionKind,
-    /// The text of the question. It is a vector instead of a string so that multiple
-    /// variants of the same question can be stored.
-    text: Vec<String>,
-    /// User-defined tags for the question.
-    tags: Vec<String>,
-    /// Correct answers to the question. When `kind` is equal to `ShortAnswer` or
-    /// `MultipleChoice`, this vector should have only one element.
-    answer_list: Vec<Answer>,
-    /// Candidate answers to the question. This field is only used when `kind` is set to
-    /// `MultipleChoice`, in which case the candidates are incorrect answers to the
-    /// question.
-    candidates: Vec<String>,
-    /// Prior results of answering the question.
-    prior_results: Option<Vec<QuestionResult>>,
-}
-
-
-/// An enumeration for the `kind` field of `Question` objects.
-#[derive(Serialize, Deserialize, Debug)]
-enum QuestionKind {
-    ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice, Ungraded,
-}
-
-
-/// Represents an answer.
-#[derive(Serialize, Deserialize, Debug)]
-struct Answer {
-    /// Each member of the `variants` vector should be an equivalent answer, e.g.
-    /// `vec!["Mount Everest", "Everest"]`, not different answers to the same question.
-    /// The first element of the vector is taken to be the canonical form of the answer
-    /// for display.
-    variants: Vec<String>,
-}
-
-
-/// Represents the result of answering a question on a particular occasion.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct QuestionResult {
-    time_asked: chrono::DateTime<chrono::Utc>,
-    correct: bool,
 }
 
 
