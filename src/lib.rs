@@ -66,7 +66,14 @@ struct Answer {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct QuestionResult {
     time_asked: chrono::DateTime<chrono::Utc>,
+    /// If the question asked was a short answer question, then the user's response goes
+    /// in this field.
+    response: Option<String>,
     correct: bool,
+
+    // It would be convenient to include a reference to the `Question` object as a field
+    // of this struct, but that would prevent serde_json from being able to serialize
+    // and deserialize it properly.
 }
 
 
@@ -223,11 +230,8 @@ impl Quiz {
 
         for question in questions.iter() {
             println!("\n");
-            if let Some(correct) = question.ask() {
-                let result = QuestionResult {
-                    time_asked: chrono::Utc::now(),
-                    correct,
-                };
+            if let Some(result) = question.ask() {
+                let correct = result.correct;
                 results.push((*question, result));
 
                 total += 1;
@@ -292,9 +296,9 @@ impl Quiz {
 
 
 impl Question {
-    /// Ask the question, get an answer, and return `true` if the user got the question
-    /// right.
-    fn ask(&self) -> Option<bool> {
+    /// Ask the question, get an answer, and return a `QuestionResult` object, except
+    /// if the question is ungraded return `None`.
+    fn ask(&self) -> Option<QuestionResult> {
         let mut rng = thread_rng();
         let text = self.text.choose(&mut rng).unwrap();
         prettyprint(&format!("{}\n", text.white()), Some("  "));
@@ -320,19 +324,23 @@ impl Question {
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `ShortAnswer`.
-    fn ask_short_answer(&self) -> bool {
+    fn ask_short_answer(&self) -> QuestionResult {
         let guess = prompt("> ");
-        let result = guess.is_some() && self.check_any(&guess.unwrap());
+        let result = guess.is_some() && self.check_any(guess.as_ref().unwrap());
         if result {
             print_correct();
         } else {
             print_incorrect(&self.answer_list[0].variants[0]);
         }
-        result
+        if let Some(guess) = guess {
+            QuestionResult::new_with_response(result, &guess.to_lowercase())
+        } else {
+            QuestionResult::new(result)
+        }
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `ListAnswer`.
-    fn ask_list_answer(&self) -> bool {
+    fn ask_list_answer(&self) -> QuestionResult {
         let mut satisfied = Vec::<bool>::with_capacity(self.answer_list.len());
         for _ in 0..self.answer_list.len() {
             satisfied.push(false);
@@ -367,11 +375,11 @@ impl Question {
                 }
             }
         }
-        all_correct
+        QuestionResult::new(all_correct)
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `OrderedListAnswer`.
-    fn ask_ordered_list_answer(&self) -> bool {
+    fn ask_ordered_list_answer(&self) -> QuestionResult {
         let mut correct = true;
         for answer in self.answer_list.iter() {
             if let Some(guess) = prompt("> ") {
@@ -387,11 +395,11 @@ impl Question {
                 break;
             }
         }
-        correct
+        QuestionResult::new(correct)
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `MultipleChoice`.
-    fn ask_multiple_choice(&self) -> bool {
+    fn ask_multiple_choice(&self) -> QuestionResult {
         let mut candidates = self.candidates.clone();
 
         let mut rng = thread_rng();
@@ -419,17 +427,17 @@ impl Question {
                 if 97 <= index && index < 101 {
                     if self.check_any(&candidates[(index - 97) as usize]) {
                         print_correct();
-                        return true;
+                        return QuestionResult::new(true);
                     } else {
                         print_incorrect(&self.answer_list[0].variants[0]);
-                        return false;
+                        return QuestionResult::new(false);
                     }
                 } else {
                     continue;
                 }
             } else {
                 print_incorrect(&self.answer_list[0].variants[0]);
-                return false;
+                return QuestionResult::new(false);
             }
         }
     }
@@ -473,6 +481,25 @@ impl Answer {
             }
         }
         false
+    }
+}
+
+
+impl QuestionResult {
+    fn new(correct: bool) -> Self {
+        QuestionResult {
+            time_asked: chrono::Utc::now(),
+            correct,
+            response: None,
+        }
+    }
+
+    fn new_with_response(correct: bool, response: &str) -> Self {
+        QuestionResult {
+            time_asked: chrono::Utc::now(),
+            correct,
+            response: Some(response.to_string()),
+        }
     }
 }
 
