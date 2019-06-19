@@ -105,5 +105,13 @@ The `candidates` field is for the incorrect answers to be displayed as options. 
 
 For ungraded questions, popquiz will prompt for an answer, but it will not check the user's response, and the question will not count towards either the total correct or total incorrect for the quiz. After the user enters her answer, the text in the `answer` field will be displayed as a sample correct answer. The `Ungraded` kind is intended for long-answer questions which could not reasonably be graded automatically.
 
+## Other fields
+Questions may have an `id` field with a unique string value. The purpose of this field is to support another optional field, `depends`. If question A has `depends` set to `"some-id"`, and question B's `id` field is `"some-id"`, then question A will always be asked after question B.
+
+**Note**: Currently the dependency resolver is not very sophisticated, so for the time being the following constraints hold:
+
+- A question may only declare one dependency. If you provide a list of strings instead of a string in the `depends` field, a JSON parse error will occur.
+- A question may only be involved in one dependence relation, so if question A depends on question B, then question B may not depend on any other question, and no other question may depend on question B. If you violate this constraint, no error will occur, but the question ordering algorithm may or may not produce an order that respects your dependencies. Future versions of popquiz may eliminate this constraint.
+
 
 For a complete example of a quiz file, see `sample.json` in the root of this repository.

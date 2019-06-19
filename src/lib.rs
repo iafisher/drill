@@ -41,6 +41,11 @@ struct Question {
     candidates: Vec<String>,
     /// Prior results of answering the question.
     prior_results: Option<Vec<QuestionResult>>,
+    /// Optional string identifier.
+    id: Option<String>,
+    /// If provided, should be the `id` of another `Question` which must be asked before
+    /// this one.
+    depends: Option<String>,
 }
 
 
@@ -279,6 +284,20 @@ impl Quiz {
         if options.num_to_ask > 0 {
             candidates.truncate(options.num_to_ask as usize);
         }
+
+        // Respect basic dependence relations.
+        for i in 0..candidates.len() {
+            for j in (i+1)..candidates.len() {
+                if let Some(id) = &candidates[j].id {
+                    if let Some(depends) = &candidates[i].depends {
+                        if id == depends {
+                            candidates.swap(i, j);
+                        }
+                    }
+                }
+            }
+        }
+
         candidates
     }
 
