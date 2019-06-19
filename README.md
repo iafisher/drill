@@ -38,11 +38,11 @@ The format of the question objects depends on the kind of questions. popquiz cur
 {
   "kind": "ShortAnswer",
   "text": "Which English countess is regarded as the first computer programmer?",
-  "answer": ["Ada Lovelace", "Lady Lovelace", "Ada, Countess of Lovelace"]
+  "answer": "Ada Lovelace"
 }
 ```
 
-The `kind` field defaults to `"ShortAnswer"` so it is optional here. The `text` field is the text of the question, and the `answer` field is an array of acceptable answers. It can also be a single string.
+The `kind` field defaults to `"ShortAnswer"` so it is optional here. The `text` field is the text of the question, and the `answer` field is the correct answer, as a string.
 
 
 ## Unordered list questions
@@ -55,12 +55,11 @@ These are questions for which the quiz-taker must supply a list of answers, in a
     "Name the four Home Islands of Japan.",
     "What are the four principal islands of the Japanese archipelago?"
   ],
-  "tags": ["geography", "japan"],
   "answer_list": ["Hokkaido", "Honshu", "Shikoku", "Kyushu"]
 }
 ```
 
-Unordered list questions use an `answer_list` field instead of an `answer` field. For any question type, the `text` field may be an array of strings, to allow for multiple variations on the same question. All question types support a `tags` field which lets user filter questions with command-line options.
+Unordered list questions use an `answer_list` field instead of an `answer` field.
 
 
 ## Ordered list questions
@@ -71,14 +70,14 @@ These are questions for which the quiz-taker must supply a list of answers in a 
   "kind": "OrderedListAnswer",
   "text": "Who were the first three Presidents of the United States, in order?",
   "answer_list": [
-    ["George Washington", "Washington"],
-    ["John Adams", "Adams"],
-    ["Thomas  Jefferson", "Jefferson"]
+    "George Washington",
+    "John Adams",
+    "Thomas  Jefferson"
   ]
 }
 ```
 
-The format of ordered list questions is almost the same as for unordered list questions, except that the order of `answer_list` is significant. For both unordered and ordered list questions, the elements of `answer_list` may be arrays to allow for multiple acceptable variants of a single answer.
+The format of ordered list questions is almost the same as for unordered list questions, except that the order of `answer_list` is significant.
 
 
 ## Multiple-choice questions
@@ -91,7 +90,7 @@ The format of ordered list questions is almost the same as for unordered list qu
 }
 ```
 
-The `candidates` field is for the incorrect answers to be displayed as options. It should **not** contain the correct answer, which goes in the `answer` field. The `answer` field may be an array of variants in the correct answer, in which case a random variant will be selected each time the question is asked.
+The `candidates` field is for the incorrect answers to be displayed as options. It should **not** contain the correct answer, which goes in the `answer` field.
 
 
 ## Ungraded questions
@@ -106,6 +105,14 @@ The `candidates` field is for the incorrect answers to be displayed as options. 
 For ungraded questions, popquiz will prompt for an answer, but it will not check the user's response, and the question will not count towards either the total correct or total incorrect for the quiz. After the user enters her answer, the text in the `answer` field will be displayed as a sample correct answer. The `Ungraded` kind is intended for long-answer questions which could not reasonably be graded automatically.
 
 ## Other fields
+The following notes apply to all question types.
+
+The `text` field may be an array of strings, to allow for multiple wordings of the same question.
+
+In the `answer` and `answer_list` fields, an array of strings may be used instead of a single string, for multiple acceptable variants of the same answer.
+
+Questions may have a `tags` field, which should be a list of strings. Tagged questions can be filtered using the command-line `--tag` and `--exclude` options.
+
 Questions may have an `id` field with a unique string value. The purpose of this field is to support another optional field, `depends`. If question A has `depends` set to `"some-id"`, and question B's `id` field is `"some-id"`, then question A will always be asked after question B.
 
 **Note**: Currently the dependency resolver is not very sophisticated, so for the time being the following constraints hold:
