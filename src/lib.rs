@@ -72,8 +72,7 @@ struct QuestionResult {
     correct: bool,
 
     // It would be convenient to include a reference to the `Question` object as a field
-    // of this struct, but that would prevent serde_json from being able to serialize
-    // and deserialize it properly.
+    // of this struct, but Rust's lifetimes makes it more difficult than it's worth.
 }
 
 
