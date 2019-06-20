@@ -447,14 +447,14 @@ impl Question {
                         print_correct();
                         return QuestionResult::new(true);
                     } else {
-                        print_incorrect(&self.answer_list[0].variants[0]);
+                        print_incorrect(&answer);
                         return QuestionResult::new(false);
                     }
                 } else {
                     continue;
                 }
             } else {
-                print_incorrect(&self.answer_list[0].variants[0]);
+                print_incorrect(&answer);
                 return QuestionResult::new(false);
             }
         }
