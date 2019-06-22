@@ -74,7 +74,8 @@ struct QuestionResult {
     /// If the question asked was a short answer question, then the user's response goes
     /// in this field.
     response: Option<String>,
-    score: f64,
+    /// Optional, because ungraded questions don't have scores.
+    score: Option<f64>,
 
     // It would be convenient to include a reference to the `Question` object as a field
     // of this struct, but Rust's lifetimes makes it more difficult than it's worth.
@@ -236,19 +237,23 @@ impl Quiz {
 
         for (i, question) in questions.iter().enumerate() {
             println!("\n");
-            if let Some(result) = question.ask(i+1) {
-                let score = result.score;
+            if let Ok(result) = question.ask(i+1) {
+                let score_option = result.score;
                 results.push((*question, result));
 
-                total += 1;
-                aggregate_score += score;
-                if score == 1.0 {
-                    total_correct += 1;
-                } else if score > 0.0 {
-                    total_partial_correct += 1;
+                if let Some(score) = score_option {
+                    total += 1;
+                    aggregate_score += score;
+                    if score == 1.0 {
+                        total_correct += 1;
+                    } else if score > 0.0 {
+                        total_partial_correct += 1;
+                    }
+                } else {
+                    total_ungraded += 1;
                 }
             } else {
-                total_ungraded += 1;
+                break;
             }
         }
 
@@ -332,37 +337,36 @@ impl Quiz {
 
 
 impl Question {
-    /// Ask the question, get an answer, and return a `QuestionResult` object, except
-    /// if the question is ungraded return `None`.
+    /// Ask the question, get an answer, and return a `QuestionResult` object. If Ctrl+C
+    /// is pressed, return an error.
     ///
     /// The `num` argument is the question number in the quiz, which is printed before
     /// the text of the question.
-    fn ask(&self, num: usize) -> Option<QuestionResult> {
+    fn ask(&self, num: usize) -> Result<QuestionResult, ()> {
         self.print_text(num);
 
         match self.kind {
             QuestionKind::ShortAnswer => {
-                Some(self.ask_short_answer())
+                self.ask_short_answer()
             },
             QuestionKind::ListAnswer => {
-                Some(self.ask_list_answer())
+                self.ask_list_answer()
             },
             QuestionKind::OrderedListAnswer => {
-                Some(self.ask_ordered_list_answer())
+                self.ask_ordered_list_answer()
             }
             QuestionKind::MultipleChoice => {
-                Some(self.ask_multiple_choice())
+                self.ask_multiple_choice()
             },
             QuestionKind::Ungraded => {
-                self.ask_ungraded();
-                None
+                self.ask_ungraded()
             }
         }
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `ShortAnswer`.
-    fn ask_short_answer(&self) -> QuestionResult {
-        let guess = prompt("> ");
+    fn ask_short_answer(&self) -> Result<QuestionResult, ()> {
+        let guess = prompt("> ")?;
         let result = guess.is_some() && self.check_any(guess.as_ref().unwrap());
 
         if result {
@@ -374,14 +378,14 @@ impl Question {
         let score = if result { 1.0 } else { 0.0 };
 
         if let Some(guess) = guess {
-            QuestionResult::new_with_response(score, &guess.to_lowercase())
+            Ok(QuestionResult::new_with_response(score, &guess.to_lowercase()))
         } else {
-            QuestionResult::new(score)
+            Ok(QuestionResult::new(score))
         }
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `ListAnswer`.
-    fn ask_list_answer(&self) -> QuestionResult {
+    fn ask_list_answer(&self) -> Result<QuestionResult, ()> {
         let mut satisfied = Vec::<bool>::with_capacity(self.answer_list.len());
         for _ in 0..self.answer_list.len() {
             satisfied.push(false);
@@ -389,7 +393,7 @@ impl Question {
 
         let mut count = 0;
         while count < self.answer_list.len() {
-            if let Some(guess) = prompt("> ") {
+            if let Some(guess) = prompt("> ")? {
                 let index = self.check_one(&guess);
                 if index == self.answer_list.len() {
                     print_incorrect("");
@@ -424,14 +428,14 @@ impl Question {
                 ).white()
             );
         }
-        QuestionResult::new(score)
+        Ok(QuestionResult::new(score))
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `OrderedListAnswer`.
-    fn ask_ordered_list_answer(&self) -> QuestionResult {
+    fn ask_ordered_list_answer(&self) -> Result<QuestionResult, ()> {
         let mut ncorrect = 0;
         for answer in self.answer_list.iter() {
-            if let Some(guess) = prompt("> ") {
+            if let Some(guess) = prompt("> ")? {
                 if answer.check(&guess) {
                     print_correct();
                     ncorrect += 1;
@@ -453,11 +457,11 @@ impl Question {
                 ).white()
             );
         }
-        QuestionResult::new(score)
+        Ok(QuestionResult::new(score))
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `MultipleChoice`.
-    fn ask_multiple_choice(&self) -> QuestionResult {
+    fn ask_multiple_choice(&self) -> Result<QuestionResult, ()> {
         let mut candidates = self.candidates.clone();
 
         let mut rng = thread_rng();
@@ -476,7 +480,7 @@ impl Question {
 
         println!("");
         loop {
-            if let Some(guess) = prompt("Enter a letter: ") {
+            if let Some(guess) = prompt("Enter a letter: ")? {
                 if guess.len() != 1 {
                     continue;
                 }
@@ -485,26 +489,29 @@ impl Question {
                 if 97 <= index && index < 101 {
                     if self.check_any(&candidates[(index - 97) as usize]) {
                         print_correct();
-                        return QuestionResult::new(1.0);
+                        return Ok(QuestionResult::new(1.0));
                     } else {
                         print_incorrect(&answer);
-                        return QuestionResult::new(0.0);
+                        return Ok(QuestionResult::new(0.0));
                     }
                 } else {
                     continue;
                 }
             } else {
                 print_incorrect(&answer);
-                return QuestionResult::new(0.0);
+                return Ok(QuestionResult::new(0.0));
             }
         }
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `Ungraded`.
-    fn ask_ungraded(&self) {
-        prompt("> ");
+    fn ask_ungraded(&self) -> Result<QuestionResult, ()> {
+        prompt("> ")?;
         println!("\n{}", "Sample correct answer:\n".white());
         prettyprint(&self.answer_list[0].variants[0], Some("  "));
+        Ok(QuestionResult { 
+            time_asked: chrono::Utc::now(), score: None, response: None 
+        })
     }
 
     fn print_text(&self, num: usize) {
@@ -567,7 +574,7 @@ impl QuestionResult {
     fn new(score: f64) -> Self {
         QuestionResult {
             time_asked: chrono::Utc::now(),
-            score,
+            score: Some(score),
             response: None,
         }
     }
@@ -575,7 +582,7 @@ impl QuestionResult {
     fn new_with_response(score: f64, response: &str) -> Self {
         QuestionResult {
             time_asked: chrono::Utc::now(),
-            score,
+            score: Some(score),
             response: Some(response.to_string()),
         }
     }
@@ -584,21 +591,20 @@ impl QuestionResult {
 
 /// Display a prompt and read a line from standard input continually until the user
 /// enters a line with at least one non-whitespace character. If the user presses Ctrl+D
-/// then None is returned. If the user pressed Ctrl+C then the entire application exits.
-/// Otherwise, `Some(line)` is returned where `line` is the last line of input the user
-/// entered without leading and trailing whitespace.
-fn prompt(message: &str) -> Option<String> {
+/// then `Ok(None)` is returned. If the user pressed Ctrl+C then `Err(())` is returned.
+/// Otherwise, `Ok(Some(line))` is returned where `line` is the last line of input the
+/// user entered without leading and trailing whitespace.
+fn prompt(message: &str) -> Result<Option<String>, ()> {
     loop {
         let mut rl = rustyline::Editor::<()>::new();
         let result = rl.readline(&format!("{}", message.white()));
         match result {
-            // Exit if the user hits Ctrl+C.
+            // Return immediately if the user hits Ctrl+D or Ctrl+C.
             Err(ReadlineError::Interrupted) => {
-                ::std::process::exit(2);
+                return Err(());
             },
-            // Return immediately if the user hits Ctrl+D.
             Err(ReadlineError::Eof) => {
-                return None;
+                return Ok(None);
             },
             _ => {}
         }
@@ -606,7 +612,7 @@ fn prompt(message: &str) -> Option<String> {
         let response = result.expect("Failed to read line");
         let response = response.trim();
         if response.len() > 0 {
-            return Some(response.to_string());
+            return Ok(Some(response.to_string()));
         }
     }
 }
@@ -629,8 +635,12 @@ fn prettyprint(message: &str, prefix: Option<&str>) {
 
 /// Prompt the user with a yes-no question and return `true` if they enter yes.
 fn yesno(message: &str) -> bool {
-    let response = prompt(message);
-    response.is_some() && response.unwrap().trim_start().to_lowercase().starts_with("y")
+    match prompt(message) {
+        Ok(Some(response)) => {
+            response.trim_start().to_lowercase().starts_with("y")
+        },
+        _ => false
+    }
 }
 
 
@@ -888,16 +898,18 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
 
 /// Return the percentage of correct responses in the vector of results.
 fn aggregate_results(results: &Vec<QuestionResult>) -> f64 {
-    let mut score = 0.0;
+    let mut sum = 0.0;
     for result in results.iter() {
-        score += result.score;
+        if let Some(score) = result.score {
+            sum += score;
+        }
     }
 
     if results.len() == 0 {
         // Just to be safe, although this should never happen.
         100.0
     } else {
-        100.0 * (score / (results.len() as f64))
+        100.0 * (sum / (results.len() as f64))
     }
 }
 
