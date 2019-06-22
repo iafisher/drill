@@ -726,17 +726,14 @@ fn load_results() -> StoredResults {
                     results
                 },
                 Err(e) => {
-                    eprintln!("Error: could not deserialize quiz results.");
+                    eprintln!("Error: could not parse {}.", path.to_str().unwrap());
                     eprintln!("  Reason: {}", e);
                     ::std::process::exit(2);
                 }
             }
         },
         Err(e) => {
-            eprintln!(
-                "Error: could not open results file at {} for reading.",
-                path.to_str().unwrap()
-            );
+            eprintln!("Error: could not open {} for reading.", path.to_str().unwrap());
             eprintln!("  Reason: {}", e);
             ::std::process::exit(2);
         }
