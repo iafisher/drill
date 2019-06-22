@@ -258,7 +258,14 @@ impl Quiz {
 
             print!  ("\n\n");
             print!  ("{}", "Score: ".white());
-            println!("{}", score_as_str.cyan());
+            print!  ("{}", score_as_str.cyan());
+            print!  ("{}", " out of ".white());
+            print!  ("{}", format!("{}", total + total_ungraded).cyan());
+            if total + total_ungraded == 1 {
+                println!("{}", " question".white());
+            } else {
+                println!("{}", " questions".white());
+            }
             print!  ("  {}", format!("{}", total_correct).bright_green());
             println!("{}", " correct".white());
             print!  ("  {}", format!("{}", total_partial_correct).green());
