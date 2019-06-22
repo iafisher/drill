@@ -234,7 +234,7 @@ impl Quiz {
 
         for (i, question) in questions.iter().enumerate() {
             println!("\n");
-            if let Some(result) = question.ask(i) {
+            if let Some(result) = question.ask(i+1) {
                 let correct = result.correct;
                 results.push((*question, result));
 
@@ -320,9 +320,7 @@ impl Question {
     /// The `num` argument is the question number in the quiz, which is printed before
     /// the text of the question.
     fn ask(&self, num: usize) -> Option<QuestionResult> {
-        let mut rng = thread_rng();
-        let text = self.text.choose(&mut rng).unwrap();
-        prettyprint(&format!(" ({}) {}\n", num + 1, text.white()), Some("  "));
+        self.print_text(num);
 
         match self.kind {
             QuestionKind::ShortAnswer => {
@@ -468,6 +466,26 @@ impl Question {
         prompt("> ");
         println!("\n{}", "Sample correct answer:\n".white());
         prettyprint(&self.answer_list[0].variants[0], Some("  "));
+    }
+
+    fn print_text(&self, num: usize) {
+        let mut rng = thread_rng();
+        let text = self.text.choose(&mut rng).unwrap();
+
+        let num_prefix = format!("  ({}) ", num);
+        let width = textwrap::termwidth() - num_prefix.len();
+        let mut lines = textwrap::wrap_iter(text, width);
+
+        if let Some(first_line) = lines.next() {
+            println!("{}{}", num_prefix.cyan(), first_line.white());
+        }
+
+        let prefix = " ".repeat(num_prefix.len());
+        for line in lines {
+            println!("{}{}", prefix, line.white());
+        }
+
+        print!("\n");
     }
 
     /// Return `true` if `guess` matches any of the answers in `self.answer_list`.
