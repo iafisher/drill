@@ -232,9 +232,9 @@ impl Quiz {
             return Vec::new();
         }
 
-        for question in questions.iter() {
+        for (i, question) in questions.iter().enumerate() {
             println!("\n");
-            if let Some(result) = question.ask() {
+            if let Some(result) = question.ask(i) {
                 let correct = result.correct;
                 results.push((*question, result));
 
@@ -316,10 +316,13 @@ impl Quiz {
 impl Question {
     /// Ask the question, get an answer, and return a `QuestionResult` object, except
     /// if the question is ungraded return `None`.
-    fn ask(&self) -> Option<QuestionResult> {
+    ///
+    /// The `num` argument is the question number in the quiz, which is printed before
+    /// the text of the question.
+    fn ask(&self, num: usize) -> Option<QuestionResult> {
         let mut rng = thread_rng();
         let text = self.text.choose(&mut rng).unwrap();
-        prettyprint(&format!("{}\n", text.white()), Some("  "));
+        prettyprint(&format!(" ({}) {}\n", num + 1, text.white()), Some("  "));
 
         match self.kind {
             QuestionKind::ShortAnswer => {
