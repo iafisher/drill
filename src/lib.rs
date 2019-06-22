@@ -74,7 +74,7 @@ struct QuestionResult {
     /// If the question asked was a short answer question, then the user's response goes
     /// in this field.
     response: Option<String>,
-    correct: bool,
+    score: f64,
 
     // It would be convenient to include a reference to the `Question` object as a field
     // of this struct, but Rust's lifetimes makes it more difficult than it's worth.
@@ -223,8 +223,10 @@ impl Quiz {
     fn take(&mut self, options: &QuizTakeOptions) -> Vec<(&Question, QuestionResult)> {
         let mut results = Vec::new();
         let mut total_correct = 0;
+        let mut total_partial_correct = 0;
         let mut total_ungraded = 0;
         let mut total = 0;
+        let mut aggregate_score = 0.0;
 
         let questions = self.choose_questions(&options);
         if questions.len() == 0 {
@@ -235,12 +237,15 @@ impl Quiz {
         for (i, question) in questions.iter().enumerate() {
             println!("\n");
             if let Some(result) = question.ask(i+1) {
-                let correct = result.correct;
+                let score = result.score;
                 results.push((*question, result));
 
                 total += 1;
-                if correct {
+                aggregate_score += score;
+                if score == 1.0 {
                     total_correct += 1;
+                } else if score > 0.0 {
+                    total_partial_correct += 1;
                 }
             } else {
                 total_ungraded += 1;
@@ -248,14 +253,20 @@ impl Quiz {
         }
 
         if total > 0 {
-            let score = (total_correct as f64) / (total as f64) * 100.0;
-            print!("\n\n{} correct out of {} ({:.1}%)", total_correct, total, score);
-            if total_ungraded > 0 {
-                print!(", {} ungraded", total_ungraded);
-            }
-            println!(".");
+            let score = (aggregate_score / (total as f64)) * 100.0;
+            let score_as_str = format!("{:.1}%", score);
+
+            print!  ("\n\n");
+            print!  ("{}", "Score: ".white());
+            println!("{}", score_as_str.cyan());
+            print!  ("  {}", format!("{}", total_correct).bright_green());
+            println!("{}", " correct".white());
+            print!  ("  {}", format!("{}", total_partial_correct).green());
+            println!("{}", " partially correct".white());
+            print!  ("  {}", format!("{}", total_ungraded).cyan());
+            println!("{}", " ungraded".white());
         } else if total_ungraded > 0 {
-            println!("\n\n{} ungraded.", total_ungraded);
+            println!("{}", "\n\nAll questions were ungraded.".white());
         }
 
         results
@@ -346,15 +357,19 @@ impl Question {
     fn ask_short_answer(&self) -> QuestionResult {
         let guess = prompt("> ");
         let result = guess.is_some() && self.check_any(guess.as_ref().unwrap());
+
         if result {
             print_correct();
         } else {
             print_incorrect(&self.answer_list[0].variants[0]);
         }
+
+        let score = if result { 1.0 } else { 0.0 };
+
         if let Some(guess) = guess {
-            QuestionResult::new_with_response(result, &guess.to_lowercase())
+            QuestionResult::new_with_response(score, &guess.to_lowercase())
         } else {
-            QuestionResult::new(result)
+            QuestionResult::new(score)
         }
     }
 
@@ -385,36 +400,53 @@ impl Question {
             }
         }
 
-        let all_correct = satisfied.iter().all(|x| *x);
-        if !all_correct {
+        let ncorrect = satisfied.iter().filter(|x| **x).count();
+        let score = (ncorrect as f64) / (self.answer_list.len() as f64);
+        if ncorrect < self.answer_list.len() {
             println!("{}", "\nYou missed:".white());
             for (i, correct) in satisfied.iter().enumerate() {
                 if !correct {
-                    println!("  {}", self.answer_list[i].variants[0].white());
+                    println!("  {}", self.answer_list[i].variants[0]);
                 }
             }
+            println!(
+                "\n{}",
+                format!(
+                    "Score for this question: {}",
+                    format!("{:.1}%", score * 100.0).cyan()
+                ).white()
+            );
         }
-        QuestionResult::new(all_correct)
+        QuestionResult::new(score)
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `OrderedListAnswer`.
     fn ask_ordered_list_answer(&self) -> QuestionResult {
-        let mut correct = true;
+        let mut ncorrect = 0;
         for answer in self.answer_list.iter() {
             if let Some(guess) = prompt("> ") {
                 if answer.check(&guess) {
                     print_correct();
+                    ncorrect += 1;
                 } else {
                     print_incorrect(&answer.variants[0]);
-                    correct = false;
                 }
             } else {
                 print_incorrect(&answer.variants[0]);
-                correct = false;
                 break;
             }
         }
-        QuestionResult::new(correct)
+        let score = (ncorrect as f64) / (self.answer_list.len() as f64);
+        if score < 1.0 {
+            println!(
+                "\n{}",
+                format!(
+                    "Score for this question: {}",
+                    format!("{:.1}%", score * 100.0).cyan()
+                ).white()
+            );
+        }
+        QuestionResult::new(score)
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `MultipleChoice`.
@@ -432,7 +464,7 @@ impl Question {
         candidates.shuffle(&mut rng);
 
         for (i, candidate) in "abcd".chars().zip(candidates.iter()) {
-            println!("  ({}) {}", i, candidate);
+            println!("     ({}) {}", i, candidate);
         }
 
         println!("");
@@ -446,17 +478,17 @@ impl Question {
                 if 97 <= index && index < 101 {
                     if self.check_any(&candidates[(index - 97) as usize]) {
                         print_correct();
-                        return QuestionResult::new(true);
+                        return QuestionResult::new(1.0);
                     } else {
                         print_incorrect(&answer);
-                        return QuestionResult::new(false);
+                        return QuestionResult::new(0.0);
                     }
                 } else {
                     continue;
                 }
             } else {
                 print_incorrect(&answer);
-                return QuestionResult::new(false);
+                return QuestionResult::new(0.0);
             }
         }
     }
@@ -525,18 +557,18 @@ impl Answer {
 
 
 impl QuestionResult {
-    fn new(correct: bool) -> Self {
+    fn new(score: f64) -> Self {
         QuestionResult {
             time_asked: chrono::Utc::now(),
-            correct,
+            score,
             response: None,
         }
     }
 
-    fn new_with_response(correct: bool, response: &str) -> Self {
+    fn new_with_response(score: f64, response: &str) -> Self {
         QuestionResult {
             time_asked: chrono::Utc::now(),
-            correct,
+            score,
             response: Some(response.to_string()),
         }
     }
@@ -852,18 +884,16 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
 
 /// Return the percentage of correct responses in the vector of results.
 fn aggregate_results(results: &Vec<QuestionResult>) -> f64 {
-    let mut count = 0;
+    let mut score = 0.0;
     for result in results.iter() {
-        if result.correct {
-            count += 1;
-        }
+        score += result.score;
     }
 
     if results.len() == 0 {
         // Just to be safe, although this should never happen.
         100.0
     } else {
-        100.0 * (count as f64) / (results.len() as f64)
+        100.0 * (score / (results.len() as f64))
     }
 }
 
