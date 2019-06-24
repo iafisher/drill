@@ -122,6 +122,9 @@ pub struct QuizTakeOptions {
     /// Only ask questions that have never been asked before.
     #[structopt(long = "never")]
     never: bool,
+    /// Filter by keyword.
+    #[structopt(short = "k", long = "keyword")]
+    keywords: Vec<String>,
 }
 
 #[derive(StructOpt)]
@@ -140,6 +143,9 @@ pub struct QuizCountOptions {
     /// Only count questions that have never been asked before.
     #[structopt(long = "never")]
     never: bool,
+    /// Filter by keyword.
+    #[structopt(short = "k", long = "keyword")]
+    keywords: Vec<String>,
 }
 
 impl From<QuizCountOptions> for QuizTakeOptions {
@@ -147,7 +153,7 @@ impl From<QuizCountOptions> for QuizTakeOptions {
         QuizTakeOptions {
             paths: options.paths, tags: options.tags, exclude: options.exclude,
             num_to_ask: -1, save: false, no_color: false, in_order: false,
-            never: options.never,
+            never: options.never, keywords: options.keywords,
         }
     }
 }
@@ -341,8 +347,28 @@ impl Quiz {
         (options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag)))
             // `q` must not have any excluded tags.
             && options.exclude.iter().all(|tag| !q.tags.contains(tag))
+            // If `--never` flag is present, question must not have been asked before.
             && (!options.never || q.prior_results.is_none()
                 || q.prior_results.as_ref().unwrap().len() == 0)
+            && self.filter_question_by_keywords(q, &options.keywords)
+    }
+
+    /// Return `true` if the text of `q` contains all specified keywords.
+    fn filter_question_by_keywords(&self, q: &Question, keywords: &Vec<String>) -> bool {
+        for keyword in keywords.iter() {
+            let mut satisfied = false;
+            for text in q.text.iter() {
+                if text.to_lowercase().contains(keyword.to_lowercase().as_str()) {
+                    satisfied = true;
+                    break
+                }
+            }
+
+            if !satisfied {
+                return false;
+            }
+        }
+        true
     }
 }
 
