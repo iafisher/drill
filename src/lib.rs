@@ -208,7 +208,18 @@ pub fn main_results(options: QuizResultsOptions) {
         aggregated.sort_by(cmp_f64_tuple_reversed);
 
         for (score, question) in aggregated.iter() {
-            println!("{:>5.1}%  {}", score, question);
+            let first_prefix = format!("{:>5.1}%  ", score);
+            let width = textwrap::termwidth() - first_prefix.len();
+            let mut lines = textwrap::wrap_iter(question, width);
+
+            if let Some(first_line) = lines.next() {
+                println!("{}{}", first_prefix.cyan(), first_line);
+            }
+
+            let prefix = " ".repeat(first_prefix.len());
+            for line in lines {
+                println!("{}{}", prefix, line);
+            }
         }
     }
 }
