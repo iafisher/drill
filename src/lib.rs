@@ -307,7 +307,7 @@ impl Quiz {
     fn filter_questions(&self, options: &QuizTakeOptions) -> Vec<&Question> {
         let mut candidates = Vec::new();
         for question in self.questions.iter() {
-            if self.filter_question(question, options) {
+            if filter_question(question, options) {
                 candidates.push(question);
             }
         }
@@ -340,40 +340,51 @@ impl Quiz {
 
         candidates
     }
+}
 
-    /// Return `true` if `q` satisfies the constraints in `options`.
-    fn filter_question(&self, q: &Question, options: &QuizTakeOptions) -> bool {
-        // Either no tags were specified, or `q` has all the specified tags.
-        (options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag)))
-            // `q` must not have any excluded tags.
-            && options.exclude.iter().all(|tag| !q.tags.contains(tag))
-            // If `--never` flag is present, question must not have been asked before.
-            && (!options.never || q.prior_results.is_none()
-                || q.prior_results.as_ref().unwrap().len() == 0)
-            && self.filter_question_by_keywords(q, &options.keywords)
-    }
 
-    /// Return `true` if the text of `q` contains all specified keywords.
-    fn filter_question_by_keywords(&self, q: &Question, keywords: &Vec<String>) -> bool {
-        for keyword in keywords.iter() {
-            let mut satisfied = false;
-            for text in q.text.iter() {
-                if text.to_lowercase().contains(keyword.to_lowercase().as_str()) {
-                    satisfied = true;
-                    break
-                }
-            }
+/// Return `true` if `q` satisfies the constraints in `options`.
+fn filter_question(q: &Question, options: &QuizTakeOptions) -> bool {
+    // Either no tags were specified, or `q` has all the specified tags.
+    (options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag)))
+        // `q` must not have any excluded tags.
+        && options.exclude.iter().all(|tag| !q.tags.contains(tag))
+        // If `--never` flag is present, question must not have been asked before.
+        && (!options.never || q.prior_results.is_none()
+            || q.prior_results.as_ref().unwrap().len() == 0)
+        && filter_question_by_keywords(q, &options.keywords)
+}
 
-            if !satisfied {
-                return false;
+/// Return `true` if the text of `q` contains all specified keywords.
+fn filter_question_by_keywords(q: &Question, keywords: &Vec<String>) -> bool {
+    for keyword in keywords.iter() {
+        let mut satisfied = false;
+        for text in q.text.iter() {
+            if text.to_lowercase().contains(keyword.to_lowercase().as_str()) {
+                satisfied = true;
+                break
             }
         }
-        true
+
+        if !satisfied {
+            return false;
+        }
     }
+    true
 }
 
 
 impl Question {
+    /// Return a new short-answer question.
+    fn new(text: &str, answer: &str) -> Self {
+        let answers = vec![Answer { variants: vec![String::from(answer)] }];
+        Question {
+            kind: QuestionKind::ShortAnswer, text: vec![String::from(text)],
+            tags: Vec::new(), answer_list: answers, candidates: Vec::new(),
+            prior_results: None, id: None, depends: None,
+        }
+    }
+
     /// Ask the question, get an answer, and return a `QuestionResult` object. If Ctrl+C
     /// is pressed, return an error.
     ///
@@ -546,8 +557,8 @@ impl Question {
         prompt("> ")?;
         println!("\n{}", "Sample correct answer:\n".white());
         prettyprint(&self.answer_list[0].variants[0], Some("  "));
-        Ok(QuestionResult { 
-            time_asked: chrono::Utc::now(), score: None, response: None 
+        Ok(QuestionResult {
+            time_asked: chrono::Utc::now(), score: None, response: None
         })
     }
 
@@ -621,6 +632,17 @@ impl QuestionResult {
             time_asked: chrono::Utc::now(),
             score: Some(score),
             response: Some(response.to_string()),
+        }
+    }
+}
+
+
+impl QuizTakeOptions {
+    fn new() -> Self {
+        QuizTakeOptions {
+            paths: Vec::new(), tags: Vec::new(), exclude: Vec::new(), num_to_ask: -1,
+            save: false, no_color: false, in_order: false, never: false,
+            keywords: Vec::new(),
         }
     }
 }
@@ -1004,5 +1026,85 @@ fn print_incorrect(answer: &str) {
         prettyprint(message, None);
     } else {
         println!("{}", "Incorrect.".red());
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_filter_by_tag() {
+        let mut q = Question::new("What is the capital of China", "Beijing");
+        q.tags.push(String::from("geography"));
+
+        let mut options = QuizTakeOptions::new();
+        assert!(filter_question(&q, &options));
+
+        options.tags.push(String::from("geography"));
+        assert!(filter_question(&q, &options));
+
+        options.tags.push(String::from("history"));
+        assert!(!filter_question(&q, &options));
+    }
+
+    #[test]
+    fn can_filter_by_excluding_tag() {
+        let mut q = Question::new("What is the capital of China", "Beijing");
+        q.tags.push(String::from("geography"));
+
+        let mut options = QuizTakeOptions::new();
+        options.exclude.push(String::from("geography"));
+        assert!(!filter_question(&q, &options));
+    }
+
+    #[test]
+    fn can_filter_by_keyword() {
+        let q = Question::new("What is the capital of China", "Beijing");
+
+        let mut options = QuizTakeOptions::new();
+        options.keywords.push(String::from("china"));
+        assert!(filter_question(&q, &options));
+
+        options.keywords.push(String::from("river"));
+        assert!(!filter_question(&q, &options));
+    }
+
+    #[test]
+    fn checking_answers_works() {
+        let ans = Answer {
+            variants: vec![String::from("Barack Obama"), String::from("Obama")]
+        };
+
+        assert!(ans.check("Barack Obama"));
+        assert!(ans.check("barack obama"));
+        assert!(ans.check("Obama"));
+        assert!(ans.check("obama"));
+        assert!(!ans.check("Mitt Romney"));
+    }
+
+    #[test]
+    fn can_expand_short_answer_json() {
+        let input_as_json = serde_json::json!(
+            {"text": "When did WW2 start?", "answer": "1939"}
+        );
+        let input = input_as_json.as_object().unwrap();
+        let output = expand_question_json(input);
+
+        let expected_output_as_json = serde_json::json!(
+            {
+                "kind": "ShortAnswer",
+                "text": ["When did WW2 start?"],
+                "answer_list": [
+                    {"variants": ["1939"]}
+                ],
+                "tags": [],
+                "candidates": [],
+            }
+        );
+        let expected_output = expected_output_as_json.as_object().unwrap();
+
+        assert_eq!(output, *expected_output);
     }
 }
