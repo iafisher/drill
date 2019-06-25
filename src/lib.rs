@@ -1107,4 +1107,66 @@ mod tests {
 
         assert_eq!(output, *expected_output);
     }
+
+    #[test]
+    fn can_expand_list_answer_json() {
+        let input_as_json = serde_json::json!(
+            {
+                "kind": "ListAnswer",
+                "text": "List the four countries of the United Kingdom.",
+                "answer_list": [
+                    "England", "Scotland", ["Northern Ireland", "N. Ireland"], "Wales"
+                ],
+            }
+        );
+        let input = input_as_json.as_object().unwrap();
+        let output = expand_question_json(input);
+
+        let expected_output_as_json = serde_json::json!(
+            {
+                "kind": "ListAnswer",
+                "text": ["List the four countries of the United Kingdom."],
+                "answer_list": [
+                    {"variants": ["England"]},
+                    {"variants": ["Scotland"]},
+                    {"variants": ["Northern Ireland", "N. Ireland"]},
+                    {"variants": ["Wales"]},
+                ],
+                "tags": [],
+                "candidates": [],
+            }
+        );
+        let expected_output = expected_output_as_json.as_object().unwrap();
+
+        assert_eq!(output, *expected_output);
+    }
+
+    #[test]
+    fn can_expand_multiple_choice_json() {
+        let input_as_json = serde_json::json!(
+            {
+                "kind": "MultipleChoice",
+                "text": "What language is spoken in Cambodia?",
+                "candidates": ["Thai", "French", "Vietnamese", "Burmese", "Tagalog"],
+                "answer": "Khmer"
+            }
+        );
+        let input = input_as_json.as_object().unwrap();
+        let output = expand_question_json(input);
+
+        let expected_output_as_json = serde_json::json!(
+            {
+                "kind": "MultipleChoice",
+                "text": ["What language is spoken in Cambodia?"],
+                "candidates": ["Thai", "French", "Vietnamese", "Burmese", "Tagalog"],
+                "answer_list": [
+                    {"variants": ["Khmer"]},
+                ],
+                "tags": [],
+            }
+        );
+        let expected_output = expected_output_as_json.as_object().unwrap();
+
+        assert_eq!(output, *expected_output);
+    }
 }
