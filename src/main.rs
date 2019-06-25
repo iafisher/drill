@@ -19,5 +19,14 @@ fn main() {
         QuizOptions::Results(options) => {
             main_results(options);
         },
+        QuizOptions::Edit(options) => {
+            main_edit(options);
+        },
+        QuizOptions::Delete(options) => {
+            main_delete(options);
+        },
+        QuizOptions::List => {
+            main_list();
+        },
     }
 }

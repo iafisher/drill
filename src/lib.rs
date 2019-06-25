@@ -95,18 +95,21 @@ pub enum QuizOptions {
     /// Report results of previous attempts.
     #[structopt(name = "results")]
     Results(QuizResultsOptions),
+    /// Edit or create a quiz.
+    #[structopt(name = "new")]
+    Edit(QuizEditOptions),
+    /// Delete a quiz.
+    #[structopt(name = "delete")]
+    Delete(QuizDeleteOptions),
+    /// List all available quizzes.
+    #[structopt(name = "list")]
+    List,
 }
 
 #[derive(StructOpt)]
 pub struct QuizTakeOptions {
-    /// Paths to the quiz files.
-    paths: Vec<String>,
-    /// Only include questions with the given tag.
-    #[structopt(long = "tag")]
-    tags: Vec<String>,
-    /// Exclude questions with the given tag.
-    #[structopt(long = "exclude")]
-    exclude: Vec<String>,
+    /// Name of the quiz to take.
+    name: String,
     /// Limit the total number of questions.
     #[structopt(short = "n", default_value = "-1")]
     num_to_ask: i16,
@@ -119,27 +122,30 @@ pub struct QuizTakeOptions {
     /// Ask the questions in the order they appear in the quiz file.
     #[structopt(long = "in-order")]
     in_order: bool,
-    /// Only ask questions that have never been asked before.
-    #[structopt(long = "never")]
-    never: bool,
-    /// Filter by keyword.
-    #[structopt(short = "k", long = "keyword")]
-    keywords: Vec<String>,
+    #[structopt(flatten)]
+    filter_opts: QuizFilterOptions,
 }
 
 #[derive(StructOpt)]
 pub struct QuizCountOptions {
-    /// Paths to the quiz files.
-    paths: Vec<String>,
+    /// Name of the quiz to count.
+    name: String,
+    /// List tags instead of counting questions.
+    #[structopt(long = "list-tags")]
+    list_tags: bool,
+    #[structopt(flatten)]
+    filter_opts: QuizFilterOptions,
+}
+
+/// These filtering options are shared between the `take` and `count` subcommands.
+#[derive(StructOpt)]
+pub struct QuizFilterOptions {
     /// Only include questions with the given tag.
     #[structopt(long = "tag")]
     tags: Vec<String>,
     /// Exclude questions with the given tag.
     #[structopt(long = "exclude")]
     exclude: Vec<String>,
-    /// List tags instead of counting questions.
-    #[structopt(long = "list-tags")]
-    list_tags: bool,
     /// Only count questions that have never been asked before.
     #[structopt(long = "never")]
     never: bool,
@@ -148,22 +154,25 @@ pub struct QuizCountOptions {
     keywords: Vec<String>,
 }
 
-impl From<QuizCountOptions> for QuizTakeOptions {
-    fn from(options: QuizCountOptions) -> Self {
-        QuizTakeOptions {
-            paths: options.paths, tags: options.tags, exclude: options.exclude,
-            num_to_ask: -1, save: false, no_color: false, in_order: false,
-            never: options.never, keywords: options.keywords,
-        }
-    }
+#[derive(StructOpt)]
+pub struct QuizEditOptions {
+    /// The name of the quiz to edit.
+    name: String,
+}
+
+#[derive(StructOpt)]
+pub struct QuizDeleteOptions {
+    /// The name of the quiz to delete.
+    name: String,
+    /// Delete without prompting for confirmation.
+    #[structopt(short = "f", long = "force")]
+    force: bool,
 }
 
 #[derive(StructOpt)]
 pub struct QuizResultsOptions {
-    #[structopt(long = "--delete")]
-    delete_results: bool,
-    #[structopt(long = "--force-delete")]
-    force_delete_results: bool,
+    /// The name of the quiz for which to fetch the results.
+    name: String,
 }
 
 
@@ -176,58 +185,79 @@ pub fn main_take(options: QuizTakeOptions) {
         colored::control::set_override(false);
     }
 
-    let mut quiz = load_quizzes(&options.paths);
-    let results = quiz.take(&options);
-    if results.len() > 0 && (options.save || yesno("\nSave results? ")) {
-        save_results(&results);
+    match load_quiz(&options.name) {
+        Ok(mut quiz) => {
+            let results = quiz.take(&options);
+            if results.len() > 0 && (options.save || yesno("\nSave results? ")) {
+                save_results(&options.name, &results);
+            }
+        },
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ::std::process::exit(2);
+        }
     }
 }
 
 
 /// The main function for the `count` subcommand.
 pub fn main_count(options: QuizCountOptions) {
-    let quiz = load_quizzes(&options.paths);
-
-    if options.list_tags {
-        list_tags(&quiz);
-    } else {
-        let filtered = quiz.filter_questions(&QuizTakeOptions::from(options));
-        println!("{}", filtered.len());
+    match load_quiz(&options.name) {
+        Ok(quiz) => {
+            if options.list_tags {
+                list_tags(&quiz);
+            } else {
+                let filtered = quiz.filter_questions(&options.filter_opts);
+                println!("{}", filtered.len());
+            }
+        },
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ::std::process::exit(2);
+        }
     }
 }
 
 
 /// The main function for the `results` subcommand.
 pub fn main_results(options: QuizResultsOptions) {
-    if options.delete_results || options.force_delete_results {
-        let prompt = "Are you sure you want to delete all previous results? ";
-        if options.force_delete_results || yesno(&prompt) {
-            delete_results();
+    let results = load_results(&options.name);
+    let mut aggregated: Vec<(f64, String)> = Vec::new();
+    for (key, result) in results.iter() {
+        aggregated.push((aggregate_results(&result), key.clone()));
+    }
+
+    aggregated.sort_by(cmp_f64_tuple_reversed);
+
+    for (score, question) in aggregated.iter() {
+        let first_prefix = format!("{:>5.1}%  ", score);
+        let width = textwrap::termwidth() - first_prefix.len();
+        let mut lines = textwrap::wrap_iter(question, width);
+
+        if let Some(first_line) = lines.next() {
+            println!("{}{}", first_prefix.cyan(), first_line);
         }
-    } else {
-        let results = load_results();
-        let mut aggregated: Vec<(f64, String)> = Vec::new();
-        for (key, result) in results.iter() {
-            aggregated.push((aggregate_results(&result), key.clone()));
-        }
 
-        aggregated.sort_by(cmp_f64_tuple_reversed);
-
-        for (score, question) in aggregated.iter() {
-            let first_prefix = format!("{:>5.1}%  ", score);
-            let width = textwrap::termwidth() - first_prefix.len();
-            let mut lines = textwrap::wrap_iter(question, width);
-
-            if let Some(first_line) = lines.next() {
-                println!("{}{}", first_prefix.cyan(), first_line);
-            }
-
-            let prefix = " ".repeat(first_prefix.len());
-            for line in lines {
-                println!("{}{}", prefix, line);
-            }
+        let prefix = " ".repeat(first_prefix.len());
+        for line in lines {
+            println!("{}{}", prefix, line);
         }
     }
+}
+
+
+pub fn main_edit(options: QuizEditOptions) {
+    println!("Not yet implemented!");
+}
+
+
+pub fn main_delete(options: QuizDeleteOptions) {
+    println!("Not yet implemnented!");
+}
+
+
+pub fn main_list() {
+    println!("Not yet implemnented!");
 }
 
 
@@ -302,9 +332,8 @@ impl Quiz {
     }
 
     /// Return the questions filtered by the given command-line options (e.g., `--tag`
-    /// and `--exclude`). Note that the `-n` flag is not applied, unlike in the
-    /// `choose_questions` method.
-    fn filter_questions(&self, options: &QuizTakeOptions) -> Vec<&Question> {
+    /// and `--exclude`).
+    fn filter_questions(&self, options: &QuizFilterOptions) -> Vec<&Question> {
         let mut candidates = Vec::new();
         for question in self.questions.iter() {
             if filter_question(question, options) {
@@ -316,7 +345,7 @@ impl Quiz {
 
     /// Choose a set of questions, filtered by the command-line options.
     fn choose_questions(&self, options: &QuizTakeOptions) -> Vec<&Question> {
-        let mut candidates = self.filter_questions(options);
+        let mut candidates = self.filter_questions(&options.filter_opts);
         if !options.in_order {
             let mut rng = thread_rng();
             candidates.shuffle(&mut rng);
@@ -344,7 +373,7 @@ impl Quiz {
 
 
 /// Return `true` if `q` satisfies the constraints in `options`.
-fn filter_question(q: &Question, options: &QuizTakeOptions) -> bool {
+fn filter_question(q: &Question, options: &QuizFilterOptions) -> bool {
     // Either no tags were specified, or `q` has all the specified tags.
     (options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag)))
         // `q` must not have any excluded tags.
@@ -637,12 +666,10 @@ impl QuestionResult {
 }
 
 
-impl QuizTakeOptions {
+impl QuizFilterOptions {
     fn new() -> Self {
-        QuizTakeOptions {
-            paths: Vec::new(), tags: Vec::new(), exclude: Vec::new(), num_to_ask: -1,
-            save: false, no_color: false, in_order: false, never: false,
-            keywords: Vec::new(),
+        QuizFilterOptions {
+            tags: Vec::new(), exclude: Vec::new(), never: false, keywords: Vec::new(),
         }
     }
 }
@@ -739,9 +766,9 @@ fn list_tags(quiz: &Quiz) {
 
 /// Save `results` to a file in the popquiz application's data directory, appending the
 /// results if previous results have been saved.
-fn save_results(results: &Vec<(&Question, QuestionResult)>) {
+fn save_results(name: &str, results: &Vec<(&Question, QuestionResult)>) {
     // Create the data directory if it does not already exist.
-    let dirpath = get_results_dir_path();
+    let dirpath = get_app_dir_path();
     if !dirpath.as_path().exists() {
         let emsg = format!(
             "Unable to create data directory at {}", dirpath.to_str().unwrap()
@@ -750,7 +777,7 @@ fn save_results(results: &Vec<(&Question, QuestionResult)>) {
     }
 
     // Load old data, if it exists.
-    let path = get_results_path();
+    let path = get_results_path(name);
     let data = fs::read_to_string(&path);
     let mut hash: HashMap<&str, Vec<QuestionResult>> = match data {
         Ok(ref data) => {
@@ -776,24 +803,14 @@ fn save_results(results: &Vec<(&Question, QuestionResult)>) {
         .expect("Unable to serialize results object to JSON");
     fs::write(&path, serialized_results)
         .expect("Unable to write to quiz file");
-
-    println!("Results saved to {}", path.to_str().unwrap());
-}
-
-
-/// Delete previously saved results.
-fn delete_results() {
-    let path = get_results_path();
-    fs::remove_file(&path).expect("Unable to remove file");
-    println!("Successfully deleted {}", path.to_str().unwrap());
 }
 
 
 type StoredResults = HashMap<String, Vec<QuestionResult>>;
 
 
-fn load_results() -> StoredResults {
-    let path = get_results_path();
+fn load_results(name: &str) -> StoredResults {
+    let path = get_results_path(name);
 
     match fs::read_to_string(&path) {
         Ok(data) => {
@@ -817,28 +834,9 @@ fn load_results() -> StoredResults {
 }
 
 
-/// Load a single `Quiz` object from a vector of paths to quiz files.
-fn load_quizzes(paths: &Vec<String>) -> Quiz {
-    let results = load_results();
-
-    let mut master_list = Vec::new();
-    for path in paths.iter() {
-        match load_quiz(path, &results) {
-            Ok(mut quiz) => {
-                master_list.append(&mut quiz.questions);
-            },
-            Err(e) => {
-                eprintln!("Error on {}: {}", path, e);
-                ::std::process::exit(2);
-            }
-        }
-    }
-    Quiz::new(master_list)
-}
-
-
-/// Load a `Quiz` object from the file at `path`.
-fn load_quiz(path: &str, old_results: &StoredResults) -> Result<Quiz, Box<::std::error::Error>> {
+/// Load a `Quiz` object given its name.
+fn load_quiz(name: &str) -> Result<Quiz, Box<::std::error::Error>> {
+    let path = get_quiz_path(name);
     let data = fs::read_to_string(path)?;
     let mut quiz_as_json: serde_json::Value = serde_json::from_str(&data)?;
 
@@ -861,6 +859,7 @@ fn load_quiz(path: &str, old_results: &StoredResults) -> Result<Quiz, Box<::std:
     let mut ret: Quiz = serde_json::from_value(quiz_as_json)?;
 
     // Attach previous results to the `Question` objects.
+    let old_results = load_results(name);
     for question in ret.questions.iter_mut() {
         if let Some(results) = old_results.get(&question.text[0]) {
             question.prior_results = Some(results.clone());
@@ -994,16 +993,26 @@ fn cmp_f64_tuple_reversed(a: &(f64, String), b: &(f64, String)) -> Ordering {
 }
 
 
-/// Return the path to the file where quiz results are stored.
-fn get_results_path() -> ::std::path::PathBuf {
-    let mut dirpath = get_results_dir_path();
-    dirpath.push("results.json");
+/// Return the path to the file where results are stored for the given quiz.
+fn get_results_path(quiz_name: &str) -> ::std::path::PathBuf {
+    let mut dirpath = get_app_dir_path();
+    dirpath.push("results");
+    dirpath.push(quiz_name);
+    dirpath
+}
+
+
+/// Return the path to the file where the given quiz is stored.
+fn get_quiz_path(quiz_name: &str) -> ::std::path::PathBuf {
+    let mut dirpath = get_app_dir_path();
+    dirpath.push("quizzes");
+    dirpath.push(quiz_name);
     dirpath
 }
 
 
 /// Return the path to the directory where quiz results are stored.
-fn get_results_dir_path() -> ::std::path::PathBuf {
+fn get_app_dir_path() -> ::std::path::PathBuf {
     let mut dirpath = dirs::data_dir().unwrap();
     dirpath.push("iafisher_popquiz");
     dirpath
@@ -1039,7 +1048,7 @@ mod tests {
         let mut q = Question::new("What is the capital of China", "Beijing");
         q.tags.push(String::from("geography"));
 
-        let mut options = QuizTakeOptions::new();
+        let mut options = QuizFilterOptions::new();
         assert!(filter_question(&q, &options));
 
         options.tags.push(String::from("geography"));
@@ -1054,7 +1063,7 @@ mod tests {
         let mut q = Question::new("What is the capital of China", "Beijing");
         q.tags.push(String::from("geography"));
 
-        let mut options = QuizTakeOptions::new();
+        let mut options = QuizFilterOptions::new();
         options.exclude.push(String::from("geography"));
         assert!(!filter_question(&q, &options));
     }
@@ -1063,7 +1072,7 @@ mod tests {
     fn can_filter_by_keyword() {
         let q = Question::new("What is the capital of China", "Beijing");
 
-        let mut options = QuizTakeOptions::new();
+        let mut options = QuizFilterOptions::new();
         options.keywords.push(String::from("china"));
         assert!(filter_question(&q, &options));
 
