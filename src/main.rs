@@ -45,6 +45,13 @@ fn main() {
             }
             QuizError::CannotOpenEditor => {
                 show_error("system editor cannot be opened");
+            },
+            QuizError::CannotWriteToFile(path) => {
+                if let Some(path) = path.to_str() {
+                    show_error(&format!("cannot write to file '{}'", path));
+                } else {
+                    show_error("cannot write to file");
+                }
             }
         }
         ::std::process::exit(2);

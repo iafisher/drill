@@ -196,7 +196,7 @@ pub fn main_take(options: QuizTakeOptions) -> Result<(), QuizError> {
     let mut quiz = load_quiz(&options.name)?;
     let results = quiz.take(&options);
     if results.len() > 0 && (options.save || yesno("\nSave results? ")) {
-        save_results(&options.name, &results);
+        save_results(&options.name, &results)?;
     }
     Ok(())
 }
@@ -816,15 +816,8 @@ fn list_tags(quiz: &Quiz) {
 
 /// Save `results` to a file in the popquiz application's data directory, appending the
 /// results if previous results have been saved.
-fn save_results(name: &str, results: &Vec<(&Question, QuestionResult)>) {
-    // Create the data directory if it does not already exist.
-    let dirpath = get_app_dir_path();
-    if !dirpath.as_path().exists() {
-        let emsg = format!(
-            "Unable to create data directory at {}", dirpath.to_str().unwrap()
-        );
-        fs::create_dir(&dirpath).expect(&emsg);
-    }
+fn save_results(name: &str, results: &Vec<(&Question, QuestionResult)>) -> Result<(), QuizError> {
+    require_app_dir_path()?;
 
     // Load old data, if it exists.
     let path = get_results_path(name);
@@ -832,7 +825,7 @@ fn save_results(name: &str, results: &Vec<(&Question, QuestionResult)>) {
     let mut hash: HashMap<&str, Vec<QuestionResult>> = match data {
         Ok(ref data) => {
             serde_json::from_str(&data)
-                .expect("Unable to deserialize JSON to results object")
+                .map_err(QuizError::Json)?
         },
         Err(_) => {
             HashMap::new()
@@ -850,9 +843,10 @@ fn save_results(name: &str, results: &Vec<(&Question, QuestionResult)>) {
     }
 
     let serialized_results = serde_json::to_string_pretty(&hash)
-        .expect("Unable to serialize results object to JSON");
+        .map_err(QuizError::Json)?;
     fs::write(&path, serialized_results)
-        .expect("Unable to write to quiz file");
+        .or(Err(QuizError::CannotWriteToFile(path.clone())))?;
+    Ok(())
 }
 
 
@@ -1120,6 +1114,7 @@ pub enum QuizError {
     Json(serde_json::Error),
     /// For when the user's system editor cannot be opened.
     CannotOpenEditor,
+    CannotWriteToFile(PathBuf),
 }
 
 
