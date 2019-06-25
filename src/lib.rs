@@ -111,6 +111,7 @@ pub enum QuizOptions {
 #[derive(StructOpt)]
 pub struct QuizTakeOptions {
     /// Name of the quiz to take.
+    #[structopt(default_value = "main")]
     name: String,
     /// Limit the total number of questions.
     #[structopt(short = "n")]
@@ -131,6 +132,7 @@ pub struct QuizTakeOptions {
 #[derive(StructOpt)]
 pub struct QuizCountOptions {
     /// Name of the quiz to count.
+    #[structopt(default_value = "main")]
     name: String,
     /// List tags instead of counting questions.
     #[structopt(long = "list-tags")]
@@ -159,12 +161,14 @@ pub struct QuizFilterOptions {
 #[derive(StructOpt)]
 pub struct QuizEditOptions {
     /// The name of the quiz to edit.
+    #[structopt(default_value = "main")]
     name: String,
 }
 
 #[derive(StructOpt)]
 pub struct QuizDeleteOptions {
     /// The name of the quiz to delete.
+    #[structopt(default_value = "main")]
     name: String,
     /// Delete without prompting for confirmation.
     #[structopt(short = "f", long = "force")]
@@ -174,6 +178,7 @@ pub struct QuizDeleteOptions {
 #[derive(StructOpt)]
 pub struct QuizResultsOptions {
     /// The name of the quiz for which to fetch the results.
+    #[structopt(default_value = "main")]
     name: String,
     /// Only include the `n` worst results.
     #[structopt(short = "w", long = "worst")]
