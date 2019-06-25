@@ -175,6 +175,12 @@ pub struct QuizDeleteOptions {
 pub struct QuizResultsOptions {
     /// The name of the quiz for which to fetch the results.
     name: String,
+    /// Only include the `n` worst results.
+    #[structopt(short = "w", long = "worst")]
+    worst: Option<usize>,
+    /// Only include the `n` best results.
+    #[structopt(short = "b", long = "best")]
+    best: Option<usize>,
 }
 
 
@@ -227,7 +233,10 @@ pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
 
     aggregated.sort_by(cmp_f64_tuple_reversed);
 
-    for (score, question) in aggregated.iter() {
+    let best = options.best.unwrap_or(aggregated.len());
+    let worst = options.worst.unwrap_or(aggregated.len());
+    let iter = aggregated.iter().take(best).skip(aggregated.len() - worst);
+    for (score, question) in iter {
         let first_prefix = format!("{:>5.1}%  ", score);
         let width = textwrap::termwidth() - first_prefix.len();
         let mut lines = textwrap::wrap_iter(question, width);
