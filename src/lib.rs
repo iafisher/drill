@@ -211,7 +211,7 @@ pub fn main_count(options: QuizCountOptions) -> Result<(), QuizError> {
 
 /// The main function for the `results` subcommand.
 pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
-    let results = load_results(&options.name);
+    let results = load_results(&options.name)?;
     let mut aggregated: Vec<(f64, String)> = Vec::new();
     for (key, result) in results.iter() {
         aggregated.push((aggregate_results(&result), key.clone()));
@@ -842,26 +842,15 @@ fn save_results(name: &str, results: &Vec<(&Question, QuestionResult)>) {
 type StoredResults = HashMap<String, Vec<QuestionResult>>;
 
 
-fn load_results(name: &str) -> StoredResults {
+fn load_results(name: &str) -> Result<StoredResults, QuizError> {
     let path = get_results_path(name);
 
     match fs::read_to_string(&path) {
         Ok(data) => {
-            match serde_json::from_str(&data) {
-                Ok(results) => {
-                    results
-                },
-                Err(e) => {
-                    eprintln!("Error: could not parse {}.", path.to_str().unwrap());
-                    eprintln!("  Reason: {}", e);
-                    ::std::process::exit(2);
-                }
-            }
+            serde_json::from_str(&data).map_err(QuizError::Json)
         },
-        Err(e) => {
-            eprintln!("Error: could not open {} for reading.", path.to_str().unwrap());
-            eprintln!("  Reason: {}", e);
-            ::std::process::exit(2);
+        Err(_) => {
+            Ok(HashMap::new())
         }
     }
 }
@@ -895,7 +884,7 @@ fn load_quiz(name: &str) -> Result<Quiz, QuizError> {
         .map_err(QuizError::Json)?;
 
     // Attach previous results to the `Question` objects.
-    let old_results = load_results(name);
+    let old_results = load_results(name)?;
     for question in ret.questions.iter_mut() {
         if let Some(results) = old_results.get(&question.text[0]) {
             question.prior_results = Some(results.clone());
@@ -1101,6 +1090,7 @@ fn print_incorrect(answer: &str) {
 }
 
 
+#[derive(Debug)]
 pub enum QuizError {
     /// For when the application directory cannot be created.
     CannotMakeAppDir,
