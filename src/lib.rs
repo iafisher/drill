@@ -7,6 +7,8 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
 
 use colored::*;
 use rand::seq::SliceRandom;
@@ -96,7 +98,7 @@ pub enum QuizOptions {
     #[structopt(name = "results")]
     Results(QuizResultsOptions),
     /// Edit or create a quiz.
-    #[structopt(name = "new")]
+    #[structopt(name = "edit")]
     Edit(QuizEditOptions),
     /// Delete a quiz.
     #[structopt(name = "delete")]
@@ -247,12 +249,37 @@ pub fn main_results(options: QuizResultsOptions) {
 
 
 pub fn main_edit(options: QuizEditOptions) {
-    println!("Not yet implemented!");
+    require_app_dir_path();
+
+    let path = get_quiz_path(&options.name);
+    let editor = ::std::env::var("EDITOR").unwrap_or(String::from("vim"));
+    match Command::new(editor).arg(path).spawn() {
+        Ok(mut child) => {
+            child.wait().expect("Failed to wait on child");
+        },
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            ::std::process::exit(2);
+        },
+    }
 }
 
 
 pub fn main_delete(options: QuizDeleteOptions) {
-    println!("Not yet implemnented!");
+    require_app_dir_path();
+
+    let path = get_quiz_path(&options.name);
+    if path.exists() {
+        if options.force || yesno("Are you sure you want to delete the quiz? ") {
+            if let Err(_) = fs::remove_file(&path) {
+                eprintln!("Error: could not remove quiz.");
+                ::std::process::exit(2);
+            }
+        }
+    } else {
+        eprintln!("Error: quiz not found.");
+        ::std::process::exit(2);
+    }
 }
 
 
@@ -261,13 +288,21 @@ pub fn main_list() {
     dirpath.push("quizzes");
 
     if let Ok(iter) = dirpath.read_dir() {
-        println!("Available quizzes:");
+        let mut found_any = false;
         for entry in iter {
             if let Ok(entry) = entry {
                 if let Some(entry) = entry.path().to_str() {
+                    if !found_any {
+                        println!("Available quizzes:");
+                        found_any = true;
+                    }
                     println!("  {}", entry);
                 }
             }
+        }
+
+        if !found_any {
+            println!("No quizzes found.");
         }
     } else {
         println!("No quizzes found.");
@@ -1003,7 +1038,7 @@ fn cmp_f64_tuple_reversed(a: &(f64, String), b: &(f64, String)) -> Ordering {
 
 
 /// Return the path to the file where results are stored for the given quiz.
-fn get_results_path(quiz_name: &str) -> ::std::path::PathBuf {
+fn get_results_path(quiz_name: &str) -> PathBuf {
     let mut dirpath = get_app_dir_path();
     dirpath.push("results");
     dirpath.push(quiz_name);
@@ -1012,7 +1047,7 @@ fn get_results_path(quiz_name: &str) -> ::std::path::PathBuf {
 
 
 /// Return the path to the file where the given quiz is stored.
-fn get_quiz_path(quiz_name: &str) -> ::std::path::PathBuf {
+fn get_quiz_path(quiz_name: &str) -> PathBuf {
     let mut dirpath = get_app_dir_path();
     dirpath.push("quizzes");
     dirpath.push(quiz_name);
@@ -1020,11 +1055,39 @@ fn get_quiz_path(quiz_name: &str) -> ::std::path::PathBuf {
 }
 
 
-/// Return the path to the directory where quiz results are stored.
-fn get_app_dir_path() -> ::std::path::PathBuf {
+/// Return the path to the application directory.
+fn get_app_dir_path() -> PathBuf {
     let mut dirpath = dirs::data_dir().unwrap();
     dirpath.push("iafisher_popquiz");
     dirpath
+}
+
+
+/// Return the path to the application directory, creating it and all necessary
+/// subdirectories if they don't exist.
+fn require_app_dir_path() -> PathBuf {
+    let mut dirpath = dirs::data_dir().unwrap();
+    dirpath.push("iafisher_popquiz");
+    make_directory(&dirpath);
+
+    dirpath.push("results");
+    make_directory(&dirpath);
+
+    dirpath.pop();
+    dirpath.push("quizzes");
+    make_directory(&dirpath);
+
+    dirpath
+}
+
+
+fn make_directory(path: &PathBuf) {
+    if !path.as_path().exists() {
+        if let Err(_) = fs::create_dir(path) {
+            eprintln!("Error: cannot initialize application directory.");
+            ::std::process::exit(2);
+        }
+    }
 }
 
 
