@@ -257,16 +257,25 @@ pub fn main_delete(options: QuizDeleteOptions) {
 
 
 pub fn main_list() {
-    println!("Not yet implemnented!");
+    let mut dirpath = get_app_dir_path();
+    dirpath.push("quizzes");
+
+    if let Ok(iter) = dirpath.read_dir() {
+        println!("Available quizzes:");
+        for entry in iter {
+            if let Ok(entry) = entry {
+                if let Some(entry) = entry.path().to_str() {
+                    println!("  {}", entry);
+                }
+            }
+        }
+    } else {
+        println!("No quizzes found.");
+    }
 }
 
 
 impl Quiz {
-    /// Construct a new `Quiz` object from a vector of `Questions`.
-    fn new(questions: Vec<Question>) -> Self {
-        Quiz { questions }
-    }
-
     /// Take the quiz and return pairs of questions and results.
     fn take(&mut self, options: &QuizTakeOptions) -> Vec<(&Question, QuestionResult)> {
         let mut results = Vec::new();
