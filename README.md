@@ -1,15 +1,32 @@
 # iafisher/popquiz
 A command-line program to take quizzes.
 
-Create a quiz file in the format described in the section below, and then install and run the popquiz application with
+Install and run the popquiz application with (you must have Rust and Cargo installed):
 
 ```shell
 $ git clone https://github.com/iafisher/popquiz.git
 $ cd popquiz
-$ cargo run -- take path/to/quiz.json
+$ cargo run -- edit <name>
 ```
 
-You must have Rust and Cargo installed.
+The last command will open up an editor for you to create a new quiz. Follow the format described in the section below. When done, check out these commands:
+
+```shell
+# Take a quiz.
+$ cargo run -- take <name>
+
+# Count the questions in a quiz.
+$ cargo run -- count <name>
+
+# See previous results for a quiz.
+$ cargo run -- results <name>
+
+# Edit a quiz.
+$ cargo run -- edit <name>
+
+# Delete a quiz.
+$ cargo run -- delete <name>
+```
 
 
 ## Quiz file format
