@@ -182,47 +182,35 @@ pub struct QuizResultsOptions {
 
 
 /// The main function for the `take` subcommand.
-pub fn main_take(options: QuizTakeOptions) {
+pub fn main_take(options: QuizTakeOptions) -> Result<(), QuizError> {
     if options.no_color {
         colored::control::set_override(false);
     }
 
-    match load_quiz(&options.name) {
-        Ok(mut quiz) => {
-            let results = quiz.take(&options);
-            if results.len() > 0 && (options.save || yesno("\nSave results? ")) {
-                save_results(&options.name, &results);
-            }
-        },
-        Err(e) => {
-            eprintln!("Error: {}", e);
-            ::std::process::exit(2);
-        }
+    let mut quiz = load_quiz(&options.name)?;
+    let results = quiz.take(&options);
+    if results.len() > 0 && (options.save || yesno("\nSave results? ")) {
+        save_results(&options.name, &results);
     }
+    Ok(())
 }
 
 
 /// The main function for the `count` subcommand.
-pub fn main_count(options: QuizCountOptions) {
-    match load_quiz(&options.name) {
-        Ok(quiz) => {
-            if options.list_tags {
-                list_tags(&quiz);
-            } else {
-                let filtered = quiz.filter_questions(&options.filter_opts);
-                println!("{}", filtered.len());
-            }
-        },
-        Err(e) => {
-            eprintln!("Error: {}", e);
-            ::std::process::exit(2);
-        }
+pub fn main_count(options: QuizCountOptions) -> Result<(), QuizError> {
+    let quiz = load_quiz(&options.name)?;
+    if options.list_tags {
+        list_tags(&quiz);
+    } else {
+        let filtered = quiz.filter_questions(&options.filter_opts);
+        println!("{}", filtered.len());
     }
+    Ok(())
 }
 
 
 /// The main function for the `results` subcommand.
-pub fn main_results(options: QuizResultsOptions) {
+pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
     let results = load_results(&options.name);
     let mut aggregated: Vec<(f64, String)> = Vec::new();
     for (key, result) in results.iter() {
@@ -245,28 +233,26 @@ pub fn main_results(options: QuizResultsOptions) {
             println!("{}{}", prefix, line);
         }
     }
+
+    Ok(())
 }
 
 
-pub fn main_edit(options: QuizEditOptions) {
-    require_app_dir_path();
+pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
+    require_app_dir_path()?;
 
     let path = get_quiz_path(&options.name);
     let editor = ::std::env::var("EDITOR").unwrap_or(String::from("vim"));
-    match Command::new(editor).arg(path).spawn() {
-        Ok(mut child) => {
-            child.wait().expect("Failed to wait on child");
-        },
-        Err(e) => {
-            eprintln!("Error: {}", e);
-            ::std::process::exit(2);
-        },
-    }
+    let mut child = Command::new(editor).arg(path).spawn()
+        .or(Err(QuizError::CannotOpenEditor))?;
+    child.wait()
+        .or(Err(QuizError::CannotOpenEditor))?;
+    Ok(())
 }
 
 
-pub fn main_delete(options: QuizDeleteOptions) {
-    require_app_dir_path();
+pub fn main_delete(options: QuizDeleteOptions) -> Result<(), QuizError> {
+    require_app_dir_path()?;
 
     let path = get_quiz_path(&options.name);
     if path.exists() {
@@ -276,14 +262,14 @@ pub fn main_delete(options: QuizDeleteOptions) {
                 ::std::process::exit(2);
             }
         }
+        Ok(())
     } else {
-        eprintln!("Error: quiz not found.");
-        ::std::process::exit(2);
+        Err(QuizError::QuizNotFound(options.name.clone()))
     }
 }
 
 
-pub fn main_list() {
+pub fn main_list() -> Result<(), QuizError> {
     let mut dirpath = get_app_dir_path();
     dirpath.push("quizzes");
 
@@ -309,6 +295,7 @@ pub fn main_list() {
     } else {
         println!("No quizzes found.");
     }
+    Ok(())
 }
 
 
@@ -881,10 +868,12 @@ fn load_results(name: &str) -> StoredResults {
 
 
 /// Load a `Quiz` object given its name.
-fn load_quiz(name: &str) -> Result<Quiz, Box<::std::error::Error>> {
+fn load_quiz(name: &str) -> Result<Quiz, QuizError> {
     let path = get_quiz_path(name);
-    let data = fs::read_to_string(path)?;
-    let mut quiz_as_json: serde_json::Value = serde_json::from_str(&data)?;
+    let data = fs::read_to_string(path)
+        .or(Err(QuizError::QuizNotFound(name.to_string())))?;
+    let mut quiz_as_json: serde_json::Value = serde_json::from_str(&data)
+        .map_err(QuizError::Json)?;
 
     // Expand each JSON object before doing strongly-typed deserialization.
     if let Some(quiz_as_object) = quiz_as_json.as_object_mut() {
@@ -902,7 +891,8 @@ fn load_quiz(name: &str) -> Result<Quiz, Box<::std::error::Error>> {
         }
     }
 
-    let mut ret: Quiz = serde_json::from_value(quiz_as_json)?;
+    let mut ret: Quiz = serde_json::from_value(quiz_as_json)
+        .map_err(QuizError::Json)?;
 
     // Attach previous results to the `Question` objects.
     let old_results = load_results(name);
@@ -1067,29 +1057,27 @@ fn get_app_dir_path() -> PathBuf {
 
 /// Return the path to the application directory, creating it and all necessary
 /// subdirectories if they don't exist.
-fn require_app_dir_path() -> PathBuf {
+fn require_app_dir_path() -> Result<PathBuf, QuizError> {
     let mut dirpath = dirs::data_dir().unwrap();
     dirpath.push("iafisher_popquiz");
-    make_directory(&dirpath);
+    make_directory(&dirpath).or(Err(QuizError::CannotMakeAppDir))?;
 
     dirpath.push("results");
-    make_directory(&dirpath);
+    make_directory(&dirpath).or(Err(QuizError::CannotMakeAppDir))?;
 
     dirpath.pop();
     dirpath.push("quizzes");
-    make_directory(&dirpath);
+    make_directory(&dirpath).or(Err(QuizError::CannotMakeAppDir))?;
 
-    dirpath
+    Ok(dirpath)
 }
 
 
-fn make_directory(path: &PathBuf) {
+fn make_directory(path: &PathBuf) -> Result<(), std::io::Error> {
     if !path.as_path().exists() {
-        if let Err(_) = fs::create_dir(path) {
-            eprintln!("Error: cannot initialize application directory.");
-            ::std::process::exit(2);
-        }
+        fs::create_dir(path)?;
     }
+    Ok(())
 }
 
 
@@ -1110,6 +1098,18 @@ fn print_incorrect(answer: &str) {
     } else {
         println!("{}", "Incorrect.".red());
     }
+}
+
+
+pub enum QuizError {
+    /// For when the application directory cannot be created.
+    CannotMakeAppDir,
+    /// For when the user requests a quiz that does not exist.
+    QuizNotFound(String),
+    /// For JSON errors.
+    Json(serde_json::Error),
+    /// For when the user's system editor cannot be opened.
+    CannotOpenEditor,
 }
 
 
