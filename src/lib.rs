@@ -212,6 +212,12 @@ pub fn main_count(options: QuizCountOptions) -> Result<(), QuizError> {
 /// The main function for the `results` subcommand.
 pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
     let results = load_results(&options.name)?;
+
+    if results.len() == 0 {
+        println!("No results have been recorded for this quiz.");
+        return Ok(());
+    }
+
     let mut aggregated: Vec<(f64, String)> = Vec::new();
     for (key, result) in results.iter() {
         aggregated.push((aggregate_results(&result), key.clone()));
