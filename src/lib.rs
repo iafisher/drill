@@ -220,7 +220,9 @@ pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
 
     let mut aggregated: Vec<(f64, String)> = Vec::new();
     for (key, result) in results.iter() {
-        aggregated.push((aggregate_results(&result), key.clone()));
+        if let Some(score) = aggregate_results(&result) {
+            aggregated.push((score, key.clone()));
+        }
     }
 
     aggregated.sort_by(cmp_f64_tuple_reversed);
@@ -985,20 +987,23 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
 }
 
 
-/// Return the percentage of correct responses in the vector of results.
-fn aggregate_results(results: &Vec<QuestionResult>) -> f64 {
+/// Return the percentage of correct responses in the vector of results. `None` is
+/// returned when the vector is empty or none of the results were graded (i.e., for
+/// ungraded questions).
+fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
     let mut sum = 0.0;
+    let mut graded_count = 0;
     for result in results.iter() {
         if let Some(score) = result.score {
             sum += score;
+            graded_count += 1;
         }
     }
 
-    if results.len() == 0 {
-        // Just to be safe, although this should never happen.
-        100.0
+    if graded_count > 0 {
+        Some(100.0 * (sum / (graded_count as f64)))
     } else {
-        100.0 * (sum / (results.len() as f64))
+        None
     }
 }
 
