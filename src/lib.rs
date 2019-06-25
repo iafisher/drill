@@ -113,8 +113,8 @@ pub struct QuizTakeOptions {
     /// Name of the quiz to take.
     name: String,
     /// Limit the total number of questions.
-    #[structopt(short = "n", default_value = "-1")]
-    num_to_ask: i16,
+    #[structopt(short = "n")]
+    num_to_ask: Option<usize>,
     /// Save results without prompting.
     #[structopt(long = "save")]
     save: bool,
@@ -391,8 +391,8 @@ impl Quiz {
             let mut rng = thread_rng();
             candidates.shuffle(&mut rng);
         }
-        if options.num_to_ask > 0 {
-            candidates.truncate(options.num_to_ask as usize);
+        if let Some(num_to_ask) = options.num_to_ask {
+            candidates.truncate(num_to_ask);
         }
 
         // Respect basic dependence relations.
