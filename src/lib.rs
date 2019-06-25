@@ -291,12 +291,14 @@ pub fn main_list() {
         let mut found_any = false;
         for entry in iter {
             if let Ok(entry) = entry {
-                if let Some(entry) = entry.path().to_str() {
-                    if !found_any {
-                        println!("Available quizzes:");
-                        found_any = true;
+                if let Some(stem) = entry.path().file_stem() {
+                    if let Some(stem) = stem.to_str() {
+                        if !found_any {
+                            println!("Available quizzes:");
+                            found_any = true;
+                        }
+                        println!("  {}", stem);
                     }
-                    println!("  {}", entry);
                 }
             }
         }
@@ -1041,7 +1043,7 @@ fn cmp_f64_tuple_reversed(a: &(f64, String), b: &(f64, String)) -> Ordering {
 fn get_results_path(quiz_name: &str) -> PathBuf {
     let mut dirpath = get_app_dir_path();
     dirpath.push("results");
-    dirpath.push(quiz_name);
+    dirpath.push(format!("{}_results.json", quiz_name));
     dirpath
 }
 
@@ -1050,7 +1052,7 @@ fn get_results_path(quiz_name: &str) -> PathBuf {
 fn get_quiz_path(quiz_name: &str) -> PathBuf {
     let mut dirpath = get_app_dir_path();
     dirpath.push("quizzes");
-    dirpath.push(quiz_name);
+    dirpath.push(format!("{}.json", quiz_name));
     dirpath
 }
 
