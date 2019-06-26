@@ -231,10 +231,10 @@ pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
         return Ok(());
     }
 
-    let mut aggregated: Vec<(f64, String)> = Vec::new();
+    let mut aggregated: Vec<(f64, usize, String)> = Vec::new();
     for (key, result) in results.iter() {
         if let Some(score) = aggregate_results(&result) {
-            aggregated.push((score, key.clone()));
+            aggregated.push((score, result.len(), key.clone()));
         }
     }
 
@@ -243,8 +243,8 @@ pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
     let best = options.best.unwrap_or(aggregated.len());
     let worst = options.worst.unwrap_or(aggregated.len());
     let iter = aggregated.iter().take(best).skip(aggregated.len() - worst);
-    for (score, question) in iter {
-        let first_prefix = format!("{:>5.1}%  ", score);
+    for (score, attempts, question) in iter {
+        let first_prefix = format!("{:>5.1}%  of {:>2}   ", score, attempts);
         let width = textwrap::termwidth() - first_prefix.len();
         let mut lines = textwrap::wrap_iter(question, width);
 
@@ -1023,7 +1023,7 @@ fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
 /// The comparison is reversed to produce descending order when sorting.
 ///
 /// Courtesy of https://users.rust-lang.org/t/sorting-vector-of-vectors-of-f64/16264
-fn cmp_f64_tuple_reversed(a: &(f64, String), b: &(f64, String)) -> Ordering {
+fn cmp_f64_tuple_reversed(a: &(f64, usize, String), b: &(f64, usize, String)) -> Ordering {
     if a.0 < b.0 {
         return Ordering::Greater;
     } else if a.0 > b.0 {
@@ -1033,8 +1033,14 @@ fn cmp_f64_tuple_reversed(a: &(f64, String), b: &(f64, String)) -> Ordering {
             return Ordering::Greater;
         } else if a.1 > b.1 {
             return Ordering::Less;
+        } else {
+            if a.2 < b.2 {
+                return Ordering::Greater;
+            } else if a.2 > b.2 {
+                return Ordering::Less;
+            }
+            return Ordering::Equal;
         }
-        return Ordering::Equal;
     }
 }
 
