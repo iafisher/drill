@@ -32,33 +32,7 @@ fn main() {
     };
 
     if let Err(e) = result {
-        match e {
-            QuizError::Json(e) => {
-                show_error("could not parse JSON");
-                eprintln!("  Reason: {}", e);
-            }
-            QuizError::QuizNotFound(name) => {
-                show_error(&format!("no quiz named '{}' found", name));
-            },
-            QuizError::CannotMakeAppDir => {
-                show_error("unable to create application directory");
-            }
-            QuizError::CannotOpenEditor => {
-                show_error("system editor cannot be opened");
-            },
-            QuizError::CannotWriteToFile(path) => {
-                if let Some(path) = path.to_str() {
-                    show_error(&format!("cannot write to file '{}'", path));
-                } else {
-                    show_error("cannot write to file");
-                }
-            }
-        }
+        eprintln!("{}: {}", "Error".red(), e);
         ::std::process::exit(2);
     }
-}
-
-
-fn show_error(msg: &str) {
-    eprintln!("{}: {}.", "Error".red(), msg);
 }

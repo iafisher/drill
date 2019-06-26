@@ -6,6 +6,8 @@
  */
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::error;
+use std::fmt;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -1120,6 +1122,49 @@ pub enum QuizError {
     /// For when the user's system editor cannot be opened.
     CannotOpenEditor,
     CannotWriteToFile(PathBuf),
+}
+
+
+impl fmt::Display for QuizError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            QuizError::CannotMakeAppDir => {
+                if let Some(path) = get_app_dir_path().to_str() {
+                    write!(f, "unable to create application directory at {}", path)
+                } else {
+                    write!(f, "unable to create application directory")
+                }
+            },
+            QuizError::QuizNotFound(ref name) => {
+                write!(f, "could not find quiz named '{}'", name)
+            },
+            QuizError::Json(ref err) => {
+                write!(f, "could not parse JSON ({})", err)
+            },
+            QuizError::CannotOpenEditor => {
+                write!(f, "unable to open system editor")
+            },
+            QuizError::CannotWriteToFile(ref path) => {
+                if let Some(path) = path.to_str() {
+                    write!(f, "cannot write to file '{}'", path)
+                } else {
+                    write!(
+                        f, "cannot write to file and cannot convert file name to UTF-8"
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+impl error::Error for QuizError {
+    fn cause(&self) -> Option<&error::Error> {
+        match *self {
+            QuizError::Json(ref err) => Some(err),
+            _ => None,
+        }
+    }
 }
 
 
