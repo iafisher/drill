@@ -118,6 +118,12 @@ pub struct QuizTakeOptions {
     /// Limit the total number of questions.
     #[structopt(short = "n")]
     num_to_ask: Option<usize>,
+    /// When combined with -n, take the `n` questions with the highest previous scores.
+    #[structopt(long = "best")]
+    best: bool,
+    /// When combined with -n, take the `n` questions with the lowest previous scores.
+    #[structopt(long = "worst")]
+    worst: bool,
     /// Save results without prompting.
     #[structopt(long = "save")]
     save: bool,
@@ -152,7 +158,7 @@ pub struct QuizFilterOptions {
     /// Exclude questions with the given tag.
     #[structopt(long = "exclude")]
     exclude: Vec<String>,
-    /// Only count questions that have never been asked before.
+    /// Only include questions that have never been asked before.
     #[structopt(long = "never")]
     never: bool,
     /// Filter by keyword.
@@ -407,6 +413,13 @@ impl Quiz {
             let mut rng = thread_rng();
             candidates.shuffle(&mut rng);
         }
+
+        if options.best {
+            candidates.sort_by(cmp_questions_best);
+        } else if options.worst {
+            candidates.sort_by(cmp_questions_worst);
+        }
+
         if let Some(num_to_ask) = options.num_to_ask {
             candidates.truncate(num_to_ask);
         }
@@ -1042,6 +1055,31 @@ fn cmp_f64_tuple_reversed(a: &(f64, usize, String), b: &(f64, usize, String)) ->
             return Ordering::Equal;
         }
     }
+}
+
+
+/// Comparison function that sorts an array of `Question` objects such that the
+/// questions with the highest previous scores come first.
+fn cmp_questions_best(a: &&Question, b: &&Question) -> Ordering {
+    let a_score = (*a).prior_results.as_ref().map(aggregate_results)
+        .unwrap_or(Some(0.0)).unwrap_or(0.0);
+    let b_score = (*b).prior_results.as_ref().map(aggregate_results)
+        .unwrap_or(Some(0.0)).unwrap_or(0.0);
+
+    if a_score > b_score {
+        Ordering::Less
+    } else if a_score < b_score {
+        Ordering::Greater
+    } else {
+        Ordering::Equal
+    }
+}
+
+
+/// Comparison function that sorts an array of `Question` objects such that the
+/// questions with the lowest previous scores come first.
+fn cmp_questions_worst(a: &&Question, b: &&Question) -> Ordering {
+    return cmp_questions_best(a, b).reverse();
 }
 
 
