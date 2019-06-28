@@ -28,7 +28,7 @@ struct Quiz {
 
 
 /// Represents a question.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 struct Question {
     kind: QuestionKind,
     /// The text of the question. It is a vector instead of a string so that multiple
@@ -54,14 +54,14 @@ struct Question {
 
 
 /// An enumeration for the `kind` field of `Question` objects.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 enum QuestionKind {
     ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice, Ungraded,
 }
 
 
 /// Represents an answer.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 struct Answer {
     /// Each member of the `variants` vector should be an equivalent answer, e.g.
     /// `vec!["Mount Everest", "Everest"]`, not different answers to the same question.
@@ -84,6 +84,15 @@ struct QuestionResult {
     // It would be convenient to include a reference to the `Question` object as a field
     // of this struct, but Rust's lifetimes makes it more difficult than it's worth.
 }
+
+
+impl PartialEq for QuestionResult {
+    fn eq(&self, other: &QuestionResult) -> bool {
+        self.time_asked == other.time_asked && self.response == other.response &&
+            self.score == other.score
+    }
+}
+impl Eq for QuestionResult {}
 
 
 /// Holds the command-line configuration for the application.
@@ -892,6 +901,20 @@ fn load_quiz(name: &str) -> Result<Quiz, QuizError> {
     let path = get_quiz_path(name);
     let data = fs::read_to_string(path)
         .or(Err(QuizError::QuizNotFound(name.to_string())))?;
+
+    let mut quiz = load_quiz_from_json(&data)?;
+    // Attach previous results to the `Question` objects.
+    let old_results = load_results(name)?;
+    for question in quiz.questions.iter_mut() {
+        if let Some(results) = old_results.get(&question.text[0]) {
+            question.prior_results = Some(results.clone());
+        }
+    }
+    Ok(quiz)
+}
+
+
+fn load_quiz_from_json(data: &str) -> Result<Quiz, QuizError> {
     let mut quiz_as_json: serde_json::Value = serde_json::from_str(&data)
         .map_err(QuizError::Json)?;
 
@@ -911,17 +934,8 @@ fn load_quiz(name: &str) -> Result<Quiz, QuizError> {
         }
     }
 
-    let mut ret: Quiz = serde_json::from_value(quiz_as_json)
+    let ret: Quiz = serde_json::from_value(quiz_as_json)
         .map_err(QuizError::Json)?;
-
-    // Attach previous results to the `Question` objects.
-    let old_results = load_results(name)?;
-    for question in ret.questions.iter_mut() {
-        if let Some(results) = old_results.get(&question.text[0]) {
-            question.prior_results = Some(results.clone());
-        }
-    }
-
     Ok(ret)
 }
 
@@ -1268,87 +1282,101 @@ mod tests {
 
     #[test]
     fn can_expand_short_answer_json() {
-        let input_as_json = serde_json::json!(
+        let input = r#"
+        {
+          "questions": [
             {"text": "When did WW2 start?", "answer": "1939"}
-        );
-        let input = input_as_json.as_object().unwrap();
-        let output = expand_question_json(input);
+          ]
+        }
+        "#;
+        let output = &load_quiz_from_json(&input).unwrap().questions[0];
 
-        let expected_output_as_json = serde_json::json!(
-            {
-                "kind": "ShortAnswer",
-                "text": ["When did WW2 start?"],
-                "answer_list": [
-                    {"variants": ["1939"]}
-                ],
-                "tags": [],
-                "candidates": [],
-            }
-        );
-        let expected_output = expected_output_as_json.as_object().unwrap();
+        let expected_output = Question {
+            kind: QuestionKind::ShortAnswer,
+            text: vec![String::from("When did WW2 start?")],
+            answer_list: vec![
+                Answer { variants: vec![String::from("1939")] }
+            ],
+            candidates: Vec::new(),
+            prior_results: None,
+            tags: Vec::new(),
+            id: None,
+            depends: None,
+        };
 
-        assert_eq!(output, *expected_output);
+        assert_eq!(*output, expected_output);
     }
 
     #[test]
     fn can_expand_list_answer_json() {
-        let input_as_json = serde_json::json!(
+        let input = r#"
+        {
+          "questions": [
             {
-                "kind": "ListAnswer",
-                "text": "List the four countries of the United Kingdom.",
-                "answer_list": [
-                    "England", "Scotland", ["Northern Ireland", "N. Ireland"], "Wales"
-                ],
+              "kind": "ListAnswer",
+              "text": "List the four countries of the United Kingdom.",
+              "answer_list": [
+                  "England", "Scotland", ["Northern Ireland", "N. Ireland"], "Wales"
+              ]
             }
-        );
-        let input = input_as_json.as_object().unwrap();
-        let output = expand_question_json(input);
+          ]
+        }
+        "#;
+        let output = &load_quiz_from_json(&input).unwrap().questions[0];
 
-        let expected_output_as_json = serde_json::json!(
-            {
-                "kind": "ListAnswer",
-                "text": ["List the four countries of the United Kingdom."],
-                "answer_list": [
-                    {"variants": ["England"]},
-                    {"variants": ["Scotland"]},
-                    {"variants": ["Northern Ireland", "N. Ireland"]},
-                    {"variants": ["Wales"]},
-                ],
-                "tags": [],
-                "candidates": [],
-            }
-        );
-        let expected_output = expected_output_as_json.as_object().unwrap();
+        let expected_output = Question {
+            kind: QuestionKind::ListAnswer,
+            text: vec![String::from("List the four countries of the United Kingdom.")],
+            answer_list: vec![
+                Answer { variants: vec![String::from("England")] },
+                Answer { variants: vec![String::from("Scotland")] },
+                Answer { 
+                    variants: vec![
+                        String::from("Northern Ireland"),
+                        String::from("N. Ireland"),
+                    ]
+                },
+                Answer { variants: vec![String::from("Wales")] },
+            ],
+            candidates: Vec::new(),
+            prior_results: None,
+            tags: Vec::new(),
+            id: None,
+            depends: None,
+        };
 
-        assert_eq!(output, *expected_output);
+        assert_eq!(*output, expected_output);
     }
 
     #[test]
     fn can_expand_multiple_choice_json() {
-        let input_as_json = serde_json::json!(
+        let input = r#"
+        {
+          "questions": [
             {
-                "kind": "MultipleChoice",
-                "text": "What language is spoken in Cambodia?",
-                "candidates": ["Thai", "French", "Vietnamese", "Burmese", "Tagalog"],
-                "answer": "Khmer"
+              "kind": "MultipleChoice",
+              "text": "What language is spoken in Cambodia?",
+              "candidates": ["Thai", "French", "Vietnamese", "Burmese", "Tagalog"],
+              "answer": "Khmer"
             }
-        );
-        let input = input_as_json.as_object().unwrap();
-        let output = expand_question_json(input);
+          ]
+        }
+        "#;
 
-        let expected_output_as_json = serde_json::json!(
-            {
-                "kind": "MultipleChoice",
-                "text": ["What language is spoken in Cambodia?"],
-                "candidates": ["Thai", "French", "Vietnamese", "Burmese", "Tagalog"],
-                "answer_list": [
-                    {"variants": ["Khmer"]},
-                ],
-                "tags": [],
-            }
-        );
-        let expected_output = expected_output_as_json.as_object().unwrap();
+        let output = &load_quiz_from_json(&input).unwrap().questions[0];
+        let expected_output = Question {
+            kind: QuestionKind::MultipleChoice,
+            text: vec![String::from("What language is spoken in Cambodia?")],
+            candidates: vec![
+                String::from("Thai"), String::from("French"), String::from("Vietnamese"),
+                String::from("Burmese"), String::from("Tagalog")],
+            answer_list: vec![Answer { variants: vec![String::from("Khmer")] } ],
+            prior_results: None,
+            tags: Vec::new(),
+            id: None,
+            depends: None,
+        };
 
-        assert_eq!(output, *expected_output);
+        assert_eq!(*output, expected_output);
     }
 }
