@@ -423,6 +423,23 @@ impl Quiz {
             candidates.shuffle(&mut rng);
         }
 
+        // --best and --worst can only be applied to questions with at least one
+        // scored response.
+        if options.best || options.worst {
+            let mut i = 0;
+            while i < candidates.len() {
+                if let Some(results) = candidates[i].prior_results.as_ref() {
+                    if aggregate_results(results).is_none() {
+                        candidates.remove(i);
+                    } else {
+                        i += 1;
+                    }
+                } else {
+                    candidates.remove(i);
+                }
+            }
+        }
+
         if options.best {
             candidates.sort_by(cmp_questions_best);
         } else if options.worst {
