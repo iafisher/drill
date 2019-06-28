@@ -662,11 +662,11 @@ impl Question {
 
     /// Implementation of `ask` assuming that `self.kind` is `Ungraded`.
     fn ask_ungraded(&self) -> Result<QuestionResult, ()> {
-        prompt("> ")?;
+        let response = prompt("> ")?;
         println!("\n{}", "Sample correct answer:\n".white());
         prettyprint(&self.answer_list[0].variants[0], Some("  "));
         Ok(QuestionResult {
-            time_asked: chrono::Utc::now(), score: None, response: None
+            time_asked: chrono::Utc::now(), score: None, response,
         })
     }
 
