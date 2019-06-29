@@ -516,7 +516,13 @@ impl Question {
     /// The `num` argument is the question number in the quiz, which is printed before
     /// the text of the question.
     fn ask(&self, num: usize) -> Result<QuestionResult, ()> {
-        self.print_text(num);
+        let mut rng = thread_rng();
+        let text = self.text.choose(&mut rng).unwrap();
+        let prefix = format!("  ({}) ", num);
+        prettyprint_colored(
+            &text, Some(&prefix), Some(Color::White), Some(Color::Cyan)
+        );
+        print!("\n");
 
         match self.kind {
             QuestionKind::ShortAnswer => {
@@ -649,16 +655,7 @@ impl Question {
 
         for (i, candidate) in "abcd".chars().zip(candidates.iter()) {
             let prefix = format!("     ({}) ", i);
-            let width = textwrap::termwidth() - prefix.len();
-            let mut lines = textwrap::wrap_iter(candidate, width);
-            if let Some(first_line) = lines.next() {
-                println!("{}{}", prefix, first_line);
-            }
-
-            let indent = " ".repeat(prefix.len());
-            for line in lines {
-                println!("{}{}", indent, line);
-            }
+            prettyprint(candidate, Some(&prefix));
         }
 
         println!("");
@@ -695,26 +692,6 @@ impl Question {
         Ok(QuestionResult {
             time_asked: chrono::Utc::now(), score: None, response,
         })
-    }
-
-    fn print_text(&self, num: usize) {
-        let mut rng = thread_rng();
-        let text = self.text.choose(&mut rng).unwrap();
-
-        let num_prefix = format!("  ({}) ", num);
-        let width = textwrap::termwidth() - num_prefix.len();
-        let mut lines = textwrap::wrap_iter(text, width);
-
-        if let Some(first_line) = lines.next() {
-            println!("{}{}", num_prefix.cyan(), first_line.white());
-        }
-
-        let prefix = " ".repeat(num_prefix.len());
-        for line in lines {
-            println!("{}{}", prefix, line.white());
-        }
-
-        print!("\n");
     }
 
     /// Return `true` if `guess` matches any of the answers in `self.answer_list`.
@@ -811,17 +788,41 @@ fn prompt(message: &str) -> Result<Option<String>, ()> {
 
 
 /// Print `message` to standard output, breaking lines according to the current width
-/// of the terminal. If `prefix` is `Some(string)`, then prepend `string` (usually
-/// whitespace for indentation) to every line.
+/// of the terminal. If `prefix` is not `None`, then prepend it to the first line and
+/// indent all subsequent lines by its length.
 fn prettyprint(message: &str, prefix: Option<&str>) {
+    prettyprint_colored(message, prefix, None, None);
+}
+
+
+fn prettyprint_colored(
+    message: &str, prefix: Option<&str>, message_color: Option<Color>,
+    prefix_color: Option<Color>
+) {
     let prefix = prefix.unwrap_or("");
-    let filled = textwrap::fill(message, textwrap::termwidth() - prefix.len());
-    let mut indented = textwrap::indent(&filled, prefix);
-    // textwrap::indent will append unwanted newlines sometimes, which we remove here.
-    if !message.ends_with("\n") && indented.ends_with("\n") {
-        indented = indented.trim_end().to_string();
+    let width = textwrap::termwidth() - prefix.len();
+    let mut lines = textwrap::wrap_iter(message, width);
+
+    if let Some(first_line) = lines.next() {
+        let colored_prefix = color_optional(&prefix, prefix_color);
+        let colored_line = color_optional(&first_line, message_color);
+        println!("{}{}", colored_prefix, colored_line);
     }
-    println!("{}", indented);
+
+    let indent = " ".repeat(prefix.len());
+    for line in lines {
+        let colored_line = color_optional(&line, message_color);
+        println!("{}{}", indent, colored_line);
+    }
+}
+
+
+fn color_optional(text: &str, color: Option<Color>) -> ColoredString {
+    if let Some(color) = color {
+        text.color(color)
+    } else {
+        text.normal()
+    }
 }
 
 
@@ -1357,7 +1358,7 @@ mod tests {
             answer_list: vec![
                 Answer { variants: vec![String::from("England")] },
                 Answer { variants: vec![String::from("Scotland")] },
-                Answer { 
+                Answer {
                     variants: vec![
                         String::from("Northern Ireland"),
                         String::from("N. Ireland"),
