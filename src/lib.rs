@@ -648,7 +648,17 @@ impl Question {
         candidates.shuffle(&mut rng);
 
         for (i, candidate) in "abcd".chars().zip(candidates.iter()) {
-            println!("     ({}) {}", i, candidate);
+            let prefix = format!("     ({}) ", i);
+            let width = textwrap::termwidth() - prefix.len();
+            let mut lines = textwrap::wrap_iter(candidate, width);
+            if let Some(first_line) = lines.next() {
+                println!("{}{}", prefix, first_line);
+            }
+
+            let indent = " ".repeat(prefix.len());
+            for line in lines {
+                println!("{}{}", indent, line);
+            }
         }
 
         println!("");
