@@ -11,7 +11,6 @@ use popquiz::*;
 
 fn main() {
     // Exit quietly on broken pipe error.
-    //
     // Courtesy of https://github.com/rust-lang/rust/issues/46016#issuecomment-428106774
     unsafe {
         libc::signal(libc::SIGPIPE, libc::SIG_DFL);
