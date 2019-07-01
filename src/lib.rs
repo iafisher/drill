@@ -266,17 +266,7 @@ pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
     let iter = aggregated.iter().take(best).skip(aggregated.len() - worst);
     for (score, attempts, question) in iter {
         let first_prefix = format!("{:>5.1}%  of {:>2}   ", score, attempts);
-        let width = textwrap::termwidth() - first_prefix.len();
-        let mut lines = textwrap::wrap_iter(question, width);
-
-        if let Some(first_line) = lines.next() {
-            println!("{}{}", first_prefix.cyan(), first_line);
-        }
-
-        let prefix = " ".repeat(first_prefix.len());
-        for line in lines {
-            println!("{}{}", prefix, line);
-        }
+        prettyprint_colored(&question, Some(&first_prefix), None, Some(Color::Cyan));
     }
 
     Ok(())
