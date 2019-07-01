@@ -203,12 +203,12 @@ pub struct QuizResultsOptions {
     /// The name of the quiz for which to fetch the results.
     #[structopt(default_value = "main")]
     name: String,
-    /// Only include the `n` worst results.
-    #[structopt(short = "w", long = "worst")]
-    worst: Option<usize>,
-    /// Only include the `n` best results.
-    #[structopt(short = "b", long = "best")]
-    best: Option<usize>,
+    /// One of 'best', 'worst', 'most' or 'least'. Defaults to 'best'.
+    #[structopt(short = "s", long = "sort", default_value = "best")]
+    sort: String,
+    /// Only show the first `n` results.
+    #[structopt(short = "n")]
+    num_to_show: Option<usize>,
 }
 
 
@@ -254,17 +254,28 @@ pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
 
     let mut aggregated: Vec<(f64, usize, String)> = Vec::new();
     for (key, result) in results.iter() {
+        // Only include questions that have scored results.
         if let Some(score) = aggregate_results(&result) {
             aggregated.push((score, result.len(), key.clone()));
         }
     }
 
-    aggregated.sort_by(cmp_f64_tuple_reversed);
+    if options.sort == "best" {
+        aggregated.sort_by(cmp_results_best);
+    } else if options.sort == "worst" {
+        aggregated.sort_by(cmp_results_worst);
+    } else if options.sort == "most" {
+        aggregated.sort_by(cmp_results_most);
+    } else if options.sort == "least" {
+        aggregated.sort_by(cmp_results_least);
+    } else {
+    }
 
-    let best = options.best.unwrap_or(aggregated.len());
-    let worst = options.worst.unwrap_or(aggregated.len());
-    let iter = aggregated.iter().take(best).skip(aggregated.len() - worst);
-    for (score, attempts, question) in iter {
+    if let Some(n) = options.num_to_show {
+        aggregated.truncate(n);
+    }
+
+    for (score, attempts, question) in aggregated.iter() {
         let first_prefix = format!("{:>5.1}%  of {:>2}   ", score, attempts);
         prettyprint_colored(&question, Some(&first_prefix), None, Some(Color::Cyan));
     }
@@ -846,7 +857,17 @@ fn yesno(message: &str) -> bool {
 
 /// Parse command-line arguments.
 pub fn parse_options() -> QuizOptions {
-    QuizOptions::from_args()
+    let options = QuizOptions::from_args();
+
+    if let QuizOptions::Results(options) = &options {
+        let s = &options.sort;
+        if s != "most" && s != "least" && s != "best" && s != "worst" {
+            eprintln!("{}: unknown value `{}` for --sort.", "Error".red(), s);
+            ::std::process::exit(2);
+        }
+    }
+
+    options
 }
 
 
@@ -1080,30 +1101,47 @@ fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
 }
 
 
-/// Compare two tuples with floating-point numbers.
-///
-/// The comparison is reversed to produce descending order when sorting.
-///
-/// Courtesy of https://users.rust-lang.org/t/sorting-vector-of-vectors-of-f64/16264
-fn cmp_f64_tuple_reversed(a: &(f64, usize, String), b: &(f64, usize, String)) -> Ordering {
+/// An alias for a commonly-used typed in comparison functions.
+type CmpQuestionResult = (f64, usize, String);
+
+
+/// Comparison function that sorts an array of question results such that the best
+/// results come first.
+fn cmp_results_best(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
     if a.0 < b.0 {
         return Ordering::Greater;
     } else if a.0 > b.0 {
         return Ordering::Less;
     } else {
-        if a.1 < b.1 {
-            return Ordering::Greater;
-        } else if a.1 > b.1 {
-            return Ordering::Less;
-        } else {
-            if a.2 < b.2 {
-                return Ordering::Greater;
-            } else if a.2 > b.2 {
-                return Ordering::Less;
-            }
-            return Ordering::Equal;
-        }
+        return cmp_results_most(a, b);
     }
+}
+
+
+/// Comparison function that sorts an array of question results such that the worst
+/// results come first.
+fn cmp_results_worst(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
+    return cmp_results_best(a, b).reverse();
+}
+
+
+/// Comparison function that sorts an array of question results such that the results
+/// with the most attempts come first.
+fn cmp_results_most(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
+    if a.1 < b.1 {
+        return Ordering::Greater;
+    } else if a.1 > b.1 {
+        return Ordering::Less;
+    } else {
+        return Ordering::Equal;
+    }
+}
+
+
+/// Comparison function that sorts an array of question results such that the results
+/// with the least attempts come first.
+fn cmp_results_least(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
+    return cmp_results_most(a, b).reverse();
 }
 
 
