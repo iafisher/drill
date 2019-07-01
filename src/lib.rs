@@ -519,6 +519,7 @@ fn filter_question_by_keywords(q: &Question, keywords: &Vec<String>) -> bool {
 
 impl Question {
     /// Return a new short-answer question.
+    #[allow(dead_code)]
     fn new(text: &str, answer: &str) -> Self {
         let answers = vec![Answer { variants: vec![String::from(answer)] }];
         Question {
@@ -768,6 +769,7 @@ impl QuestionResult {
 
 
 impl QuizFilterOptions {
+    #[allow(dead_code)]
     fn new() -> Self {
         QuizFilterOptions {
             tags: Vec::new(), exclude: Vec::new(), never: false, keywords: Vec::new(),
