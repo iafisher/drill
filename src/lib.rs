@@ -133,12 +133,12 @@ pub struct QuizTakeOptions {
     /// When combined with -n, take the `n` questions with the lowest previous scores.
     #[structopt(long = "worst")]
     worst: bool,
-    /// When combined with -n, take the `n` questions with the most previous attempts.
+    /// Choose from the `n` questions with the most previous attempts.
     #[structopt(long = "most")]
-    most: bool,
-    /// When combined with -n, take the `n` questions with the least previous attempts.
+    most: Option<usize>,
+    /// Choose from the `n` questions with the least previous attempts.
     #[structopt(long = "least")]
-    least: bool,
+    least: Option<usize>,
     /// Save results without prompting.
     #[structopt(long = "save")]
     save: bool,
@@ -452,12 +452,17 @@ impl Quiz {
             candidates.sort_by(cmp_questions_worst);
         }
 
-        if options.most {
+        if let Some(most) = options.most {
             candidates.sort_by(cmp_questions_most);
-        } else if options.least {
+            candidates.truncate(most);
+        } else if let Some(least) = options.least {
             candidates.sort_by(cmp_questions_least);
+            candidates.truncate(least);
         }
 
+        // Important that this operation comes after the --most and --least flags have
+        // been applied, e.g. if --most 50 -n 10 we want to choose 10 questions among
+        // the 50 most asked, not the most asked among 10 random questions.
         if let Some(num_to_ask) = options.num_to_ask {
             candidates.truncate(num_to_ask);
         }
