@@ -2,7 +2,7 @@
  * Take a pop quiz from the command line.
  *
  * Author:  Ian Fisher (iafisher@protonmail.com)
- * Version: June 2019
+ * Version: July 2019
  */
 use colored::*;
 
@@ -10,6 +10,13 @@ use popquiz::*;
 
 
 fn main() {
+    // Exit quietly on broken pipe error.
+    //
+    // Courtesy of https://github.com/rust-lang/rust/issues/46016#issuecomment-428106774
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
+
     let result = match parse_options() {
         QuizOptions::Take(options) => {
             main_take(options)
