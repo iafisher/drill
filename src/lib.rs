@@ -2,7 +2,7 @@
  * Implementation of the popquiz application.
  *
  * Author:  Ian Fisher (iafisher@protonmail.com)
- * Version: June 2019
+ * Version: July 2019
  */
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -133,6 +133,12 @@ pub struct QuizTakeOptions {
     /// When combined with -n, take the `n` questions with the lowest previous scores.
     #[structopt(long = "worst")]
     worst: bool,
+    /// When combined with -n, take the `n` questions with the most previous attempts.
+    #[structopt(long = "most")]
+    most: bool,
+    /// When combined with -n, take the `n` questions with the least previous attempts.
+    #[structopt(long = "least")]
+    least: bool,
     /// Save results without prompting.
     #[structopt(long = "save")]
     save: bool,
@@ -424,7 +430,7 @@ impl Quiz {
         }
 
         // --best and --worst can only be applied to questions with at least one
-        // scored response.
+        // scored response, so we remove questions with no scored responses here.
         if options.best || options.worst {
             let mut i = 0;
             while i < candidates.len() {
@@ -444,6 +450,12 @@ impl Quiz {
             candidates.sort_by(cmp_questions_best);
         } else if options.worst {
             candidates.sort_by(cmp_questions_worst);
+        }
+
+        if options.most {
+            candidates.sort_by(cmp_questions_most);
+        } else if options.least {
+            candidates.sort_by(cmp_questions_least);
         }
 
         if let Some(num_to_ask) = options.num_to_ask {
@@ -1122,6 +1134,28 @@ fn cmp_questions_best(a: &&Question, b: &&Question) -> Ordering {
 /// questions with the lowest previous scores come first.
 fn cmp_questions_worst(a: &&Question, b: &&Question) -> Ordering {
     return cmp_questions_best(a, b).reverse();
+}
+
+
+/// Comparison function that sorts an array of `Question` objects such that the
+/// questions with the most responses come first.
+fn cmp_questions_most(a: &&Question, b: &&Question) -> Ordering {
+    let a_results = if let Some(rslts) = &a.prior_results { rslts.len() } else { 0 };
+    let b_results = if let Some(rslts) = &b.prior_results { rslts.len() } else { 0 };
+
+    if a_results > b_results {
+        Ordering::Less
+    } else if a_results < b_results {
+        Ordering::Greater
+    } else {
+        Ordering::Equal
+    }
+}
+
+/// Comparison function that sorts an array of `Question` objects such that the
+/// questions with the least responses come first.
+fn cmp_questions_least(a: &&Question, b: &&Question) -> Ordering {
+    return cmp_questions_most(a, b).reverse();
 }
 
 
