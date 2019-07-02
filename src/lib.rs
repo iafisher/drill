@@ -52,7 +52,7 @@ struct Question {
     depends: Option<String>,
     /// Incorrect answers may be given specific explanations for why they are not
     /// right.
-    explanations: HashMap<String, String>,
+    explanations: Vec<(Vec<String>, String)>,
 }
 
 
@@ -531,7 +531,7 @@ impl Question {
         Question {
             kind: QuestionKind::ShortAnswer, text: vec![String::from(text)],
             tags: Vec::new(), answer_list: answers, candidates: Vec::new(),
-            prior_results: None, id: None, depends: None, explanations: HashMap::new(),
+            prior_results: None, id: None, depends: None, explanations: Vec::new(),
         }
     }
 
@@ -730,7 +730,7 @@ impl Question {
     /// correct answer.
     fn incorrect(&self, answer: Option<&str>, guess: Option<&str>) {
         let explanation = if let Some(guess) = guess {
-            if let Some(explanation) = self.explanations.get(&guess.to_lowercase()) {
+            if let Some(explanation) = self.get_explanation(&guess) {
                 format!(" {}", explanation)
             } else {
                 String::new()
@@ -750,6 +750,16 @@ impl Question {
         } else {
             prettyprint(&format!("{}{}", "Incorrect.".red(), &explanation), None);
         }
+    }
+
+    fn get_explanation(&self, guess: &str) -> Option<String> {
+        let guess = guess.to_lowercase();
+        for (variants, explanation) in self.explanations.iter() {
+            if variants.contains(&guess) {
+                return Some(explanation.clone());
+            }
+        }
+        None
     }
 
     /// Return `true` if `guess` matches any of the answers in `self.answer_list`.
@@ -1023,7 +1033,7 @@ fn load_quiz_from_json(data: &str) -> Result<Quiz, QuizError> {
                     // Expand each individual question object.
                     if let Some(question) = questions_as_array[i].as_object() {
                         questions_as_array[i] = serde_json::to_value(
-                            expand_question_json(&question)
+                            normalize_question_json(&question)
                         ).unwrap();
                     }
                 }
@@ -1043,7 +1053,7 @@ type JSONMap = serde_json::Map<String, serde_json::Value>;
 /// Given a JSON object in the disk format, return an equivalent JSON object in the
 /// format that the deserialization library understands (i.e., a format that is
 /// isomorphic to the fields of the `Question` struct).
-fn expand_question_json(question: &JSONMap) -> JSONMap {
+fn normalize_question_json(question: &JSONMap) -> JSONMap {
     let mut ret = question.clone();
 
     // Only multiple-choice questions require the `candidates` field, so other
@@ -1062,9 +1072,9 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
         ret.insert(String::from("tags"), serde_json::json!([]));
     }
 
-    // The `explanations` field defaults to an empty hash.
+    // The `explanations` field defaults to an empty array.
     if !ret.contains_key("explanations") {
-        ret.insert(String::from("explanations"), serde_json::json!({}));
+        ret.insert(String::from("explanations"), serde_json::json!([]));
     }
 
     // Convert answer objects from [...] to { "variants": [...] }.
@@ -1423,7 +1433,7 @@ mod tests {
             tags: Vec::new(),
             id: None,
             depends: None,
-            explanations: HashMap::new(),
+            explanations: Vec::new(),
         };
 
         assert_eq!(*output, expected_output);
@@ -1498,7 +1508,7 @@ mod tests {
             tags: Vec::new(),
             id: None,
             depends: None,
-            explanations: HashMap::new(),
+            explanations: Vec::new(),
         };
 
         assert_eq!(*output, expected_output);
