@@ -134,12 +134,12 @@ pub struct QuizTakeOptions {
     /// Limit the total number of questions.
     #[structopt(short = "n")]
     num_to_ask: Option<usize>,
-    /// When combined with -n, take the `n` questions with the highest previous scores.
+    /// Choose from the `n` questions with the highest previous scores.
     #[structopt(long = "best")]
-    best: bool,
-    /// When combined with -n, take the `n` questions with the lowest previous scores.
+    best: Option<usize>,
+    /// Choose from the `n` questions with the lowest previous scores.
     #[structopt(long = "worst")]
-    worst: bool,
+    worst: Option<usize>,
     /// Choose from the `n` questions with the most previous attempts.
     #[structopt(long = "most")]
     most: Option<usize>,
@@ -442,7 +442,7 @@ impl Quiz {
 
         // --best and --worst can only be applied to questions with at least one
         // scored response, so we remove questions with no scored responses here.
-        if options.best || options.worst {
+        if options.best.is_some() || options.worst.is_some() {
             let mut i = 0;
             while i < candidates.len() {
                 if aggregate_results(&candidates[i].prior_results).is_none() {
@@ -453,10 +453,12 @@ impl Quiz {
             }
         }
 
-        if options.best {
+        if let Some(best) = options.best {
             candidates.sort_by(cmp_questions_best);
-        } else if options.worst {
+            candidates.truncate(best);
+        } else if let Some(worst) = options.worst {
             candidates.sort_by(cmp_questions_worst);
+            candidates.truncate(worst);
         }
 
         if let Some(most) = options.most {
