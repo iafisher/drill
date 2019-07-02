@@ -130,6 +130,16 @@ In the `answer` and `answer_list` fields, an array of strings may be used instea
 
 Questions may have a `tags` field, which should be a list of strings. Tagged questions can be filtered using the command-line `--tag` and `--exclude` options.
 
+Questions may have an `explanations` field, which should be a map from strings to strings. It is used to provide explanations for incorrect answers. For example, if a question had the following as its `explanations` field:
+
+```json
+"explanations": {
+  "charleston": "Charleston is the capital of West Virginia, not South Carolina."
+}
+```
+
+then if a user answered the question with "Charleston", the given message would be printed. The keys **must** be lowercase.
+
 Questions may have an `id` field with a unique string value. The purpose of this field is to support another optional field, `depends`. If question A has `depends` set to `"some-id"`, and question B's `id` field is `"some-id"`, then question A will always be asked after question B.
 
 **Note**: Currently the dependency resolver is not very sophisticated, so for the time being the following constraints hold:

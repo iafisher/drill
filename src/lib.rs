@@ -50,6 +50,9 @@ struct Question {
     /// If provided, should be the `id` of another `Question` which must be asked before
     /// this one.
     depends: Option<String>,
+    /// Incorrect answers may be given specific explanations for why they are not
+    /// right.
+    explanations: HashMap<String, String>,
 }
 
 
@@ -528,7 +531,7 @@ impl Question {
         Question {
             kind: QuestionKind::ShortAnswer, text: vec![String::from(text)],
             tags: Vec::new(), answer_list: answers, candidates: Vec::new(),
-            prior_results: None, id: None, depends: None,
+            prior_results: None, id: None, depends: None, explanations: HashMap::new(),
         }
     }
 
@@ -571,9 +574,10 @@ impl Question {
         let result = guess.is_some() && self.check_any(guess.as_ref().unwrap());
 
         if result {
-            print_correct();
+            self.correct();
         } else {
-            print_incorrect(&self.answer_list[0].variants[0]);
+            let guess_option = guess.as_ref().map(|s| s.as_str());
+            self.incorrect(Some(&self.answer_list[0].variants[0]), guess_option);
         }
 
         let score = if result { 1.0 } else { 0.0 };
@@ -597,17 +601,17 @@ impl Question {
             if let Some(guess) = prompt("> ")? {
                 let index = self.check_one(&guess);
                 if index == self.answer_list.len() {
-                    print_incorrect("");
+                    self.incorrect(None, Some(&guess));
                     count += 1;
                 } else if satisfied[index] {
                     println!("{}", "You already said that.".white());
                 } else {
                     satisfied[index] = true;
-                    print_correct();
+                    self.correct();
                     count += 1;
                 }
             } else {
-                print_incorrect("");
+                self.incorrect(None, None);
                 break;
             }
         }
@@ -638,13 +642,13 @@ impl Question {
         for answer in self.answer_list.iter() {
             if let Some(guess) = prompt("> ")? {
                 if answer.check(&guess) {
-                    print_correct();
+                    self.correct();
                     ncorrect += 1;
                 } else {
-                    print_incorrect(&answer.variants[0]);
+                    self.incorrect(Some(&answer.variants[0]), Some(&guess));
                 }
             } else {
-                print_incorrect(&answer.variants[0]);
+                self.incorrect(Some(&answer.variants[0]), None);
                 break;
             }
         }
@@ -689,18 +693,19 @@ impl Question {
 
                 let index = guess.to_ascii_lowercase().as_bytes()[0];
                 if 97 <= index && index < 101 {
-                    if self.check_any(&candidates[(index - 97) as usize]) {
-                        print_correct();
+                    let guess = &candidates[(index - 97) as usize];
+                    if self.check_any(guess) {
+                        self.correct();
                         return Ok(QuestionResult::new(1.0));
                     } else {
-                        print_incorrect(&answer);
+                        self.incorrect(Some(&answer), Some(guess));
                         return Ok(QuestionResult::new(0.0));
                     }
                 } else {
                     continue;
                 }
             } else {
-                print_incorrect(&answer);
+                self.incorrect(Some(&answer), None);
                 return Ok(QuestionResult::new(0.0));
             }
         }
@@ -714,6 +719,37 @@ impl Question {
         Ok(QuestionResult {
             time_asked: chrono::Utc::now(), score: None, response,
         })
+    }
+
+    /// Print a message for correct answers.
+    fn correct(&self) {
+        println!("{}", "Correct!".green());
+    }
+
+    /// Print a message for an incorrect answer, indicating that `answer` was the
+    /// correct answer.
+    fn incorrect(&self, answer: Option<&str>, guess: Option<&str>) {
+        let explanation = if let Some(guess) = guess {
+            if let Some(explanation) = self.explanations.get(&guess.to_lowercase()) {
+                format!(" {}", explanation)
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
+        if let Some(answer) = answer {
+            let message = format!(
+                "{} The correct answer was {}.{}", 
+                "Incorrect.".red(), 
+                answer.green(),
+                explanation
+            );
+            prettyprint(&message, None);
+        } else {
+            prettyprint(&format!("{}{}", "Incorrect.".red(), &explanation), None);
+        }
     }
 
     /// Return `true` if `guess` matches any of the answers in `self.answer_list`.
@@ -1026,6 +1062,11 @@ fn expand_question_json(question: &JSONMap) -> JSONMap {
         ret.insert(String::from("tags"), serde_json::json!([]));
     }
 
+    // The `explanations` field defaults to an empty hash.
+    if !ret.contains_key("explanations") {
+        ret.insert(String::from("explanations"), serde_json::json!({}));
+    }
+
     // Convert answer objects from [...] to { "variants": [...] }.
     if let Some(answer_list) = question.get("answer_list") {
         if let Some(answers_as_array) = answer_list.as_array() {
@@ -1249,26 +1290,6 @@ fn make_directory(path: &PathBuf) -> Result<(), std::io::Error> {
 }
 
 
-/// Print a message for correct answers.
-fn print_correct() {
-    println!("{}", "Correct!".green());
-}
-
-
-/// Print a message for an incorrect answer, indicating that `answer` was the correct
-/// answer.
-fn print_incorrect(answer: &str) {
-    if answer.len() > 0 {
-        let message = &format!(
-            "{} The correct answer was {}.", "Incorrect.".red(), answer.green()
-        );
-        prettyprint(message, None);
-    } else {
-        println!("{}", "Incorrect.".red());
-    }
-}
-
-
 #[derive(Debug)]
 pub enum QuizError {
     /// For when the application directory cannot be created.
@@ -1402,6 +1423,7 @@ mod tests {
             tags: Vec::new(),
             id: None,
             depends: None,
+            explanations: HashMap::new(),
         };
 
         assert_eq!(*output, expected_output);
@@ -1443,6 +1465,7 @@ mod tests {
             tags: Vec::new(),
             id: None,
             depends: None,
+            explanations: HashMap::new(),
         };
 
         assert_eq!(*output, expected_output);
@@ -1475,6 +1498,7 @@ mod tests {
             tags: Vec::new(),
             id: None,
             depends: None,
+            explanations: HashMap::new(),
         };
 
         assert_eq!(*output, expected_output);
