@@ -401,6 +401,9 @@ impl Quiz {
             println!("{}", " correct".white());
             print!  ("  {}", format!("{}", total_partial_correct).green());
             println!("{}", " partially correct".white());
+            let total_incorrect = total - total_correct - total_partial_correct;
+            print!  ("  {}", format!("{}", total_incorrect).red());
+            println!("{}", " incorrect".white());
             print!  ("  {}", format!("{}", total_ungraded).cyan());
             println!("{}", " ungraded".white());
         } else if total_ungraded > 0 {
