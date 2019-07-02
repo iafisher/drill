@@ -28,6 +28,8 @@ $ cargo run -- edit <name>
 $ cargo run -- delete <name>
 ```
 
+If `<name>` is left out of any of these commands, it defaults to `main`.
+
 
 ## Quiz file format
 You create the quizzes yourself as JSON files. This section documents the format of the JSON, although note that since popquiz is under active development, the format may change in backwards-incompatible fashion without warning.
