@@ -34,24 +34,28 @@ struct Question {
     /// The text of the question. It is a vector instead of a string so that multiple
     /// variants of the same question can be stored.
     text: Vec<String>,
-    /// User-defined tags for the question.
-    tags: Vec<String>,
     /// Correct answers to the question. When `kind` is equal to `ShortAnswer` or
     /// `MultipleChoice`, this vector should have only one element.
     answer_list: Vec<Answer>,
     /// Candidate answers to the question. This field is only used when `kind` is set to
     /// `MultipleChoice`, in which case the candidates are incorrect answers to the
     /// question.
+    #[serde(default)]
     candidates: Vec<String>,
     /// Prior results of answering the question.
-    prior_results: Option<Vec<QuestionResult>>,
+    #[serde(default)]
+    prior_results: Vec<QuestionResult>,
     /// Optional string identifier.
     id: Option<String>,
     /// If provided, should be the `id` of another `Question` which must be asked before
     /// this one.
     depends: Option<String>,
+    /// User-defined tags for the question.
+    #[serde(default)]
+    tags: Vec<String>,
     /// Incorrect answers may be given specific explanations for why they are not
     /// right.
+    #[serde(default)]
     explanations: Vec<(Vec<String>, String)>,
 }
 
@@ -441,14 +445,10 @@ impl Quiz {
         if options.best || options.worst {
             let mut i = 0;
             while i < candidates.len() {
-                if let Some(results) = candidates[i].prior_results.as_ref() {
-                    if aggregate_results(results).is_none() {
-                        candidates.remove(i);
-                    } else {
-                        i += 1;
-                    }
-                } else {
+                if aggregate_results(&candidates[i].prior_results).is_none() {
                     candidates.remove(i);
+                } else {
+                    i += 1;
                 }
             }
         }
@@ -499,8 +499,7 @@ fn filter_question(q: &Question, options: &QuizFilterOptions) -> bool {
         // `q` must not have any excluded tags.
         && options.exclude.iter().all(|tag| !q.tags.contains(tag))
         // If `--never` flag is present, question must not have been asked before.
-        && (!options.never || q.prior_results.is_none()
-            || q.prior_results.as_ref().unwrap().len() == 0)
+        && (!options.never || q.prior_results.len() == 0)
         && filter_question_by_keywords(q, &options.keywords)
 }
 
@@ -531,7 +530,8 @@ impl Question {
         Question {
             kind: QuestionKind::ShortAnswer, text: vec![String::from(text)],
             tags: Vec::new(), answer_list: answers, candidates: Vec::new(),
-            prior_results: None, id: None, depends: None, explanations: Vec::new(),
+            prior_results: Vec::new(), id: None, depends: None,
+            explanations: Vec::new(),
         }
     }
 
@@ -741,8 +741,8 @@ impl Question {
 
         if let Some(answer) = answer {
             let message = format!(
-                "{} The correct answer was {}.{}", 
-                "Incorrect.".red(), 
+                "{} The correct answer was {}.{}",
+                "Incorrect.".red(),
                 answer.green(),
                 explanation
             );
@@ -1014,7 +1014,7 @@ fn load_quiz(name: &str) -> Result<Quiz, QuizError> {
     let old_results = load_results(name)?;
     for question in quiz.questions.iter_mut() {
         if let Some(results) = old_results.get(&question.text[0]) {
-            question.prior_results = Some(results.clone());
+            question.prior_results = results.clone();
         }
     }
     Ok(quiz)
@@ -1056,25 +1056,9 @@ type JSONMap = serde_json::Map<String, serde_json::Value>;
 fn normalize_question_json(question: &JSONMap) -> JSONMap {
     let mut ret = question.clone();
 
-    // Only multiple-choice questions require the `candidates` field, so other
-    // questions can omit them.
-    if !ret.contains_key("candidates") {
-        ret.insert(String::from("candidates"), serde_json::json!([]));
-    }
-
     // The `kind` field defaults to "ShortAnswer".
     if !ret.contains_key("kind") {
         ret.insert(String::from("kind"), serde_json::json!("ShortAnswer"));
-    }
-
-    // The `tags` field defaults to an empty array.
-    if !ret.contains_key("tags") {
-        ret.insert(String::from("tags"), serde_json::json!([]));
-    }
-
-    // The `explanations` field defaults to an empty array.
-    if !ret.contains_key("explanations") {
-        ret.insert(String::from("explanations"), serde_json::json!([]));
     }
 
     // Convert answer objects from [...] to { "variants": [...] }.
@@ -1204,10 +1188,8 @@ fn cmp_results_least(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
 /// Comparison function that sorts an array of `Question` objects such that the
 /// questions with the highest previous scores come first.
 fn cmp_questions_best(a: &&Question, b: &&Question) -> Ordering {
-    let a_score = (*a).prior_results.as_ref().map(aggregate_results)
-        .unwrap_or(Some(0.0)).unwrap_or(0.0);
-    let b_score = (*b).prior_results.as_ref().map(aggregate_results)
-        .unwrap_or(Some(0.0)).unwrap_or(0.0);
+    let a_score = aggregate_results(&a.prior_results).unwrap_or(0.0);
+    let b_score = aggregate_results(&b.prior_results).unwrap_or(0.0);
 
     if a_score > b_score {
         Ordering::Less
@@ -1229,8 +1211,8 @@ fn cmp_questions_worst(a: &&Question, b: &&Question) -> Ordering {
 /// Comparison function that sorts an array of `Question` objects such that the
 /// questions with the most responses come first.
 fn cmp_questions_most(a: &&Question, b: &&Question) -> Ordering {
-    let a_results = if let Some(rslts) = &a.prior_results { rslts.len() } else { 0 };
-    let b_results = if let Some(rslts) = &b.prior_results { rslts.len() } else { 0 };
+    let a_results = a.prior_results.len();
+    let b_results = b.prior_results.len();
 
     if a_results > b_results {
         Ordering::Less
@@ -1429,7 +1411,7 @@ mod tests {
                 Answer { variants: vec![String::from("1939")] }
             ],
             candidates: Vec::new(),
-            prior_results: None,
+            prior_results: Vec::new(),
             tags: Vec::new(),
             id: None,
             depends: None,
@@ -1471,7 +1453,7 @@ mod tests {
                 Answer { variants: vec![String::from("Wales")] },
             ],
             candidates: Vec::new(),
-            prior_results: None,
+            prior_results: Vec::new(),
             tags: Vec::new(),
             id: None,
             depends: None,
@@ -1504,7 +1486,7 @@ mod tests {
                 String::from("Thai"), String::from("French"), String::from("Vietnamese"),
                 String::from("Burmese"), String::from("Tagalog")],
             answer_list: vec![Answer { variants: vec![String::from("Khmer")] } ],
-            prior_results: None,
+            prior_results: Vec::new(),
             tags: Vec::new(),
             id: None,
             depends: None,
