@@ -435,10 +435,6 @@ impl Quiz {
     /// Choose a set of questions, filtered by the command-line options.
     fn choose_questions(&self, options: &QuizTakeOptions) -> Vec<&Question> {
         let mut candidates = self.filter_questions(&options.filter_opts);
-        if !options.in_order {
-            let mut rng = thread_rng();
-            candidates.shuffle(&mut rng);
-        }
 
         // --best and --worst can only be applied to questions with at least one
         // scored response, so we remove questions with no scored responses here.
@@ -487,6 +483,11 @@ impl Quiz {
                     }
                 }
             }
+        }
+
+        if !options.in_order {
+            let mut rng = thread_rng();
+            candidates.shuffle(&mut rng);
         }
 
         candidates
