@@ -104,6 +104,20 @@ impl PartialEq for QuestionResult {
 impl Eq for QuestionResult {}
 
 
+/// Represents the results of taking a quiz on a particular occasion.
+#[derive(Debug)]
+struct QuizResult {
+    time_taken: chrono::DateTime<chrono::Utc>,
+    total_answered: usize,
+    total_correct: usize,
+    total_partially_correct: usize,
+    total_incorrect: usize,
+    total_ungraded: usize,
+    score: f64,
+    per_question: Vec<QuestionResult>,
+}
+
+
 /// Holds the command-line configuration for the application.
 #[derive(StructOpt)]
 #[structopt(name = "popquiz", about = "Take quizzes from the command line.")]
@@ -232,8 +246,37 @@ pub fn main_take(options: QuizTakeOptions) -> Result<(), QuizError> {
 
     let mut quiz = load_quiz(&options.name)?;
     let results = quiz.take(&options);
-    if results.len() > 0 && (options.save || yesno("\nSave results? ")) {
-        save_results(&options.name, &results)?;
+
+    if let Some(results) = results {
+        let total_graded = results.total_answered - results.total_ungraded;
+        if total_graded > 0 {
+            let score_as_str = format!("{:.1}%", results.score);
+
+            print!  ("\n\n");
+            print!  ("{}", "Score: ".white());
+            print!  ("{}", score_as_str.cyan());
+            print!  ("{}", " out of ".white());
+            print!  ("{}", format!("{}", results.total_answered).cyan());
+            if results.total_answered == 1 {
+                println!("{}", " question".white());
+            } else {
+                println!("{}", " questions".white());
+            }
+            print!  ("  {}", format!("{}", results.total_correct).bright_green());
+            println!("{}", " correct".white());
+            print!  ("  {}", format!("{}", results.total_partially_correct).green());
+            println!("{}", " partially correct".white());
+            print!  ("  {}", format!("{}", results.total_incorrect).red());
+            println!("{}", " incorrect".white());
+            print!  ("  {}", format!("{}", results.total_ungraded).cyan());
+            println!("{}", " ungraded".white());
+        } else if results.total_ungraded > 0 {
+            println!("{}", "\n\nAll questions were ungraded.".white());
+        }
+
+        if total_graded > 0 && (options.save || yesno("\nSave results? ")) {
+            save_results(&options.name, &results)?;
+        }
     }
     Ok(())
 }
@@ -356,10 +399,10 @@ pub fn main_list() -> Result<(), QuizError> {
 
 impl Quiz {
     /// Take the quiz and return pairs of questions and results.
-    fn take(&mut self, options: &QuizTakeOptions) -> Vec<QuestionResult> {
+    fn take(&mut self, options: &QuizTakeOptions) -> Option<QuizResult> {
         let mut results = Vec::new();
         let mut total_correct = 0;
-        let mut total_partial_correct = 0;
+        let mut total_partially_correct = 0;
         let mut total_ungraded = 0;
         let mut total = 0;
         let mut aggregate_score = 0.0;
@@ -367,7 +410,7 @@ impl Quiz {
         let questions = self.choose_questions(&options);
         if questions.len() == 0 {
             println!("No questions found.");
-            return Vec::new();
+            return None;
         }
 
         for (i, question) in questions.iter().enumerate() {
@@ -382,7 +425,7 @@ impl Quiz {
                     if score == 1.0 {
                         total_correct += 1;
                     } else if score > 0.0 {
-                        total_partial_correct += 1;
+                        total_partially_correct += 1;
                     }
                 } else {
                     total_ungraded += 1;
@@ -392,34 +435,18 @@ impl Quiz {
             }
         }
 
-        if total > 0 {
-            let score = (aggregate_score / (total as f64)) * 100.0;
-            let score_as_str = format!("{:.1}%", score);
-
-            print!  ("\n\n");
-            print!  ("{}", "Score: ".white());
-            print!  ("{}", score_as_str.cyan());
-            print!  ("{}", " out of ".white());
-            print!  ("{}", format!("{}", total + total_ungraded).cyan());
-            if total + total_ungraded == 1 {
-                println!("{}", " question".white());
-            } else {
-                println!("{}", " questions".white());
-            }
-            print!  ("  {}", format!("{}", total_correct).bright_green());
-            println!("{}", " correct".white());
-            print!  ("  {}", format!("{}", total_partial_correct).green());
-            println!("{}", " partially correct".white());
-            let total_incorrect = total - total_correct - total_partial_correct;
-            print!  ("  {}", format!("{}", total_incorrect).red());
-            println!("{}", " incorrect".white());
-            print!  ("  {}", format!("{}", total_ungraded).cyan());
-            println!("{}", " ungraded".white());
-        } else if total_ungraded > 0 {
-            println!("{}", "\n\nAll questions were ungraded.".white());
-        }
-
-        results
+        let total_incorrect = total - total_correct - total_partially_correct;
+        let score = (aggregate_score / (total as f64)) * 100.0;
+        Some(QuizResult {
+            time_taken: chrono::Utc::now(),
+            total_answered: total + total_ungraded,
+            total_correct,
+            total_partially_correct,
+            total_incorrect,
+            total_ungraded,
+            score,
+            per_question: results,
+        })
     }
 
     /// Return the questions filtered by the given command-line options (e.g., `--tag`
@@ -946,7 +973,7 @@ fn list_tags(quiz: &Quiz) {
 
 /// Save `results` to a file in the popquiz application's data directory, appending the
 /// results if previous results have been saved.
-fn save_results(name: &str, results: &Vec<QuestionResult>) -> Result<(), QuizError> {
+fn save_results(name: &str, results: &QuizResult) -> Result<(), QuizError> {
     require_app_dir_path()?;
 
     // Load old data, if it exists.
@@ -964,7 +991,7 @@ fn save_results(name: &str, results: &Vec<QuestionResult>) -> Result<(), QuizErr
 
     // Store the results as a map from the text of the questions to a list of individual
     // time-stamped results.
-    for result in results.iter() {
+    for result in results.per_question.iter() {
         if !hash.contains_key(&result.text) {
             hash.insert(result.text.to_string(), Vec::new());
         }
