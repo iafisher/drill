@@ -1374,6 +1374,30 @@ impl error::Error for QuizError {
 }
 
 
+enum MyReadlineError {
+    Interrupted,
+    Eof,
+    Other,
+}
+
+
+trait MyReadline {
+    fn read_line(&mut self) -> Result<String, MyReadlineError>;
+}
+
+
+impl<H: rustyline::Helper> MyReadline for rustyline::Editor<H> {
+    fn read_line(&mut self) -> Result<String, MyReadlineError> {
+        match self.readline("") {
+            Ok(s) => Ok(s),
+            Err(ReadlineError::Interrupted) => Err(MyReadlineError::Interrupted),
+            Err(ReadlineError::Eof) => Err(MyReadlineError::Eof),
+            _ => Err(MyReadlineError::Other),
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
