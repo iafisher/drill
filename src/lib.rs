@@ -356,7 +356,7 @@ pub fn main_list() -> Result<(), QuizError> {
 
 impl Quiz {
     /// Take the quiz and return pairs of questions and results.
-    fn take(&mut self, options: &QuizTakeOptions) -> Vec<(&Question, QuestionResult)> {
+    fn take(&mut self, options: &QuizTakeOptions) -> Vec<QuestionResult> {
         let mut results = Vec::new();
         let mut total_correct = 0;
         let mut total_partial_correct = 0;
@@ -374,7 +374,7 @@ impl Quiz {
             println!("\n");
             if let Ok(result) = question.ask(i+1) {
                 let score_option = result.score;
-                results.push((*question, result));
+                results.push(result);
 
                 if let Some(score) = score_option {
                     total += 1;
@@ -946,7 +946,7 @@ fn list_tags(quiz: &Quiz) {
 
 /// Save `results` to a file in the popquiz application's data directory, appending the
 /// results if previous results have been saved.
-fn save_results(name: &str, results: &Vec<(&Question, QuestionResult)>) -> Result<(), QuizError> {
+fn save_results(name: &str, results: &Vec<QuestionResult>) -> Result<(), QuizError> {
     require_app_dir_path()?;
 
     // Load old data, if it exists.
@@ -964,12 +964,11 @@ fn save_results(name: &str, results: &Vec<(&Question, QuestionResult)>) -> Resul
 
     // Store the results as a map from the text of the questions to a list of individual
     // time-stamped results.
-    for (q, qr) in results.iter() {
-        let qtext = q.text[0].as_str();
-        if !hash.contains_key(qtext) {
-            hash.insert(qtext.to_string(), Vec::new());
+    for result in results.iter() {
+        if !hash.contains_key(&result.text) {
+            hash.insert(result.text.to_string(), Vec::new());
         }
-        hash.get_mut(qtext).unwrap().push((*qr).clone());
+        hash.get_mut(&result.text).unwrap().push(result.clone());
     }
 
     let serialized_results = serde_json::to_string_pretty(&hash)
