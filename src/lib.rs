@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use std::fs;
+use std::io;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -239,44 +240,54 @@ pub struct QuizResultsOptions {
 
 
 /// The main function for the `take` subcommand.
-pub fn main_take(options: QuizTakeOptions) -> Result<(), QuizError> {
+pub fn main_take<W: io::Write, R: MyReadline>(
+    writer: &mut W, reader: &mut R, options: QuizTakeOptions
+) -> Result<(), QuizError> {
     if options.no_color {
         colored::control::set_override(false);
     }
 
     let mut quiz = load_quiz(&options.name)?;
-    let results = quiz.take(&options);
+    let results = quiz.take(writer, reader, &options);
 
     if let Some(results) = results {
+        output_results(&results)
+            .map_err(QuizError::Io)?;
+
         let total_graded = results.total_answered - results.total_ungraded;
-        if total_graded > 0 {
-            let score_as_str = format!("{:.1}%", results.score);
-
-            print!  ("\n\n");
-            print!  ("{}", "Score: ".white());
-            print!  ("{}", score_as_str.cyan());
-            print!  ("{}", " out of ".white());
-            print!  ("{}", format!("{}", results.total_answered).cyan());
-            if results.total_answered == 1 {
-                println!("{}", " question".white());
-            } else {
-                println!("{}", " questions".white());
-            }
-            print!  ("  {}", format!("{}", results.total_correct).bright_green());
-            println!("{}", " correct".white());
-            print!  ("  {}", format!("{}", results.total_partially_correct).green());
-            println!("{}", " partially correct".white());
-            print!  ("  {}", format!("{}", results.total_incorrect).red());
-            println!("{}", " incorrect".white());
-            print!  ("  {}", format!("{}", results.total_ungraded).cyan());
-            println!("{}", " ungraded".white());
-        } else if results.total_ungraded > 0 {
-            println!("{}", "\n\nAll questions were ungraded.".white());
-        }
-
-        if total_graded > 0 && (options.save || yesno("\nSave results? ")) {
+        if total_graded > 0 && (options.save || yesno(writer, reader, "\nSave results? ")) {
             save_results(&options.name, &results)?;
         }
+    }
+    Ok(())
+}
+
+
+fn output_results(results: &QuizResult) -> io::Result<()> {
+    let total_graded = results.total_answered - results.total_ungraded;
+    if total_graded > 0 {
+        let score_as_str = format!("{:.1}%", results.score);
+
+        print!  ("\n\n");
+        print!  ("{}", "Score: ".white());
+        print!  ("{}", score_as_str.cyan());
+        print!  ("{}", " out of ".white());
+        print!  ("{}", format!("{}", results.total_answered).cyan());
+        if results.total_answered == 1 {
+            println!("{}", " question".white());
+        } else {
+            println!("{}", " questions".white());
+        }
+        print!  ("  {}", format!("{}", results.total_correct).bright_green());
+        println!("{}", " correct".white());
+        print!  ("  {}", format!("{}", results.total_partially_correct).green());
+        println!("{}", " partially correct".white());
+        print!  ("  {}", format!("{}", results.total_incorrect).red());
+        println!("{}", " incorrect".white());
+        print!  ("  {}", format!("{}", results.total_ungraded).cyan());
+        println!("{}", " ungraded".white());
+    } else if results.total_ungraded > 0 {
+        println!("{}", "\n\nAll questions were ungraded.".white());
     }
     Ok(())
 }
@@ -296,11 +307,13 @@ pub fn main_count(options: QuizCountOptions) -> Result<(), QuizError> {
 
 
 /// The main function for the `results` subcommand.
-pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
+pub fn main_results<W: io::Write>(
+    writer: &mut W, options: QuizResultsOptions
+) -> Result<(), QuizError> {
     let results = load_results(&options.name)?;
 
     if results.len() == 0 {
-        println!("No results have been recorded for this quiz.");
+        writeln!(writer, "No results have been recorded for this quiz.");
         return Ok(());
     }
 
@@ -329,7 +342,9 @@ pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
 
     for (score, attempts, question) in aggregated.iter() {
         let first_prefix = format!("{:>5.1}%  of {:>2}   ", score, attempts);
-        prettyprint_colored(&question, Some(&first_prefix), None, Some(Color::Cyan));
+        prettyprint_colored(
+            writer, &question, Some(&first_prefix), None, Some(Color::Cyan)
+        );
     }
 
     Ok(())
@@ -349,13 +364,17 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_delete(options: QuizDeleteOptions) -> Result<(), QuizError> {
+pub fn main_delete<W: io::Write, R: MyReadline>(
+    writer: &mut W, reader: &mut R, options: QuizDeleteOptions
+) -> Result<(), QuizError> {
     require_app_dir_path()?;
 
     let path = get_quiz_path(&options.name);
     if path.exists() {
-        if options.force || yesno("Are you sure you want to delete the quiz? ") {
+        let yesno_prompt = "Are you sure you want to delete the quiz? ";
+        if options.force || yesno(writer, reader, yesno_prompt) {
             if let Err(_) = fs::remove_file(&path) {
+                // TODO: Return an error for this.
                 eprintln!("Error: could not remove quiz.");
                 ::std::process::exit(2);
             }
@@ -399,7 +418,9 @@ pub fn main_list() -> Result<(), QuizError> {
 
 impl Quiz {
     /// Take the quiz and return pairs of questions and results.
-    fn take(&mut self, options: &QuizTakeOptions) -> Option<QuizResult> {
+    fn take<W: io::Write, R: MyReadline>(
+        &mut self, writer: &mut W, reader: &mut R, options: &QuizTakeOptions
+    ) -> Option<QuizResult> {
         let mut results = Vec::new();
         let mut total_correct = 0;
         let mut total_partially_correct = 0;
@@ -409,13 +430,13 @@ impl Quiz {
 
         let questions = self.choose_questions(&options);
         if questions.len() == 0 {
-            println!("No questions found.");
+            writeln!(writer, "No questions found.");
             return None;
         }
 
         for (i, question) in questions.iter().enumerate() {
-            println!("\n");
-            if let Ok(result) = question.ask(i+1) {
+            write!(writer, "\n");
+            if let Ok(result) = question.ask(writer, reader, i+1) {
                 let score_option = result.score;
                 results.push(result);
 
@@ -572,44 +593,50 @@ impl Question {
     ///
     /// The `num` argument is the question number in the quiz, which is printed before
     /// the text of the question.
-    fn ask(&self, num: usize) -> Result<QuestionResult, ()> {
+    fn ask<W: io::Write, R: MyReadline>(
+        &self, writer: &mut W, reader: &mut R, num: usize
+    ) -> Result<QuestionResult, ()> {
         let mut rng = thread_rng();
         let text = self.text.choose(&mut rng).unwrap();
         let prefix = format!("  ({}) ", num);
         prettyprint_colored(
-            &text, Some(&prefix), Some(Color::White), Some(Color::Cyan)
+            writer, &text, Some(&prefix), Some(Color::White), Some(Color::Cyan)
         );
-        print!("\n");
+        write!(writer, "\n");
 
         match self.kind {
             QuestionKind::ShortAnswer => {
-                self.ask_short_answer()
+                self.ask_short_answer(writer, reader)
             },
             QuestionKind::ListAnswer => {
-                self.ask_list_answer()
+                self.ask_list_answer(writer, reader)
             },
             QuestionKind::OrderedListAnswer => {
-                self.ask_ordered_list_answer()
+                self.ask_ordered_list_answer(writer, reader)
             }
             QuestionKind::MultipleChoice => {
-                self.ask_multiple_choice()
+                self.ask_multiple_choice(writer, reader)
             },
             QuestionKind::Ungraded => {
-                self.ask_ungraded()
+                self.ask_ungraded(writer, reader)
             }
         }
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `ShortAnswer`.
-    fn ask_short_answer(&self) -> Result<QuestionResult, ()> {
-        let guess = prompt("> ")?;
+    fn ask_short_answer<W: io::Write, R: MyReadline>(
+        &self, writer: &mut W, reader: &mut R
+    ) -> Result<QuestionResult, ()> {
+        let guess = prompt(writer, reader, "> ")?;
         let result = guess.is_some() && self.check_any(guess.as_ref().unwrap());
 
         if result {
-            self.correct();
+            self.correct(writer);
         } else {
             let guess_option = guess.as_ref().map(|s| s.as_str());
-            self.incorrect(Some(&self.answer_list[0].variants[0]), guess_option);
+            self.incorrect(
+                writer, Some(&self.answer_list[0].variants[0]), guess_option
+            );
         }
 
         let score = if result { 1.0 } else { 0.0 };
@@ -622,7 +649,9 @@ impl Question {
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `ListAnswer`.
-    fn ask_list_answer(&self) -> Result<QuestionResult, ()> {
+    fn ask_list_answer<W: io::Write, R: MyReadline>(
+        &self, writer: &mut W, reader: &mut R
+    ) -> Result<QuestionResult, ()> {
         let mut satisfied = Vec::<bool>::with_capacity(self.answer_list.len());
         for _ in 0..self.answer_list.len() {
             satisfied.push(false);
@@ -630,20 +659,20 @@ impl Question {
 
         let mut count = 0;
         while count < self.answer_list.len() {
-            if let Some(guess) = prompt("> ")? {
+            if let Some(guess) = prompt(writer, reader, "> ")? {
                 let index = self.check_one(&guess);
                 if index == self.answer_list.len() {
-                    self.incorrect(None, Some(&guess));
+                    self.incorrect(writer, None, Some(&guess));
                     count += 1;
                 } else if satisfied[index] {
-                    println!("{}", "You already said that.".white());
+                    writeln!(writer, "{}", "You already said that.".white());
                 } else {
                     satisfied[index] = true;
-                    self.correct();
+                    self.correct(writer);
                     count += 1;
                 }
             } else {
-                self.incorrect(None, None);
+                self.incorrect(writer, None, None);
                 break;
             }
         }
@@ -651,13 +680,14 @@ impl Question {
         let ncorrect = satisfied.iter().filter(|x| **x).count();
         let score = (ncorrect as f64) / (self.answer_list.len() as f64);
         if ncorrect < self.answer_list.len() {
-            println!("{}", "\nYou missed:".white());
+            writeln!(writer, "{}", "\nYou missed:".white());
             for (i, correct) in satisfied.iter().enumerate() {
                 if !correct {
-                    println!("  {}", self.answer_list[i].variants[0]);
+                    writeln!(writer, "  {}", self.answer_list[i].variants[0]);
                 }
             }
-            println!(
+            writeln!(
+                writer,
                 "\n{}",
                 format!(
                     "Score for this question: {}",
@@ -669,24 +699,27 @@ impl Question {
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `OrderedListAnswer`.
-    fn ask_ordered_list_answer(&self) -> Result<QuestionResult, ()> {
+    fn ask_ordered_list_answer<W: io::Write, R: MyReadline>(
+        &self, writer: &mut W, reader: &mut R
+    ) -> Result<QuestionResult, ()> {
         let mut ncorrect = 0;
         for answer in self.answer_list.iter() {
-            if let Some(guess) = prompt("> ")? {
+            if let Some(guess) = prompt(writer, reader, "> ")? {
                 if answer.check(&guess) {
-                    self.correct();
+                    self.correct(writer);
                     ncorrect += 1;
                 } else {
-                    self.incorrect(Some(&answer.variants[0]), Some(&guess));
+                    self.incorrect(writer, Some(&answer.variants[0]), Some(&guess));
                 }
             } else {
-                self.incorrect(Some(&answer.variants[0]), None);
+                self.incorrect(writer, Some(&answer.variants[0]), None);
                 break;
             }
         }
         let score = (ncorrect as f64) / (self.answer_list.len() as f64);
         if score < 1.0 {
-            println!(
+            writeln!(
+                writer,
                 "\n{}",
                 format!(
                     "Score for this question: {}",
@@ -698,7 +731,9 @@ impl Question {
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `MultipleChoice`.
-    fn ask_multiple_choice(&self) -> Result<QuestionResult, ()> {
+    fn ask_multiple_choice<W: io::Write, R: MyReadline>(
+        &self, writer: &mut W, reader: &mut R
+    ) -> Result<QuestionResult, ()> {
         let mut candidates = self.candidates.clone();
 
         let mut rng = thread_rng();
@@ -713,12 +748,12 @@ impl Question {
 
         for (i, candidate) in "abcd".chars().zip(candidates.iter()) {
             let prefix = format!("     ({}) ", i);
-            prettyprint(candidate, Some(&prefix));
+            prettyprint(writer, candidate, Some(&prefix));
         }
 
-        println!("");
+        write!(writer, "\n");
         loop {
-            if let Some(guess) = prompt("Enter a letter: ")? {
+            if let Some(guess) = prompt(writer, reader, "Enter a letter: ")? {
                 if guess.len() != 1 {
                     continue;
                 }
@@ -727,27 +762,29 @@ impl Question {
                 if 97 <= index && index < 101 {
                     let guess = &candidates[(index - 97) as usize];
                     if self.check_any(guess) {
-                        self.correct();
+                        self.correct(writer);
                         return Ok(self.result(Some(answer.clone()), Some(1.0)));
                     } else {
-                        self.incorrect(Some(&answer), Some(guess));
+                        self.incorrect(writer, Some(&answer), Some(guess));
                         return Ok(self.result(Some(answer.clone()), Some(0.0)));
                     }
                 } else {
                     continue;
                 }
             } else {
-                self.incorrect(Some(&answer), None);
+                self.incorrect(writer, Some(&answer), None);
                 return Ok(self.result(Some(answer.clone()), Some(0.0)));
             }
         }
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `Ungraded`.
-    fn ask_ungraded(&self) -> Result<QuestionResult, ()> {
-        let response = prompt("> ")?;
-        println!("\n{}", "Sample correct answer:\n".white());
-        prettyprint(&self.answer_list[0].variants[0], Some("  "));
+    fn ask_ungraded<W: io::Write, R: MyReadline>(
+        &self, writer: &mut W, reader: &mut R
+    ) -> Result<QuestionResult, ()> {
+        let response = prompt(writer, reader, "> ")?;
+        writeln!(writer, "\n{}", "Sample correct answer:\n".white());
+        prettyprint(writer, &self.answer_list[0].variants[0], Some("  "));
         Ok(self.result(response, None))
     }
 
@@ -762,13 +799,15 @@ impl Question {
     }
 
     /// Print a message for correct answers.
-    fn correct(&self) {
-        println!("{}", "Correct!".green());
+    fn correct<W: io::Write>(&self, writer: &mut W) {
+        writeln!(writer, "{}", "Correct!".green());
     }
 
     /// Print a message for an incorrect answer, indicating that `answer` was the
     /// correct answer.
-    fn incorrect(&self, answer: Option<&str>, guess: Option<&str>) {
+    fn incorrect<W: io::Write>(
+        &self, writer: &mut W, answer: Option<&str>, guess: Option<&str>
+    ) {
         let explanation = if let Some(guess) = guess {
             if let Some(explanation) = self.get_explanation(&guess) {
                 format!(" {}", explanation)
@@ -786,9 +825,11 @@ impl Question {
                 answer.green(),
                 explanation
             );
-            prettyprint(&message, None);
+            prettyprint(writer, &message, None);
         } else {
-            prettyprint(&format!("{}{}", "Incorrect.".red(), &explanation), None);
+            prettyprint(
+                writer, &format!("{}{}", "Incorrect.".red(), &explanation), None
+            );
         }
     }
 
@@ -853,26 +894,31 @@ impl QuizFilterOptions {
 /// then `Ok(None)` is returned. If the user pressed Ctrl+C then `Err(())` is returned.
 /// Otherwise, `Ok(Some(line))` is returned where `line` is the last line of input the
 /// user entered without leading and trailing whitespace.
-fn prompt(message: &str) -> Result<Option<String>, ()> {
+fn prompt<W: io::Write, R: MyReadline>(
+    writer: &mut W, reader: &mut R, message: &str
+) -> Result<Option<String>, ()> {
     loop {
-        let mut rl = rustyline::Editor::<()>::new();
-        let result = rl.readline(&format!("{}", message.white()));
+        write!(writer, "{}", message.white());
+        writer.flush();
+
+        let result = reader.read_line();
         match result {
+            Ok(response) => {
+                let response = response.trim();
+                if response.len() > 0 {
+                    return Ok(Some(response.to_string()));
+                }
+            },
             // Return immediately if the user hits Ctrl+D or Ctrl+C.
-            Err(ReadlineError::Interrupted) => {
+            Err(MyReadlineError::Interrupted) => {
                 return Err(());
             },
-            Err(ReadlineError::Eof) => {
+            Err(MyReadlineError::Eof) => {
                 return Ok(None);
             },
             _ => {}
         }
 
-        let response = result.expect("Failed to read line");
-        let response = response.trim();
-        if response.len() > 0 {
-            return Ok(Some(response.to_string()));
-        }
     }
 }
 
@@ -880,13 +926,13 @@ fn prompt(message: &str) -> Result<Option<String>, ()> {
 /// Print `message` to standard output, breaking lines according to the current width
 /// of the terminal. If `prefix` is not `None`, then prepend it to the first line and
 /// indent all subsequent lines by its length.
-fn prettyprint(message: &str, prefix: Option<&str>) {
-    prettyprint_colored(message, prefix, None, None);
+fn prettyprint<W: io::Write>(writer: &mut W, message: &str, prefix: Option<&str>) {
+    prettyprint_colored(writer, message, prefix, None, None);
 }
 
 
-fn prettyprint_colored(
-    message: &str, prefix: Option<&str>, message_color: Option<Color>,
+fn prettyprint_colored<W: io::Write>(
+    writer: &mut W, message: &str, prefix: Option<&str>, message_color: Option<Color>,
     prefix_color: Option<Color>
 ) {
     let prefix = prefix.unwrap_or("");
@@ -896,13 +942,13 @@ fn prettyprint_colored(
     if let Some(first_line) = lines.next() {
         let colored_prefix = color_optional(&prefix, prefix_color);
         let colored_line = color_optional(&first_line, message_color);
-        println!("{}{}", colored_prefix, colored_line);
+        writeln!(writer, "{}{}", colored_prefix, colored_line);
     }
 
     let indent = " ".repeat(prefix.len());
     for line in lines {
         let colored_line = color_optional(&line, message_color);
-        println!("{}{}", indent, colored_line);
+        writeln!(writer, "{}{}", indent, colored_line);
     }
 }
 
@@ -917,8 +963,10 @@ fn color_optional(text: &str, color: Option<Color>) -> ColoredString {
 
 
 /// Prompt the user with a yes-no question and return `true` if they enter yes.
-fn yesno(message: &str) -> bool {
-    match prompt(message) {
+fn yesno<W: io::Write, R: MyReadline>(
+    writer: &mut W, reader: &mut R, message: &str
+) -> bool {
+    match prompt(writer, reader, message) {
         Ok(Some(response)) => {
             response.trim_start().to_lowercase().starts_with("y")
         },
@@ -1328,6 +1376,7 @@ pub enum QuizError {
     /// For when the user's system editor cannot be opened.
     CannotOpenEditor,
     CannotWriteToFile(PathBuf),
+    Io(io::Error),
 }
 
 
@@ -1358,6 +1407,9 @@ impl fmt::Display for QuizError {
                         f, "cannot write to file and cannot convert file name to UTF-8"
                     )
                 }
+            },
+            QuizError::Io(ref err) => {
+                write!(f, "IO error ({})", err)
             }
         }
     }
@@ -1374,14 +1426,14 @@ impl error::Error for QuizError {
 }
 
 
-enum MyReadlineError {
+pub enum MyReadlineError {
     Interrupted,
     Eof,
     Other,
 }
 
 
-trait MyReadline {
+pub trait MyReadline {
     fn read_line(&mut self) -> Result<String, MyReadlineError>;
 }
 

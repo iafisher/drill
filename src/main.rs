@@ -4,33 +4,33 @@
  * Author:  Ian Fisher (iafisher@protonmail.com)
  * Version: July 2019
  */
+use std::io;
+
 use colored::*;
 
 use popquiz::*;
 
 
 fn main() {
-    // Exit quietly on broken pipe error.
-    // Courtesy of https://github.com/rust-lang/rust/issues/46016#issuecomment-428106774
-    unsafe {
-        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
-    }
+    let options = parse_options();
+    let mut reader = rustyline::Editor::<()>::new();
+    let mut writer = io::stdout();
 
-    let result = match parse_options() {
+    let result = match options {
         QuizOptions::Take(options) => {
-            main_take(options)
+            main_take(&mut writer, &mut reader, options)
         },
         QuizOptions::Count(options) => {
             main_count(options)
         },
         QuizOptions::Results(options) => {
-            main_results(options)
+            main_results(&mut writer, options)
         },
         QuizOptions::Edit(options) => {
             main_edit(options)
         },
         QuizOptions::Delete(options) => {
-            main_delete(options)
+            main_delete(&mut writer, &mut reader, options)
         },
         QuizOptions::List => {
             main_list()
