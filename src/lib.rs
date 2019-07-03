@@ -251,7 +251,7 @@ pub fn main_take<W: io::Write, R: MyReadline>(
     let results = quiz.take(writer, reader, &options);
 
     if let Some(results) = results {
-        output_results(&results)
+        output_results(writer, &results)
             .map_err(QuizError::Io)?;
 
         let total_graded = results.total_answered - results.total_ungraded;
@@ -263,44 +263,46 @@ pub fn main_take<W: io::Write, R: MyReadline>(
 }
 
 
-fn output_results(results: &QuizResult) -> io::Result<()> {
+fn output_results<W: io::Write>(writer: &mut W, results: &QuizResult) -> io::Result<()> {
     let total_graded = results.total_answered - results.total_ungraded;
     if total_graded > 0 {
         let score_as_str = format!("{:.1}%", results.score);
 
-        print!  ("\n\n");
-        print!  ("{}", "Score: ".white());
-        print!  ("{}", score_as_str.cyan());
-        print!  ("{}", " out of ".white());
-        print!  ("{}", format!("{}", results.total_answered).cyan());
+        write!(writer, "\n\n")?;
+        write!(writer, "{}", "Score: ".white())?;
+        write!(writer, "{}", score_as_str.cyan())?;
+        write!(writer, "{}", " out of ".white())?;
+        write!(writer, "{}", format!("{}", results.total_answered).cyan())?;
         if results.total_answered == 1 {
-            println!("{}", " question".white());
+            writeln!(writer, "{}", " question".white())?;
         } else {
-            println!("{}", " questions".white());
+            writeln!(writer, "{}", " questions".white())?;
         }
-        print!  ("  {}", format!("{}", results.total_correct).bright_green());
-        println!("{}", " correct".white());
-        print!  ("  {}", format!("{}", results.total_partially_correct).green());
-        println!("{}", " partially correct".white());
-        print!  ("  {}", format!("{}", results.total_incorrect).red());
-        println!("{}", " incorrect".white());
-        print!  ("  {}", format!("{}", results.total_ungraded).cyan());
-        println!("{}", " ungraded".white());
+        write!(writer, "  {}", format!("{}", results.total_correct).bright_green())?;
+        write!(writer, "{}\n", " correct".white())?;
+        write!(writer, "  {}", format!("{}", results.total_partially_correct).green())?;
+        write!(writer, "{}\n", " partially correct".white())?;
+        write!(writer, "  {}", format!("{}", results.total_incorrect).red())?;
+        write!(writer, "{}\n", " incorrect".white())?;
+        write!(writer, "  {}", format!("{}", results.total_ungraded).cyan())?;
+        write!(writer, "{}\n", " ungraded".white())?;
     } else if results.total_ungraded > 0 {
-        println!("{}", "\n\nAll questions were ungraded.".white());
+        writeln!(writer, "{}", "\n\nAll questions were ungraded.".white())?;
     }
     Ok(())
 }
 
 
 /// The main function for the `count` subcommand.
-pub fn main_count(options: QuizCountOptions) -> Result<(), QuizError> {
+pub fn main_count<W: io::Write>(
+    writer: &mut W, options: QuizCountOptions
+) -> Result<(), QuizError> {
     let quiz = load_quiz(&options.name)?;
     if options.list_tags {
-        list_tags(&quiz);
+        list_tags(writer, &quiz);
     } else {
         let filtered = quiz.filter_questions(&options.filter_opts);
-        println!("{}", filtered.len());
+        writeln!(writer, "{}", filtered.len());
     }
     Ok(())
 }
@@ -373,11 +375,7 @@ pub fn main_delete<W: io::Write, R: MyReadline>(
     if path.exists() {
         let yesno_prompt = "Are you sure you want to delete the quiz? ";
         if options.force || yesno(writer, reader, yesno_prompt) {
-            if let Err(_) = fs::remove_file(&path) {
-                // TODO: Return an error for this.
-                eprintln!("Error: could not remove quiz.");
-                ::std::process::exit(2);
-            }
+            fs::remove_file(&path).map_err(QuizError::Io)?;
         }
         Ok(())
     } else {
@@ -386,7 +384,7 @@ pub fn main_delete<W: io::Write, R: MyReadline>(
 }
 
 
-pub fn main_list() -> Result<(), QuizError> {
+pub fn main_list<W: io::Write>(writer: &mut W) -> Result<(), QuizError> {
     let mut dirpath = get_app_dir_path();
     dirpath.push("quizzes");
 
@@ -397,20 +395,20 @@ pub fn main_list() -> Result<(), QuizError> {
                 if let Some(stem) = entry.path().file_stem() {
                     if let Some(stem) = stem.to_str() {
                         if !found_any {
-                            println!("Available quizzes:");
+                            writeln!(writer, "Available quizzes:");
                             found_any = true;
                         }
-                        println!("  {}", stem);
+                        writeln!(writer, "  {}", stem);
                     }
                 }
             }
         }
 
         if !found_any {
-            println!("No quizzes found.");
+            writeln!(writer, "No quizzes found.");
         }
     } else {
-        println!("No quizzes found.");
+        writeln!(writer, "No quizzes found.");
     }
     Ok(())
 }
@@ -992,7 +990,7 @@ pub fn parse_options() -> QuizOptions {
 
 
 /// Print a list of tags.
-fn list_tags(quiz: &Quiz) {
+fn list_tags<W: io::Write>(writer: &mut W, quiz: &Quiz) {
     // Count how many times each tag has been used.
     let mut tags = HashMap::<&str, u32>::new();
     for question in quiz.questions.iter() {
@@ -1006,14 +1004,14 @@ fn list_tags(quiz: &Quiz) {
     }
 
     if tags.len() == 0 {
-        println!("No questions have been assigned tags.");
+        writeln!(writer, "No questions have been assigned tags.");
     } else {
-        println!("Available tags:");
+        writeln!(writer, "Available tags:");
 
         let mut tags_in_order: Vec<(&str, u32)> = tags.into_iter().collect();
         tags_in_order.sort();
         for (tag, count) in tags_in_order.iter() {
-            println!("  {} ({})", tag, count);
+            writeln!(writer, "  {} ({})", tag, count);
         }
     }
 }

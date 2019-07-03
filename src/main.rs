@@ -21,7 +21,7 @@ fn main() {
             main_take(&mut writer, &mut reader, options)
         },
         QuizOptions::Count(options) => {
-            main_count(options)
+            main_count(&mut writer, options)
         },
         QuizOptions::Results(options) => {
             main_results(&mut writer, options)
@@ -33,7 +33,7 @@ fn main() {
             main_delete(&mut writer, &mut reader, options)
         },
         QuizOptions::List => {
-            main_list()
+            main_list(&mut writer)
         },
     };
 
