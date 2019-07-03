@@ -11,6 +11,13 @@ use colored::*;
 use popquiz::*;
 
 
+fn foo<W: io::Write>(writer: &mut W) {
+    write!(writer, "> ");
+    let mut reader = rustyline::Editor::<()>::new();
+    reader.readline("");
+}
+
+
 fn main() {
     let options = parse_options();
     let mut reader = rustyline::Editor::<()>::new();
@@ -38,7 +45,9 @@ fn main() {
     };
 
     if let Err(e) = result {
-        eprintln!("{}: {}", "Error".red(), e);
-        ::std::process::exit(2);
+        if !is_broken_pipe(&e) {
+            eprintln!("{}: {}", "Error".red(), e);
+            ::std::process::exit(2);
+        }
     }
 }
