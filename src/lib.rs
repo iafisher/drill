@@ -979,41 +979,35 @@ fn save_results(name: &str, results: &Vec<QuestionResult>) -> Result<(), QuizErr
 }
 
 
-type StoredResults = HashMap<String, Vec<QuestionResult>>;
-
-
-fn load_results(name: &str) -> Result<StoredResults, QuizError> {
-    let path = get_results_path(name);
-
-    match fs::read_to_string(&path) {
-        Ok(data) => {
-            serde_json::from_str(&data).map_err(QuizError::Json)
-        },
-        Err(_) => {
-            Ok(HashMap::new())
-        }
-    }
-}
-
-
 /// Load a `Quiz` object given its name.
 fn load_quiz(name: &str) -> Result<Quiz, QuizError> {
     let path = get_quiz_path(name);
+    let results_path = get_results_path(name);
+    load_quiz_from_file(name, &path, &results_path)
+}
+
+
+/// Load a `Quiz` object from a file. The `name` argument is used only for nice error
+/// messages.
+fn load_quiz_from_file(name: &str, path: &PathBuf, results_path: &PathBuf) -> Result<Quiz, QuizError> {
     let data = fs::read_to_string(path)
         .or(Err(QuizError::QuizNotFound(name.to_string())))?;
 
     let mut quiz = load_quiz_from_json(&data)?;
+
     // Attach previous results to the `Question` objects.
-    let old_results = load_results(name)?;
+    let old_results = load_results_from_file(results_path)?;
     for question in quiz.questions.iter_mut() {
         if let Some(results) = old_results.get(&question.text[0]) {
             question.prior_results = results.clone();
         }
     }
+
     Ok(quiz)
 }
 
 
+/// Load a `Quiz` object from a string containing JSON data.
 fn load_quiz_from_json(data: &str) -> Result<Quiz, QuizError> {
     let mut quiz_as_json: serde_json::Value = serde_json::from_str(&data)
         .map_err(QuizError::Json)?;
@@ -1037,6 +1031,27 @@ fn load_quiz_from_json(data: &str) -> Result<Quiz, QuizError> {
     let ret: Quiz = serde_json::from_value(quiz_as_json)
         .map_err(QuizError::Json)?;
     Ok(ret)
+}
+
+
+type StoredResults = HashMap<String, Vec<QuestionResult>>;
+
+
+fn load_results(name: &str) -> Result<StoredResults, QuizError> {
+    let path = get_results_path(name);
+    load_results_from_file(&path)
+}
+
+
+fn load_results_from_file(path: &PathBuf) -> Result<StoredResults, QuizError> {
+    match fs::read_to_string(path) {
+        Ok(data) => {
+            serde_json::from_str(&data).map_err(QuizError::Json)
+        },
+        Err(_) => {
+            Ok(HashMap::new())
+        }
+    }
 }
 
 
