@@ -960,7 +960,7 @@ fn save_results(name: &str, results: &Vec<(&Question, QuestionResult)>) -> Resul
     // Load old data, if it exists.
     let path = get_results_path(name);
     let data = fs::read_to_string(&path);
-    let mut hash: HashMap<&str, Vec<QuestionResult>> = match data {
+    let mut hash: HashMap<String, Vec<QuestionResult>> = match data {
         Ok(ref data) => {
             serde_json::from_str(&data)
                 .map_err(QuizError::Json)?
@@ -975,7 +975,7 @@ fn save_results(name: &str, results: &Vec<(&Question, QuestionResult)>) -> Resul
     for (q, qr) in results.iter() {
         let qtext = q.text[0].as_str();
         if !hash.contains_key(qtext) {
-            hash.insert(qtext, Vec::new());
+            hash.insert(qtext.to_string(), Vec::new());
         }
         hash.get_mut(qtext).unwrap().push((*qr).clone());
     }
