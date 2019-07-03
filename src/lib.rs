@@ -81,6 +81,8 @@ struct Answer {
 /// Represents the result of answering a question on a particular occasion.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct QuestionResult {
+    #[serde(skip)]
+    text: String,
     time_asked: chrono::DateTime<chrono::Utc>,
     /// If the question asked was a short answer question, then the user's response goes
     /// in this field.
@@ -586,9 +588,9 @@ impl Question {
         let score = if result { 1.0 } else { 0.0 };
 
         if let Some(guess) = guess {
-            Ok(QuestionResult::new_with_response(score, &guess.to_lowercase()))
+            Ok(self.result(Some(guess.to_lowercase()), Some(score)))
         } else {
-            Ok(QuestionResult::new(score))
+            Ok(self.result(None, Some(score)))
         }
     }
 
@@ -636,7 +638,7 @@ impl Question {
                 ).white()
             );
         }
-        Ok(QuestionResult::new(score))
+        Ok(self.result(None, Some(score)))
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `OrderedListAnswer`.
@@ -665,7 +667,7 @@ impl Question {
                 ).white()
             );
         }
-        Ok(QuestionResult::new(score))
+        Ok(self.result(None, Some(score)))
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `MultipleChoice`.
@@ -699,17 +701,17 @@ impl Question {
                     let guess = &candidates[(index - 97) as usize];
                     if self.check_any(guess) {
                         self.correct();
-                        return Ok(QuestionResult::new(1.0));
+                        return Ok(self.result(Some(answer.clone()), Some(1.0)));
                     } else {
                         self.incorrect(Some(&answer), Some(guess));
-                        return Ok(QuestionResult::new(0.0));
+                        return Ok(self.result(Some(answer.clone()), Some(0.0)));
                     }
                 } else {
                     continue;
                 }
             } else {
                 self.incorrect(Some(&answer), None);
-                return Ok(QuestionResult::new(0.0));
+                return Ok(self.result(Some(answer.clone()), Some(0.0)));
             }
         }
     }
@@ -719,9 +721,17 @@ impl Question {
         let response = prompt("> ")?;
         println!("\n{}", "Sample correct answer:\n".white());
         prettyprint(&self.answer_list[0].variants[0], Some("  "));
-        Ok(QuestionResult {
-            time_asked: chrono::Utc::now(), score: None, response,
-        })
+        Ok(self.result(response, None))
+    }
+
+    /// Construct a `QuestionResult` object.
+    fn result(&self, response: Option<String>, score: Option<f64>) -> QuestionResult {
+        QuestionResult {
+            text: self.text[0].clone(),
+            score,
+            response,
+            time_asked: chrono::Utc::now(),
+        }
     }
 
     /// Print a message for correct answers.
@@ -797,25 +807,6 @@ impl Answer {
             }
         }
         false
-    }
-}
-
-
-impl QuestionResult {
-    fn new(score: f64) -> Self {
-        QuestionResult {
-            time_asked: chrono::Utc::now(),
-            score: Some(score),
-            response: None,
-        }
-    }
-
-    fn new_with_response(score: f64, response: &str) -> Self {
-        QuestionResult {
-            time_asked: chrono::Utc::now(),
-            score: Some(score),
-            response: Some(response.to_string()),
-        }
     }
 }
 
@@ -1460,7 +1451,7 @@ mod tests {
             tags: Vec::new(),
             id: None,
             depends: None,
-            explanations: HashMap::new(),
+            explanations: Vec::new(),
         };
 
         assert_eq!(*output, expected_output);
