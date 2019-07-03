@@ -11,13 +11,6 @@ use colored::*;
 use popquiz::*;
 
 
-fn foo<W: io::Write>(writer: &mut W) {
-    write!(writer, "> ");
-    let mut reader = rustyline::Editor::<()>::new();
-    reader.readline("");
-}
-
-
 fn main() {
     let options = parse_options();
     let mut reader = rustyline::Editor::<()>::new();
@@ -37,7 +30,7 @@ fn main() {
             main_edit(options)
         },
         QuizOptions::Delete(options) => {
-            main_delete(&mut writer, &mut reader, options)
+            main_delete(&mut reader, options)
         },
         QuizOptions::List => {
             main_list(&mut writer)

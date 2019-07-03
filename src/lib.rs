@@ -252,7 +252,7 @@ pub fn main_take<W: io::Write, R: MyReadline>(
     output_results(writer, &results)?;
 
     let total_graded = results.total_answered - results.total_ungraded;
-    if total_graded > 0 && (options.save || yesno(writer, reader, "\nSave results? ")) {
+    if total_graded > 0 && (options.save || yesno(reader, "\nSave results? ")) {
         save_results(&options.name, &results)?;
     }
     Ok(())
@@ -364,15 +364,15 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_delete<W: io::Write, R: MyReadline>(
-    writer: &mut W, reader: &mut R, options: QuizDeleteOptions
+pub fn main_delete<R: MyReadline>(
+    reader: &mut R, options: QuizDeleteOptions
 ) -> Result<(), QuizError> {
     require_app_dir_path()?;
 
     let path = get_quiz_path(&options.name);
     if path.exists() {
         let yesno_prompt = "Are you sure you want to delete the quiz? ";
-        if options.force || yesno(writer, reader, yesno_prompt) {
+        if options.force || yesno(reader, yesno_prompt) {
             fs::remove_file(&path).map_err(QuizError::Io)?;
         }
         Ok(())
@@ -625,7 +625,7 @@ impl Question {
     fn ask_short_answer<W: io::Write, R: MyReadline>(
         &self, writer: &mut W, reader: &mut R
     ) -> Result<QuestionResult, QuizError> {
-        let guess = prompt(writer, reader, "> ")?;
+        let guess = prompt(reader, "> ")?;
         let result = guess.is_some() && self.check_any(guess.as_ref().unwrap());
 
         if result {
@@ -657,7 +657,7 @@ impl Question {
 
         let mut count = 0;
         while count < self.answer_list.len() {
-            if let Some(guess) = prompt(writer, reader, "> ")? {
+            if let Some(guess) = prompt(reader, "> ")? {
                 let index = self.check_one(&guess);
                 if index == self.answer_list.len() {
                     self.incorrect(writer, None, Some(&guess))?;
@@ -702,7 +702,7 @@ impl Question {
     ) -> Result<QuestionResult, QuizError> {
         let mut ncorrect = 0;
         for answer in self.answer_list.iter() {
-            if let Some(guess) = prompt(writer, reader, "> ")? {
+            if let Some(guess) = prompt(reader, "> ")? {
                 if answer.check(&guess) {
                     self.correct(writer)?;
                     ncorrect += 1;
@@ -751,7 +751,7 @@ impl Question {
 
         my_write!(writer, "\n")?;
         loop {
-            if let Some(guess) = prompt(writer, reader, "Enter a letter: ")? {
+            if let Some(guess) = prompt(reader, "Enter a letter: ")? {
                 if guess.len() != 1 {
                     continue;
                 }
@@ -780,7 +780,7 @@ impl Question {
     fn ask_ungraded<W: io::Write, R: MyReadline>(
         &self, writer: &mut W, reader: &mut R
     ) -> Result<QuestionResult, QuizError> {
-        let response = prompt(writer, reader, "> ")?;
+        let response = prompt(reader, "> ")?;
         my_writeln!(writer, "\n{}", "Sample correct answer:\n".white())?;
         prettyprint(writer, &self.answer_list[0].variants[0], Some("  "))?;
         Ok(self.result(response, None))
@@ -893,14 +893,9 @@ impl QuizFilterOptions {
 /// then `Ok(None)` is returned. If the user pressed Ctrl+C then `Err(())` is returned.
 /// Otherwise, `Ok(Some(line))` is returned where `line` is the last line of input the
 /// user entered without leading and trailing whitespace.
-fn prompt<W: io::Write, R: MyReadline>(
-    writer: &mut W, reader: &mut R, message: &str
-) -> Result<Option<String>, QuizError> {
+fn prompt<R: MyReadline>(reader: &mut R, message: &str) -> Result<Option<String>, QuizError> {
     loop {
-        my_write!(writer, "{}", message.white())?;
-        writer.flush().map_err(QuizError::Io)?;
-
-        let result = reader.read_line();
+        let result = reader.read_line(message);
         match result {
             Ok(response) => {
                 let response = response.trim();
@@ -965,10 +960,8 @@ fn color_optional(text: &str, color: Option<Color>) -> ColoredString {
 
 
 /// Prompt the user with a yes-no question and return `true` if they enter yes.
-fn yesno<W: io::Write, R: MyReadline>(
-    writer: &mut W, reader: &mut R, message: &str
-) -> bool {
-    match prompt(writer, reader, message) {
+fn yesno<R: MyReadline>(reader: &mut R, message: &str) -> bool {
+    match prompt(reader, message) {
         Ok(Some(response)) => {
             response.trim_start().to_lowercase().starts_with("y")
         },
@@ -1472,13 +1465,13 @@ macro_rules! my_write {
 
 
 pub trait MyReadline {
-    fn read_line(&mut self) -> Result<String, QuizError>;
+    fn read_line(&mut self, prompt: &str) -> Result<String, QuizError>;
 }
 
 
 impl<H: rustyline::Helper> MyReadline for rustyline::Editor<H> {
-    fn read_line(&mut self) -> Result<String, QuizError> {
-        match self.readline("") {
+    fn read_line(&mut self, prompt: &str) -> Result<String, QuizError> {
+        match self.readline(&format!("{}", prompt.white())) {
             Ok(s) => Ok(s),
             Err(ReadlineError::Interrupted) => Err(QuizError::ReadlineInterrupted),
             Err(ReadlineError::Eof) => Err(QuizError::ReadlineEof),
