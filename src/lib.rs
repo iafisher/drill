@@ -520,6 +520,11 @@ impl Quiz {
             candidates.truncate(num_to_ask);
         }
 
+        if !options.in_order {
+            let mut rng = thread_rng();
+            candidates.shuffle(&mut rng);
+        }
+
         // Respect basic dependence relations.
         for i in 0..candidates.len() {
             for j in (i+1)..candidates.len() {
@@ -531,11 +536,6 @@ impl Quiz {
                     }
                 }
             }
-        }
-
-        if !options.in_order {
-            let mut rng = thread_rng();
-            candidates.shuffle(&mut rng);
         }
 
         candidates
