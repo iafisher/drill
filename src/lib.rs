@@ -370,6 +370,7 @@ pub fn main_delete<R: MyReadline>(
     require_app_dir_path()?;
 
     let path = get_quiz_path(&options.name);
+    println!("{}", path.to_str().unwrap());
     if path.exists() {
         let yesno_prompt = "Are you sure you want to delete the quiz? ";
         if options.force || yesno(reader, yesno_prompt) {
@@ -1651,21 +1652,51 @@ mod tests {
 
     #[test]
     fn can_take_quiz() {
-        let options = QuizTakeOptions::new();
+        let mut options = QuizTakeOptions::new();
+        options.name = String::from("__test1");
 
-        let mut mock_stdin = MockStdin { responses: vec![] };
-        let mut mock_stdout = fs::File::create("assets/tmp_stdout").unwrap();
+        let responses = vec![
+            String::from("Ulan Bator\n"),
+            String::from("no\n"),
+        ];
 
-        main_take(&mut mock_stdout, &mut mock_stdin, options).unwrap();
+        let mut mock_stdin = MockStdin { responses };
+        let mut mock_stdout = MockStdout { sink: String::new() };
+
+        let result = main_take(&mut mock_stdout, &mut mock_stdin, options);
+
+        assert!(result.is_ok());
+        assert!(mock_stdout.sink.contains("What is the capital of Mongolia?"));
+        assert!(mock_stdout.sink.contains("100.0%"));
+        assert!(mock_stdout.sink.contains("1 correct"));
+        assert!(mock_stdout.sink.contains("0 partially correct"));
+        assert!(mock_stdout.sink.contains("0 incorrect"));
+        assert!(mock_stdout.sink.contains("0 ungraded"));
     }
 
     struct MockStdin {
         responses: Vec<String>,
     }
 
+    struct MockStdout {
+        sink: String,
+    }
+
     impl MyReadline for MockStdin {
         fn read_line(&mut self, _prompt: &str) -> Result<String, QuizError> {
             Ok(self.responses.remove(0))
+        }
+    }
+
+    impl io::Write for MockStdout {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            let as_utf8 = String::from_utf8(buf.to_vec()).unwrap();
+            self.sink.push_str(&as_utf8);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
         }
     }
 }

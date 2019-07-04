@@ -52,7 +52,7 @@ The format of the question objects depends on the kind of questions. popquiz cur
 - Multiple-choice questions
 
 
-## Short answer questions
+### Short answer questions
 ```json
 {
   "kind": "ShortAnswer",
@@ -64,7 +64,7 @@ The format of the question objects depends on the kind of questions. popquiz cur
 The `kind` field defaults to `"ShortAnswer"` so it is optional here. The `text` field is the text of the question, and the `answer` field is the correct answer, as a string.
 
 
-## Unordered list questions
+### Unordered list questions
 These are questions for which the quiz-taker must supply a list of answers, in any order.
 
 ```json
@@ -81,7 +81,7 @@ These are questions for which the quiz-taker must supply a list of answers, in a
 Unordered list questions use an `answer_list` field instead of an `answer` field.
 
 
-## Ordered list questions
+### Ordered list questions
 These are questions for which the quiz-taker must supply a list of answers in a specified order.
 
 ```json
@@ -112,7 +112,7 @@ The format of ordered list questions is almost the same as for unordered list qu
 The `candidates` field is for the incorrect answers to be displayed as options. It should **not** contain the correct answer, which goes in the `answer` field.
 
 
-## Ungraded questions
+### Ungraded questions
 ```json
 {
   "kind": "Ungraded",
@@ -123,7 +123,7 @@ The `candidates` field is for the incorrect answers to be displayed as options. 
 
 For ungraded questions, popquiz will prompt for an answer, but it will not check the user's response, and the question will not count towards either the total correct or total incorrect for the quiz. After the user enters her answer, the text in the `answer` field will be displayed as a sample correct answer. The `Ungraded` kind is intended for long-answer questions which could not reasonably be graded automatically.
 
-## Other fields
+### Other fields
 The following notes apply to all question types.
 
 The `text` field may be an array of strings, to allow for multiple wordings of the same question.
@@ -151,3 +151,7 @@ Questions may have an `id` field with a unique string value. The purpose of this
 
 
 For a complete example of a quiz file, see `sample.json` in the root of this repository.
+
+
+## Test suite
+In order to run the test suite, you will need to copy over the quiz files in the `assets` directory. For each quiz file, you will need to do `cargo run -- edit <name of file without .json extension>` and then copy-paste the file into the editor that is opened.
