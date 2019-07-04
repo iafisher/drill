@@ -1649,12 +1649,23 @@ mod tests {
         assert_eq!(*output, expected_output);
     }
 
-    // #[test]
-    // fn can_take_quiz() {
-    //     let options = QuizTakeOptions::new();
+    #[test]
+    fn can_take_quiz() {
+        let options = QuizTakeOptions::new();
 
-    //     let stringin = String::new();
-    //     let stringout = String::new();
-    //     main_take(&mut stringin, &mut stringout, options);
-    // }
+        let mut mock_stdin = MockStdin { responses: vec![] };
+        let mut mock_stdout = fs::File::create("assets/tmp_stdout").unwrap();
+
+        main_take(&mut mock_stdout, &mut mock_stdin, options).unwrap();
+    }
+
+    struct MockStdin {
+        responses: Vec<String>,
+    }
+
+    impl MyReadline for MockStdin {
+        fn read_line(&mut self, _prompt: &str) -> Result<String, QuizError> {
+            Ok(self.responses.remove(0))
+        }
+    }
 }
