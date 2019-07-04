@@ -1500,25 +1500,25 @@ mod tests {
     #[test]
     fn can_filter_by_tag() {
         let mut q = Question::new("What is the capital of China", "Beijing");
-        q.tags.push(String::from("geography"));
+        q.tags.push(s("geography"));
 
         let mut options = QuizFilterOptions::new();
         assert!(filter_question(&q, &options));
 
-        options.tags.push(String::from("geography"));
+        options.tags.push(s("geography"));
         assert!(filter_question(&q, &options));
 
-        options.tags.push(String::from("history"));
+        options.tags.push(s("history"));
         assert!(!filter_question(&q, &options));
     }
 
     #[test]
     fn can_filter_by_excluding_tag() {
         let mut q = Question::new("What is the capital of China", "Beijing");
-        q.tags.push(String::from("geography"));
+        q.tags.push(s("geography"));
 
         let mut options = QuizFilterOptions::new();
-        options.exclude.push(String::from("geography"));
+        options.exclude.push(s("geography"));
         assert!(!filter_question(&q, &options));
     }
 
@@ -1527,17 +1527,17 @@ mod tests {
         let q = Question::new("What is the capital of China", "Beijing");
 
         let mut options = QuizFilterOptions::new();
-        options.keywords.push(String::from("china"));
+        options.keywords.push(s("china"));
         assert!(filter_question(&q, &options));
 
-        options.keywords.push(String::from("river"));
+        options.keywords.push(s("river"));
         assert!(!filter_question(&q, &options));
     }
 
     #[test]
     fn checking_answers_works() {
         let ans = Answer {
-            variants: vec![String::from("Barack Obama"), String::from("Obama")]
+            variants: vec![s("Barack Obama"), s("Obama")]
         };
 
         assert!(ans.check("Barack Obama"));
@@ -1560,9 +1560,9 @@ mod tests {
 
         let expected_output = Question {
             kind: QuestionKind::ShortAnswer,
-            text: vec![String::from("When did WW2 start?")],
+            text: vec![s("When did WW2 start?")],
             answer_list: vec![
-                Answer { variants: vec![String::from("1939")] }
+                Answer { variants: vec![s("1939")] }
             ],
             candidates: Vec::new(),
             prior_results: Vec::new(),
@@ -1594,17 +1594,16 @@ mod tests {
 
         let expected_output = Question {
             kind: QuestionKind::ListAnswer,
-            text: vec![String::from("List the four countries of the United Kingdom.")],
+            text: vec![s("List the four countries of the United Kingdom.")],
             answer_list: vec![
-                Answer { variants: vec![String::from("England")] },
-                Answer { variants: vec![String::from("Scotland")] },
+                Answer { variants: vec![s("England")] },
+                Answer { variants: vec![s("Scotland")] },
                 Answer {
                     variants: vec![
-                        String::from("Northern Ireland"),
-                        String::from("N. Ireland"),
+                        s("Northern Ireland"), s("N. Ireland"),
                     ]
                 },
-                Answer { variants: vec![String::from("Wales")] },
+                Answer { variants: vec![s("Wales")] },
             ],
             candidates: Vec::new(),
             prior_results: Vec::new(),
@@ -1635,11 +1634,11 @@ mod tests {
         let output = &load_quiz_from_json(&input).unwrap().questions[0];
         let expected_output = Question {
             kind: QuestionKind::MultipleChoice,
-            text: vec![String::from("What language is spoken in Cambodia?")],
+            text: vec![s("What language is spoken in Cambodia?")],
             candidates: vec![
-                String::from("Thai"), String::from("French"), String::from("Vietnamese"),
-                String::from("Burmese"), String::from("Tagalog")],
-            answer_list: vec![Answer { variants: vec![String::from("Khmer")] } ],
+                s("Thai"), s("French"), s("Vietnamese"), s("Burmese"), s("Tagalog")
+            ],
+            answer_list: vec![Answer { variants: vec![s("Khmer")] } ],
             prior_results: Vec::new(),
             tags: Vec::new(),
             id: None,
@@ -1653,11 +1652,11 @@ mod tests {
     #[test]
     fn can_take_quiz() {
         let mut options = QuizTakeOptions::new();
-        options.name = String::from("__test1");
+        options.name = s("__test1");
 
         let responses = vec![
-            String::from("Ulan Bator\n"),
-            String::from("no\n"),
+            s("Ulan Bator\n"),
+            s("no\n"),
         ];
 
         let mut mock_stdin = MockStdin { responses };
@@ -1672,6 +1671,10 @@ mod tests {
         assert!(mock_stdout.sink.contains("0 partially correct"));
         assert!(mock_stdout.sink.contains("0 incorrect"));
         assert!(mock_stdout.sink.contains("0 ungraded"));
+    }
+
+    fn s(mystr: &str) -> String {
+        String::from(mystr)
     }
 
     struct MockStdin {
