@@ -878,6 +878,18 @@ impl Answer {
 }
 
 
+impl QuizTakeOptions {
+    #[allow(dead_code)]
+    fn new() -> Self {
+        QuizTakeOptions {
+            name: String::new(), num_to_ask: None, best: None, worst: None, most: None,
+            least: None, save: false, no_color: true, in_order: false,
+            filter_opts: QuizFilterOptions::new()
+        }
+    }
+}
+
+
 impl QuizFilterOptions {
     #[allow(dead_code)]
     fn new() -> Self {
@@ -1468,7 +1480,6 @@ pub trait MyReadline {
     fn read_line(&mut self, prompt: &str) -> Result<String, QuizError>;
 }
 
-
 impl<H: rustyline::Helper> MyReadline for rustyline::Editor<H> {
     fn read_line(&mut self, prompt: &str) -> Result<String, QuizError> {
         match self.readline(&format!("{}", prompt.white())) {
@@ -1637,4 +1648,13 @@ mod tests {
 
         assert_eq!(*output, expected_output);
     }
+
+    // #[test]
+    // fn can_take_quiz() {
+    //     let options = QuizTakeOptions::new();
+
+    //     let stringin = String::new();
+    //     let stringout = String::new();
+    //     main_take(&mut stringin, &mut stringout, options);
+    // }
 }
