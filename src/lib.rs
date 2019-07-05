@@ -1654,7 +1654,7 @@ mod tests {
     }
 
     #[test]
-    fn can_take_test_quiz_1() {
+    fn can_take_test1_quiz() {
         let mut options = QuizTakeOptions::new();
         options.name = s("__test1");
 
@@ -1680,7 +1680,7 @@ mod tests {
     }
 
     #[test]
-    fn can_take_test_quiz_2() {
+    fn can_take_test2_quiz() {
         let mut options = QuizTakeOptions::new();
         options.name = s("__test2");
         options.in_order = true;
@@ -1705,6 +1705,39 @@ mod tests {
         assert!(mock_stdout.sink.contains("List the modern Emperors of Germany in chronological order."));
         assert!(mock_stdout.sink.contains("1 partially correct"));
         assert!(mock_stdout.sink.contains("0 ungraded"));
+        // Since the order of multiple-choice answers is random, we don't know whether
+        // guessing 'a' was right or not.
+        assert!(
+            mock_stdout.sink.contains("1 incorrect") ||
+            mock_stdout.sink.contains("1 correct")
+        );
+    }
+
+    #[test]
+    fn can_take_test_dependency_quiz() {
+        let mut options = QuizTakeOptions::new();
+        options.name = s("__test_dependency");
+        options.in_order = true;
+
+        let responses = vec![
+            s("Brazil"),
+            s("Brasilia"),
+            s("no\n"),
+        ];
+
+        let mut mock_stdin = MockStdin { responses };
+        let mut mock_stdout = MockStdout { sink: String::new() };
+
+        let result = main_take(&mut mock_stdout, &mut mock_stdin, options);
+
+        assert!(result.is_ok());
+        assert!(mock_stdin.responses.len() == 0);
+
+        let q1_pos = mock_stdout.sink.find("What is the largest country in South America?").unwrap();
+        let q2_pos = mock_stdout.sink.find("What is the capital of Brazil?").unwrap();
+        assert!(q1_pos < q2_pos);
+
+        assert!(mock_stdout.sink.contains("100.0%"));
     }
 
     fn s(mystr: &str) -> String {
