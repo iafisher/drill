@@ -514,19 +514,23 @@ impl Quiz {
             candidates.truncate(least);
         }
 
-        // Important that this operation comes after the --most and --least flags have
-        // been applied, e.g. if --most 50 -n 10 we want to choose 10 questions among
-        // the 50 most asked, not the most asked among 10 random questions.
-        if let Some(num_to_ask) = options.num_to_ask {
-            candidates.truncate(num_to_ask);
-        }
-
         if !options.in_order {
             let mut rng = thread_rng();
             candidates.shuffle(&mut rng);
         }
 
+        // Important that this operation comes after the --most and --least flags have
+        // been applied, e.g. if --most 50 -n 10 we want to choose 10 questions among
+        // the 50 most asked, not the most asked among 10 random questions.
+        //
+        // Also important that this occurs after shuffling.
+        if let Some(num_to_ask) = options.num_to_ask {
+            candidates.truncate(num_to_ask);
+        }
+
         // Respect basic dependence relations.
+        //
+        // Make sure that this is the very last operation on the candidates.
         for i in 0..candidates.len() {
             for j in (i+1)..candidates.len() {
                 if let Some(id) = &candidates[j].id {
