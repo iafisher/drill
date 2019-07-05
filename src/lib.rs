@@ -1654,7 +1654,7 @@ mod tests {
     }
 
     #[test]
-    fn can_take_quiz() {
+    fn can_take_test_quiz_1() {
         let mut options = QuizTakeOptions::new();
         options.name = s("__test1");
 
@@ -1669,11 +1669,41 @@ mod tests {
         let result = main_take(&mut mock_stdout, &mut mock_stdin, options);
 
         assert!(result.is_ok());
+        assert!(mock_stdin.responses.len() == 0);
+
         assert!(mock_stdout.sink.contains("What is the capital of Mongolia?"));
         assert!(mock_stdout.sink.contains("100.0%"));
         assert!(mock_stdout.sink.contains("1 correct"));
         assert!(mock_stdout.sink.contains("0 partially correct"));
         assert!(mock_stdout.sink.contains("0 incorrect"));
+        assert!(mock_stdout.sink.contains("0 ungraded"));
+    }
+
+    #[test]
+    fn can_take_test_quiz_2() {
+        let mut options = QuizTakeOptions::new();
+        options.name = s("__test2");
+        options.in_order = true;
+
+        let responses = vec![
+            s("a\n"),
+            s("Wilhelm I\n"),
+            s("Wilhelm II\n"),
+            s("Wilhelm II\n"),
+            s("no\n"),
+        ];
+
+        let mut mock_stdin = MockStdin { responses };
+        let mut mock_stdout = MockStdout { sink: String::new() };
+
+        let result = main_take(&mut mock_stdout, &mut mock_stdin, options);
+
+        assert!(result.is_ok());
+        assert!(mock_stdin.responses.len() == 0);
+
+        assert!(mock_stdout.sink.contains("Who was President of the United States during the Korean War?"));
+        assert!(mock_stdout.sink.contains("List the modern Emperors of Germany in chronological order."));
+        assert!(mock_stdout.sink.contains("1 partially correct"));
         assert!(mock_stdout.sink.contains("0 ungraded"));
     }
 
