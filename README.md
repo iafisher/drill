@@ -51,6 +51,8 @@ The format of the question objects depends on the kind of questions. popquiz cur
 - Ordered list questions
 - Multiple-choice questions
 
+The quiz object may also have a string `instructions` field for instructions to be printed out at the beginning of the quiz.
+
 
 ### Short answer questions
 ```json

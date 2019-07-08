@@ -24,6 +24,7 @@ use structopt::StructOpt;
 /// Represents an entire quiz.
 #[derive(Serialize, Deserialize, Debug)]
 struct Quiz {
+    instructions: Option<String>,
     questions: Vec<Question>,
 }
 
@@ -428,6 +429,14 @@ impl Quiz {
         let questions = self.choose_questions(&options);
         if questions.len() == 0 {
             return Err(QuizError::EmptyQuiz);
+        }
+
+        if let Some(instructions) = &self.instructions {
+            my_write!(writer, "\n")?;
+            prettyprint_colored(
+                writer, &instructions, Some("  "), Some(Color::BrightBlue), None
+            )?;
+            my_write!(writer, "\n\n")?;
         }
 
         for (i, question) in questions.iter().enumerate() {
