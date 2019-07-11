@@ -217,6 +217,9 @@ pub struct QuizEditOptions {
     /// The name of the quiz to edit.
     #[structopt(default_value = "main")]
     name: String,
+    /// Edit the results file rather than the quiz itself.
+    #[structopt(short = "r", long = "results")]
+    results: bool,
 }
 
 #[derive(StructOpt)]
@@ -380,12 +383,19 @@ pub fn main_results<W: io::Write>(
 pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
     require_app_dir_path()?;
 
-    let path = get_quiz_path(&options.name);
-    let editor = ::std::env::var("EDITOR").unwrap_or(String::from("vim"));
+    let path = if options.results {
+        get_results_path(&options.name)
+    } else {
+        get_quiz_path(&options.name)
+    };
+
+    // Spawn an editor in a child process.
+    let editor = ::std::env::var("EDITOR").unwrap_or(String::from("nano"));
     let mut child = Command::new(editor).arg(path).spawn()
         .or(Err(QuizError::CannotOpenEditor))?;
     child.wait()
         .or(Err(QuizError::CannotOpenEditor))?;
+
     Ok(())
 }
 
