@@ -139,6 +139,9 @@ pub enum QuizOptions {
     /// Delete a quiz.
     #[structopt(name = "delete")]
     Delete(QuizDeleteOptions),
+    /// Rename a quiz.
+    #[structopt(name = "rename")]
+    Rename(QuizRenameOptions),
     /// List all available quizzes.
     #[structopt(name = "list")]
     List,
@@ -221,6 +224,14 @@ pub struct QuizDeleteOptions {
     /// Delete without prompting for confirmation.
     #[structopt(short = "f", long = "force")]
     force: bool,
+}
+
+#[derive(StructOpt)]
+pub struct QuizRenameOptions {
+    /// The old name of the quiz to rename.
+    old_name: String,
+    /// The new name.
+    new_name: String,
 }
 
 #[derive(StructOpt)]
@@ -381,6 +392,23 @@ pub fn main_delete<R: MyReadline>(
     } else {
         Err(QuizError::QuizNotFound(options.name.clone()))
     }
+}
+
+
+pub fn main_rename(options: QuizRenameOptions) -> Result<(), QuizError> {
+    require_app_dir_path()?;
+
+    let quiz_path = get_quiz_path(&options.old_name);
+    let new_quiz_path = get_quiz_path(&options.new_name);
+    fs::rename(&quiz_path, &new_quiz_path).map_err(QuizError::Io)?;
+
+    let results_path = get_results_path(&options.old_name);
+    let new_results_path = get_results_path(&options.new_name);
+    if results_path.exists() {
+        fs::rename(&results_path, &new_results_path).map_err(QuizError::Io)?;
+    }
+
+    Ok(())
 }
 
 

@@ -32,6 +32,9 @@ fn main() {
         QuizOptions::Delete(options) => {
             main_delete(&mut reader, options)
         },
+        QuizOptions::Rename(options) => {
+            main_rename(options)
+        },
         QuizOptions::List => {
             main_list(&mut writer)
         },
