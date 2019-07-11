@@ -38,6 +38,9 @@ fn main() {
         QuizOptions::List => {
             main_list(&mut writer)
         },
+        QuizOptions::Path(options) => {
+            main_path(&mut writer, options)
+        },
     };
 
     if let Err(e) = result {

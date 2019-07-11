@@ -145,6 +145,9 @@ pub enum QuizOptions {
     /// List all available quizzes.
     #[structopt(name = "list")]
     List,
+    /// Print file paths of quizzes.
+    #[structopt(name = "path")]
+    Path(QuizPathOptions),
 }
 
 #[derive(StructOpt)]
@@ -245,6 +248,17 @@ pub struct QuizResultsOptions {
     /// Only show the first `n` results.
     #[structopt(short = "n")]
     num_to_show: Option<usize>,
+}
+
+
+#[derive(StructOpt)]
+pub struct QuizPathOptions {
+    /// The name of the quiz.
+    #[structopt(default_value = "main")]
+    name: String,
+    /// Show the path to the results file instead of the quiz file.
+    #[structopt(short = "r", long = "results")]
+    results: bool,
 }
 
 
@@ -438,6 +452,25 @@ pub fn main_list<W: io::Write>(writer: &mut W) -> Result<(), QuizError> {
     } else {
         my_writeln!(writer, "No quizzes found.")?;
     }
+    Ok(())
+}
+
+
+pub fn main_path<W: io::Write>(
+    writer: &mut W, options: QuizPathOptions
+) -> Result<(), QuizError> {
+    let path = if options.results {
+        get_results_path(&options.name)
+    } else {
+        get_quiz_path(&options.name)
+    };
+
+    if let Some(path) = path.as_path().to_str() {
+        my_writeln!(writer, "{}", path)?;
+    } else {
+        my_writeln!(writer, "Error: could not convert path to UTF-8 string.")?;
+    }
+
     Ok(())
 }
 
