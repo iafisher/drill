@@ -156,4 +156,15 @@ For a complete example of a quiz file, see `sample.json` in the root of this rep
 
 
 ## Test suite
-In order to run the test suite, you will need to copy over the quiz files in the `assets` directory. For each quiz file, you will need to do `cargo run -- edit <name of file without .json extension and with two leading underscores>` and then copy-paste the file into the editor that is opened, e.g. for `assets/test1.json` do `cargo run -- edit __test1`.
+Before the test suite can be run, a couple of set-up steps are necessary:
+
+```shell
+$ cargo build
+$ ./setup_tests
+```
+
+After that, the test suite can be run with:
+
+```shell
+$ cargo test
+```
