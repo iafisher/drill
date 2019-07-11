@@ -262,6 +262,9 @@ pub struct QuizPathOptions {
     /// Show the path to the results file instead of the quiz file.
     #[structopt(short = "r", long = "results")]
     results: bool,
+    /// Display the path that would be used even if the quiz does not exist.
+    #[structopt(short = "f", long = "force")]
+    force: bool,
 }
 
 
@@ -475,13 +478,17 @@ pub fn main_path<W: io::Write>(
         get_quiz_path(&options.name)
     };
 
-    if let Some(path) = path.as_path().to_str() {
-        my_writeln!(writer, "{}", path)?;
-    } else {
-        my_writeln!(writer, "Error: could not convert path to UTF-8 string.")?;
-    }
+    if path.exists() || options.force {
+        if let Some(path) = path.as_path().to_str() {
+            my_writeln!(writer, "{}", path)?;
+        } else {
+            my_writeln!(writer, "Error: could not convert path to UTF-8 string.")?;
+        }
 
-    Ok(())
+        Ok(())
+    } else {
+        Err(QuizError::QuizNotFound(options.name.to_string()))
+    }
 }
 
 
