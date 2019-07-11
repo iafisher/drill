@@ -1708,12 +1708,17 @@ mod tests {
         assert!(result.is_ok());
         assert!(mock_stdin.responses.len() == 0);
 
-        assert!(mock_stdout.has("What is the capital of Mongolia?"));
-        assert!(mock_stdout.has("100.0%"));
-        assert!(mock_stdout.has("1 correct"));
-        assert!(mock_stdout.has("0 partially correct"));
-        assert!(mock_stdout.has("0 incorrect"));
-        assert!(mock_stdout.has("0 ungraded"));
+        assert_in_order(
+            &mock_stdout,
+            &[
+                "What is the capital of Mongolia?",
+                "100.0%",
+                "1 correct",
+                "0 partially correct",
+                "0 incorrect",
+                "0 ungraded",
+            ]
+        );
     }
 
     #[test]
@@ -1738,10 +1743,18 @@ mod tests {
         assert!(result.is_ok());
         assert!(mock_stdin.responses.len() == 0);
 
-        assert!(mock_stdout.has("Who was President of the United States during the Korean War?"));
-        assert!(mock_stdout.has("List the modern Emperors of Germany in chronological order."));
-        assert!(mock_stdout.has("1 partially correct"));
-        assert!(mock_stdout.has("0 ungraded"));
+        assert_in_order(
+            &mock_stdout,
+            &[
+                "Who was President of the United States during the Korean War?",
+                "List the modern Emperors of Germany in chronological order.",
+                "Incorrect. The correct answer was Frederick III.",
+                "Score for this question: 66.7%",
+                "1 partially correct",
+                "0 ungraded",
+            ]
+        );
+
         // Since the order of multiple-choice answers is random, we don't know whether
         // guessing 'a' was right or not.
         assert!(
@@ -1770,15 +1783,24 @@ mod tests {
         assert!(result.is_ok());
         assert!(mock_stdin.responses.len() == 0);
 
-        let q1_pos = mock_stdout.find("What is the largest country in South America?").unwrap();
-        let q2_pos = mock_stdout.find("What is the capital of Brazil?").unwrap();
-        assert!(q1_pos < q2_pos);
-
-        assert!(mock_stdout.has("100.0%"));
+        assert_in_order(
+            &mock_stdout,
+            &[
+                "What is the largest country in South America?",
+                "What is the capital of Brazil?",
+                "100.0%",
+            ]
+        );
     }
 
     fn s(mystr: &str) -> String {
         String::from(mystr)
+    }
+
+    fn assert_in_order(mock_stdout: &MockStdout, data: &[&str]) {
+        assert!(
+            mock_stdout.has_in_order(data), "Contents of stdout: {:?}", mock_stdout.sink
+        );
     }
 
     struct MockStdin {
@@ -1792,6 +1814,22 @@ mod tests {
     impl MockStdout {
         fn has(&self, datum: &str) -> bool {
             self.sink.contains(datum)
+        }
+
+        fn has_in_order(&self, data: &[&str]) -> bool {
+            let mut last_pos = 0;
+            for datum in data {
+                if let Some(pos) = self.find(datum) {
+                    if pos < last_pos {
+                        return false;
+                    } else {
+                        last_pos = pos;
+                    }
+                } else {
+                    return false;
+                }
+            }
+            true
         }
 
         fn find(&self, datum: &str) -> Option<usize> {
