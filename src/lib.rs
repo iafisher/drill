@@ -1708,12 +1708,12 @@ mod tests {
         assert!(result.is_ok());
         assert!(mock_stdin.responses.len() == 0);
 
-        assert!(mock_stdout.sink.contains("What is the capital of Mongolia?"));
-        assert!(mock_stdout.sink.contains("100.0%"));
-        assert!(mock_stdout.sink.contains("1 correct"));
-        assert!(mock_stdout.sink.contains("0 partially correct"));
-        assert!(mock_stdout.sink.contains("0 incorrect"));
-        assert!(mock_stdout.sink.contains("0 ungraded"));
+        assert!(mock_stdout.has("What is the capital of Mongolia?"));
+        assert!(mock_stdout.has("100.0%"));
+        assert!(mock_stdout.has("1 correct"));
+        assert!(mock_stdout.has("0 partially correct"));
+        assert!(mock_stdout.has("0 incorrect"));
+        assert!(mock_stdout.has("0 ungraded"));
     }
 
     #[test]
@@ -1738,15 +1738,15 @@ mod tests {
         assert!(result.is_ok());
         assert!(mock_stdin.responses.len() == 0);
 
-        assert!(mock_stdout.sink.contains("Who was President of the United States during the Korean War?"));
-        assert!(mock_stdout.sink.contains("List the modern Emperors of Germany in chronological order."));
-        assert!(mock_stdout.sink.contains("1 partially correct"));
-        assert!(mock_stdout.sink.contains("0 ungraded"));
+        assert!(mock_stdout.has("Who was President of the United States during the Korean War?"));
+        assert!(mock_stdout.has("List the modern Emperors of Germany in chronological order."));
+        assert!(mock_stdout.has("1 partially correct"));
+        assert!(mock_stdout.has("0 ungraded"));
         // Since the order of multiple-choice answers is random, we don't know whether
         // guessing 'a' was right or not.
         assert!(
-            mock_stdout.sink.contains("1 incorrect") ||
-            mock_stdout.sink.contains("1 correct")
+            mock_stdout.has("1 incorrect") ||
+            mock_stdout.has("1 correct")
         );
     }
 
@@ -1770,11 +1770,11 @@ mod tests {
         assert!(result.is_ok());
         assert!(mock_stdin.responses.len() == 0);
 
-        let q1_pos = mock_stdout.sink.find("What is the largest country in South America?").unwrap();
-        let q2_pos = mock_stdout.sink.find("What is the capital of Brazil?").unwrap();
+        let q1_pos = mock_stdout.find("What is the largest country in South America?").unwrap();
+        let q2_pos = mock_stdout.find("What is the capital of Brazil?").unwrap();
         assert!(q1_pos < q2_pos);
 
-        assert!(mock_stdout.sink.contains("100.0%"));
+        assert!(mock_stdout.has("100.0%"));
     }
 
     fn s(mystr: &str) -> String {
@@ -1787,6 +1787,16 @@ mod tests {
 
     struct MockStdout {
         sink: String,
+    }
+
+    impl MockStdout {
+        fn has(&self, datum: &str) -> bool {
+            self.sink.contains(datum)
+        }
+
+        fn find(&self, datum: &str) -> Option<usize> {
+            self.sink.find(datum)
+        }
     }
 
     impl MyReadline for MockStdin {
