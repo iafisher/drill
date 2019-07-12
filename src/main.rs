@@ -35,8 +35,8 @@ fn main() {
         QuizOptions::Rename(options) => {
             main_rename(options)
         },
-        QuizOptions::List => {
-            main_list(&mut writer)
+        QuizOptions::List(options) => {
+            main_list(&mut writer, options)
         },
         QuizOptions::Path(options) => {
             main_path(&mut writer, options)

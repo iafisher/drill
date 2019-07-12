@@ -27,7 +27,7 @@ fi
 
 for path in ./assets/test*; do
   basepath=$(basename "$path")
-  name="__${basepath%.*}"
+  name=".${basepath%.*}"
   newpath=$($quiz path -f "$name")
 
   if test -e "$newpath" && test -z "$force"; then

@@ -144,7 +144,7 @@ pub enum QuizOptions {
     Rename(QuizRenameOptions),
     /// List all available quizzes.
     #[structopt(name = "list")]
-    List,
+    List(QuizListOptions),
     /// Print file paths of quizzes.
     #[structopt(name = "path")]
     Path(QuizPathOptions),
@@ -251,6 +251,14 @@ pub struct QuizResultsOptions {
     /// Only show the first `n` results.
     #[structopt(short = "n")]
     num_to_show: Option<usize>,
+}
+
+
+#[derive(StructOpt)]
+pub struct QuizListOptions {
+    /// List quizzes whose name begins with a period.
+    #[structopt(short = "a", long = "all")]
+    all: bool,
 }
 
 
@@ -438,7 +446,9 @@ pub fn main_rename(options: QuizRenameOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_list<W: io::Write>(writer: &mut W) -> Result<(), QuizError> {
+pub fn main_list<W: io::Write>(
+    writer: &mut W, options: QuizListOptions
+) -> Result<(), QuizError> {
     let mut dirpath = get_app_dir_path();
     dirpath.push("quizzes");
 
@@ -454,10 +464,12 @@ pub fn main_list<W: io::Write>(writer: &mut W) -> Result<(), QuizError> {
     }
 
     if quiz_names.len() > 0 {
-        quiz_names.sort();
+        quiz_names.sort_by(cmp_string_ignore_dot);
         my_writeln!(writer, "Available quizzes:")?;
         for name in quiz_names.iter() {
-            my_writeln!(writer, "  {}", name)?;
+            if !name.starts_with(".") || options.all {
+                my_writeln!(writer, "  {}", name)?;
+            }
         }
     } else {
         my_writeln!(writer, "No quizzes found.")?;
@@ -1317,6 +1329,21 @@ fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
 }
 
 
+fn cmp_string_ignore_dot(a: &String, b: &String) -> Ordering {
+    fn cmp_helper(a: &str, b: &str) -> Ordering {
+        if a.starts_with(".") {
+            cmp_helper(&a[1..], b)
+        } else if b.starts_with(".") {
+            cmp_helper(a, &b[1..])
+        } else {
+            a.cmp(b)
+        }
+    }
+
+    cmp_helper(a, b)
+}
+
+
 /// An alias for a commonly-used typed in comparison functions.
 type CmpQuestionResult = (f64, usize, String);
 
@@ -1729,7 +1756,7 @@ mod tests {
     #[test]
     fn can_take_test1_quiz() {
         let mut options = QuizTakeOptions::new();
-        options.name = s("__test1");
+        options.name = s(".test1");
 
         let responses = vec![
             s("Ulan Bator\n"),
@@ -1760,7 +1787,7 @@ mod tests {
     #[test]
     fn can_take_test2_quiz() {
         let mut options = QuizTakeOptions::new();
-        options.name = s("__test2");
+        options.name = s(".test2");
         options.in_order = true;
 
         let responses = vec![
@@ -1802,7 +1829,7 @@ mod tests {
     #[test]
     fn can_take_test_dependency_quiz() {
         let mut options = QuizTakeOptions::new();
-        options.name = s("__test_dependency");
+        options.name = s(".test_dependency");
         options.in_order = true;
 
         let responses = vec![
