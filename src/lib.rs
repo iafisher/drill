@@ -443,28 +443,27 @@ pub fn main_list<W: io::Write>(writer: &mut W) -> Result<(), QuizError> {
     let mut dirpath = get_app_dir_path();
     dirpath.push("quizzes");
 
+    let mut quiz_names = Vec::new();
     if let Ok(iter) = dirpath.read_dir() {
-        let mut found_any = false;
         for entry in iter {
             if let Ok(entry) = entry {
                 if let Some(stem) = entry.path().file_stem() {
-                    if let Some(stem) = stem.to_str() {
-                        if !found_any {
-                            my_writeln!(writer, "Available quizzes:")?;
-                            found_any = true;
-                        }
-                        my_writeln!(writer, "  {}", stem)?;
-                    }
+                    quiz_names.push(String::from(stem.to_string_lossy()));
                 }
             }
         }
+    }
 
-        if !found_any {
-            my_writeln!(writer, "No quizzes found.")?;
+    if quiz_names.len() > 0 {
+        quiz_names.sort();
+        my_writeln!(writer, "Available quizzes:")?;
+        for name in quiz_names.iter() {
+            my_writeln!(writer, "  {}", name)?;
         }
     } else {
         my_writeln!(writer, "No quizzes found.")?;
     }
+
     Ok(())
 }
 
