@@ -409,7 +409,6 @@ pub fn main_delete<R: MyReadline>(
     require_app_dir_path()?;
 
     let path = get_quiz_path(&options.name);
-    println!("{}", path.to_str().unwrap());
     if path.exists() {
         let yesno_prompt = "Are you sure you want to delete the quiz? ";
         if options.force || yesno(reader, yesno_prompt) {
@@ -478,12 +477,7 @@ pub fn main_path<W: io::Write>(
     };
 
     if path.exists() || options.force {
-        if let Some(path) = path.as_path().to_str() {
-            my_writeln!(writer, "{}", path)?;
-        } else {
-            my_writeln!(writer, "Error: could not convert path to UTF-8 string.")?;
-        }
-
+        my_writeln!(writer, "{}", path.as_path().to_string_lossy())?;
         Ok(())
     } else {
         Err(QuizError::QuizNotFound(options.name.to_string()))
@@ -1487,11 +1481,10 @@ impl fmt::Display for QuizError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             QuizError::CannotMakeAppDir => {
-                if let Some(path) = get_app_dir_path().to_str() {
-                    write!(f, "unable to create application directory at {}", path)
-                } else {
-                    write!(f, "unable to create application directory")
-                }
+                // String::from is necessary here for Rust's borrow checker for some
+                // reason.
+                let path = String::from(get_app_dir_path().to_string_lossy());
+                write!(f, "unable to create application directory at {}", path)
             },
             QuizError::QuizNotFound(ref name) => {
                 write!(f, "could not find quiz named '{}'", name)
@@ -1503,13 +1496,7 @@ impl fmt::Display for QuizError {
                 write!(f, "unable to open system editor")
             },
             QuizError::CannotWriteToFile(ref path) => {
-                if let Some(path) = path.to_str() {
-                    write!(f, "cannot write to file '{}'", path)
-                } else {
-                    write!(
-                        f, "cannot write to file and cannot convert file name to UTF-8"
-                    )
-                }
+                write!(f, "cannot write to file '{}'", path.to_string_lossy())
             },
             QuizError::Io(ref err) => {
                 write!(f, "IO error ({})", err)
