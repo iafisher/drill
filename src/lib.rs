@@ -88,7 +88,12 @@ struct QuestionResult {
     time_asked: chrono::DateTime<chrono::Utc>,
     /// If the question asked was a short answer question, then the user's response goes
     /// in this field.
+    #[serde(skip_serializing_if = "Option::is_none")]
     response: Option<String>,
+    /// If the question asked was a list question, then the user's responses go in this
+    /// field.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_list: Option<Vec<String>>,
     /// Optional, because ungraded questions don't have scores.
     score: Option<f64>,
 
@@ -753,8 +758,11 @@ impl Question {
         }
 
         let mut count = 0;
+        let mut responses = Vec::new();
         while count < self.answer_list.len() {
             if let Some(guess) = prompt(reader, "> ")? {
+                responses.push(guess.to_lowercase().clone());
+
                 let index = self.check_one(&guess);
                 if index == self.answer_list.len() {
                     self.incorrect(writer, None, Some(&guess))?;
@@ -790,7 +798,8 @@ impl Question {
                 ).white()
             )?;
         }
-        Ok(self.result(None, Some(score)))
+
+        Ok(self.result_with_list(responses, Some(score)))
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `OrderedListAnswer`.
@@ -798,8 +807,11 @@ impl Question {
         &self, writer: &mut W, reader: &mut R
     ) -> Result<QuestionResult, QuizError> {
         let mut ncorrect = 0;
+        let mut responses = Vec::new();
         for answer in self.answer_list.iter() {
             if let Some(guess) = prompt(reader, "> ")? {
+                responses.push(guess.to_lowercase().clone());
+
                 if answer.check(&guess) {
                     self.correct(writer)?;
                     ncorrect += 1;
@@ -822,7 +834,8 @@ impl Question {
                 ).white()
             )?;
         }
-        Ok(self.result(None, Some(score)))
+
+        Ok(self.result_with_list(responses, Some(score)))
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `MultipleChoice`.
@@ -889,6 +902,18 @@ impl Question {
             text: self.text[0].clone(),
             score,
             response,
+            response_list: None,
+            time_asked: chrono::Utc::now(),
+        }
+    }
+
+    /// Construct a `QuestionResult` object with a list of responses.
+    fn result_with_list(&self, responses: Vec<String>, score: Option<f64>) -> QuestionResult {
+        QuestionResult {
+            text: self.text[0].clone(),
+            score,
+            response: None,
+            response_list: Some(responses),
             time_asked: chrono::Utc::now(),
         }
     }
