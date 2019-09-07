@@ -1240,13 +1240,21 @@ fn load_quiz_from_json(data: &str) -> Result<Quiz, QuizError> {
 
     // Expand each JSON object before doing strongly-typed deserialization.
     if let Some(quiz_as_object) = quiz_as_json.as_object_mut() {
+        // `kind` defaults to "ShortAnswer" unless otherwise specified.
+        let mut default_kind = String::from("ShortAnswer");
+        if let Some(val) = quiz_as_object.get("default_kind") {
+            if let Some(s) = val.as_str() {
+                default_kind = String::from(s);
+            }
+        }
+
         if let Some(questions) = quiz_as_object.get_mut("questions") {
             if let Some(questions_as_array) = questions.as_array_mut() {
                 for i in 0..questions_as_array.len() {
                     // Expand each individual question object.
                     if let Some(question) = questions_as_array[i].as_object() {
                         questions_as_array[i] = serde_json::to_value(
-                            normalize_question_json(&question)
+                            normalize_question_json(&question, &default_kind)
                         ).unwrap();
                     }
                 }
@@ -1287,12 +1295,12 @@ type JSONMap = serde_json::Map<String, serde_json::Value>;
 /// Given a JSON object in the disk format, return an equivalent JSON object in the
 /// format that the deserialization library understands (i.e., a format that is
 /// isomorphic to the fields of the `Question` struct).
-fn normalize_question_json(question: &JSONMap) -> JSONMap {
+fn normalize_question_json(question: &JSONMap, default_kind: &str) -> JSONMap {
     let mut ret = question.clone();
 
-    // The `kind` field defaults to "ShortAnswer".
+    // If not explicitly provided, supply a default `kind` field.
     if !ret.contains_key("kind") {
-        ret.insert(String::from("kind"), serde_json::json!("ShortAnswer"));
+        ret.insert(String::from("kind"), serde_json::json!(default_kind));
     }
 
     // Convert `side1` and `side2` fields.
@@ -1907,6 +1915,61 @@ mod tests {
             &[
                 "What is the largest country in South America?",
                 "What is the capital of Brazil?",
+                "100.0%",
+            ]
+        );
+    }
+
+    #[test]
+    fn can_take_flashcard_quiz() {
+        let mut options = QuizTakeOptions::new();
+        options.name = s(".test_flashcard");
+        options.in_order = true;
+
+        let responses = vec![s("bread"), s("wine"), s("butter"), s("no\n")];
+
+        let mut mock_stdin = MockStdin { responses };
+        let mut mock_stdout = MockStdout { sink: String::new() };
+
+        let result = main_take(&mut mock_stdout, &mut mock_stdin, options);
+
+        assert!(result.is_ok());
+        assert!(mock_stdin.responses.len() == 0);
+
+        assert_in_order(
+            &mock_stdout,
+            &[
+                "el pan",
+                "el vino",
+                "la mantequilla",
+                "100.0%",
+            ]
+        );
+    }
+
+    #[test]
+    fn can_take_flipped_flashcard_quiz() {
+        let mut options = QuizTakeOptions::new();
+        options.name = s(".test_flashcard");
+        options.in_order = true;
+        options.flip = true;
+
+        let responses = vec![s("el pan"), s("el vino"), s("la mantequilla"), s("no\n")];
+
+        let mut mock_stdin = MockStdin { responses };
+        let mut mock_stdout = MockStdout { sink: String::new() };
+
+        let result = main_take(&mut mock_stdout, &mut mock_stdin, options);
+
+        assert!(result.is_ok());
+        assert!(mock_stdin.responses.len() == 0);
+
+        assert_in_order(
+            &mock_stdout,
+            &[
+                "bread",
+                "wine",
+                "butter",
                 "100.0%",
             ]
         );

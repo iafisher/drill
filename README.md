@@ -34,7 +34,7 @@ If `<name>` is left out of any of these commands, it defaults to `main`.
 ## Quiz file format
 You create the quizzes yourself as JSON files. This section documents the format of the JSON, although note that since popquiz is under active development, the format may change in backwards-incompatible fashion without warning.
 
-The root JSON object should have a single `questions` field mapping to an array of question objects:
+The root JSON object must have a `questions` field mapping to an array of question objects:
 
 ```
 {
@@ -43,6 +43,8 @@ The root JSON object should have a single `questions` field mapping to an array 
   ]
 }
 ```
+
+It may also have a `default_kind` field mapping to a string that specifies the default value for the `kind` field of each question object (see below), when `kind` is not explicitly provided. For example, if your quiz contains only questions of kind `"Flashcard"`, you can avoid putting `"kind": "Flashcard"` on every object by having `"default_kind": "Flashcard"` at the top level.
 
 The format of the question objects depends on the kind of questions. popquiz currently supports four question types:
 
