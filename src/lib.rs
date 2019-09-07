@@ -2,7 +2,7 @@
  * Implementation of the popquiz application.
  *
  * Author:  Ian Fisher (iafisher@protonmail.com)
- * Version: July 2019
+ * Version: September 2019
  */
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -65,7 +65,7 @@ struct Question {
 /// An enumeration for the `kind` field of `Question` objects.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 enum QuestionKind {
-    ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice, Ungraded,
+    ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice, Flashcard, Ungraded,
 }
 
 
@@ -184,6 +184,9 @@ pub struct QuizTakeOptions {
     /// Ask the questions in the order they appear in the quiz file.
     #[structopt(long = "in-order")]
     in_order: bool,
+    /// Flip flashcards.
+    #[structopt(long = "flip")]
+    flip: bool,
     #[structopt(flatten)]
     filter_opts: QuizFilterOptions,
 }
@@ -507,6 +510,12 @@ impl Quiz {
     fn take<W: io::Write, R: MyReadline>(
         &mut self, writer: &mut W, reader: &mut R, options: &QuizTakeOptions
     ) -> Result<QuizResult, QuizError> {
+        if options.flip {
+            for q in self.questions.iter_mut() {
+                q.flip();
+            }
+        }
+
         let mut results = Vec::new();
         let mut total_correct = 0;
         let mut total_partially_correct = 0;
@@ -705,7 +714,7 @@ impl Question {
         my_write!(writer, "\n")?;
 
         match self.kind {
-            QuestionKind::ShortAnswer => {
+            QuestionKind::ShortAnswer | QuestionKind::Flashcard => {
                 self.ask_short_answer(writer, reader)
             },
             QuestionKind::ListAnswer => {
@@ -723,7 +732,8 @@ impl Question {
         }
     }
 
-    /// Implementation of `ask` assuming that `self.kind` is `ShortAnswer`.
+    /// Implementation of `ask` assuming that `self.kind` is `ShortAnswer` or
+    /// `Flashcard`.
     fn ask_short_answer<W: io::Write, R: MyReadline>(
         &self, writer: &mut W, reader: &mut R
     ) -> Result<QuestionResult, QuizError> {
@@ -984,6 +994,17 @@ impl Question {
         }
         self.answer_list.len()
     }
+
+    /// Flip flashcards. Does not nothing if `self.kind` is not `Flashcard`.
+    fn flip(&mut self) {
+        if self.kind == QuestionKind::Flashcard {
+            let side1 = self.text.remove(0);
+            let side2 = self.answer_list.remove(0).variants.remove(0);
+
+            self.text = vec![side2];
+            self.answer_list = vec![Answer { variants: vec![side1] } ];
+        }
+    }
 }
 
 
@@ -1005,7 +1026,7 @@ impl QuizTakeOptions {
     fn new() -> Self {
         QuizTakeOptions {
             name: String::new(), num_to_ask: None, best: None, worst: None, most: None,
-            least: None, save: false, no_color: true, in_order: false,
+            least: None, save: false, no_color: true, in_order: false, flip: false,
             filter_opts: QuizFilterOptions::new()
         }
     }
@@ -1272,6 +1293,16 @@ fn normalize_question_json(question: &JSONMap) -> JSONMap {
     // The `kind` field defaults to "ShortAnswer".
     if !ret.contains_key("kind") {
         ret.insert(String::from("kind"), serde_json::json!("ShortAnswer"));
+    }
+
+    // Convert `side1` and `side2` fields.
+    if let Some(side1) = ret.get("side1") {
+        ret.insert(String::from("text"), serde_json::json!(side1));
+        ret.remove("side1");
+    }
+    if let Some(side2) = ret.get("side2") {
+        ret.insert(String::from("answer"), serde_json::json!(side2));
+        ret.remove("side2");
     }
 
     // Convert answer objects from [...] to { "variants": [...] }.
