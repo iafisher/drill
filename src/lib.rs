@@ -159,48 +159,48 @@ pub enum QuizOptions {
 pub struct QuizTakeOptions {
     /// Name of the quiz to take.
     #[structopt(default_value = "main")]
-    name: String,
+    pub name: String,
     /// Limit the total number of questions.
     #[structopt(short = "n")]
-    num_to_ask: Option<usize>,
+    pub num_to_ask: Option<usize>,
     /// Choose from the `n` questions with the highest previous scores.
     #[structopt(long = "best")]
-    best: Option<usize>,
+    pub best: Option<usize>,
     /// Choose from the `n` questions with the lowest previous scores.
     #[structopt(long = "worst")]
-    worst: Option<usize>,
+    pub worst: Option<usize>,
     /// Choose from the `n` questions with the most previous attempts.
     #[structopt(long = "most")]
-    most: Option<usize>,
+    pub most: Option<usize>,
     /// Choose from the `n` questions with the least previous attempts.
     #[structopt(long = "least")]
-    least: Option<usize>,
+    pub least: Option<usize>,
     /// Save results without prompting.
     #[structopt(long = "save")]
-    save: bool,
+    pub save: bool,
     /// Do not emit colorized output.
     #[structopt(long = "no-color")]
-    no_color: bool,
+    pub no_color: bool,
     /// Ask the questions in the order they appear in the quiz file.
     #[structopt(long = "in-order")]
-    in_order: bool,
+    pub in_order: bool,
     /// Flip flashcards.
     #[structopt(long = "flip")]
-    flip: bool,
+    pub flip: bool,
     #[structopt(flatten)]
-    filter_opts: QuizFilterOptions,
+    pub filter_opts: QuizFilterOptions,
 }
 
 #[derive(StructOpt)]
 pub struct QuizCountOptions {
     /// Name of the quiz to count.
     #[structopt(default_value = "main")]
-    name: String,
+    pub name: String,
     /// List tags instead of counting questions.
     #[structopt(long = "list-tags")]
-    list_tags: bool,
+    pub list_tags: bool,
     #[structopt(flatten)]
-    filter_opts: QuizFilterOptions,
+    pub filter_opts: QuizFilterOptions,
 }
 
 /// These filtering options are shared between the `take` and `count` subcommands.
@@ -208,57 +208,57 @@ pub struct QuizCountOptions {
 pub struct QuizFilterOptions {
     /// Only include questions with the given tag.
     #[structopt(long = "tag")]
-    tags: Vec<String>,
+    pub tags: Vec<String>,
     /// Exclude questions with the given tag.
     #[structopt(long = "exclude")]
-    exclude: Vec<String>,
+    pub exclude: Vec<String>,
     /// Only include questions that have never been asked before.
     #[structopt(long = "never")]
-    never: bool,
+    pub never: bool,
     /// Filter by keyword.
     #[structopt(short = "k", long = "keyword")]
-    keywords: Vec<String>,
+    pub keywords: Vec<String>,
 }
 
 #[derive(StructOpt)]
 pub struct QuizEditOptions {
     /// The name of the quiz to edit.
     #[structopt(default_value = "main")]
-    name: String,
+    pub name: String,
     /// Edit the results file rather than the quiz itself.
     #[structopt(short = "r", long = "results")]
-    results: bool,
+    pub results: bool,
 }
 
 #[derive(StructOpt)]
 pub struct QuizDeleteOptions {
     /// The name of the quiz to delete.
     #[structopt(default_value = "main")]
-    name: String,
+    pub name: String,
     /// Delete without prompting for confirmation.
     #[structopt(short = "f", long = "force")]
-    force: bool,
+    pub force: bool,
 }
 
 #[derive(StructOpt)]
 pub struct QuizRenameOptions {
     /// The old name of the quiz to rename.
-    old_name: String,
+    pub old_name: String,
     /// The new name.
-    new_name: String,
+    pub new_name: String,
 }
 
 #[derive(StructOpt)]
 pub struct QuizResultsOptions {
     /// The name of the quiz for which to fetch the results.
     #[structopt(default_value = "main")]
-    name: String,
+    pub name: String,
     /// One of 'best', 'worst', 'most' or 'least'. Defaults to 'best'.
     #[structopt(short = "s", long = "sort", default_value = "best")]
-    sort: String,
+    pub sort: String,
     /// Only show the first `n` results.
     #[structopt(short = "n")]
-    num_to_show: Option<usize>,
+    pub num_to_show: Option<usize>,
 }
 
 
@@ -266,7 +266,7 @@ pub struct QuizResultsOptions {
 pub struct QuizListOptions {
     /// List quizzes whose name begins with a period.
     #[structopt(short = "a", long = "all")]
-    all: bool,
+    pub all: bool,
 }
 
 
@@ -274,13 +274,13 @@ pub struct QuizListOptions {
 pub struct QuizPathOptions {
     /// The name of the quiz.
     #[structopt(default_value = "main")]
-    name: String,
+    pub name: String,
     /// Show the path to the results file instead of the quiz file.
     #[structopt(short = "r", long = "results")]
-    results: bool,
+    pub results: bool,
     /// Display the path that would be used even if the quiz does not exist.
     #[structopt(short = "f", long = "force")]
-    force: bool,
+    pub force: bool,
 }
 
 
@@ -507,7 +507,7 @@ pub fn main_path<W: io::Write>(
 
 impl Quiz {
     /// Take the quiz and return pairs of questions and results.
-    fn take<W: io::Write, R: MyReadline>(
+    pub fn take<W: io::Write, R: MyReadline>(
         &mut self, writer: &mut W, reader: &mut R, options: &QuizTakeOptions
     ) -> Result<QuizResult, QuizError> {
         if options.flip {
@@ -687,7 +687,7 @@ fn filter_question_by_keywords(q: &Question, keywords: &Vec<String>) -> bool {
 impl Question {
     /// Return a new short-answer question.
     #[allow(dead_code)]
-    fn new(text: &str, answer: &str) -> Self {
+    pub fn new(text: &str, answer: &str) -> Self {
         let answers = vec![Answer { variants: vec![String::from(answer)] }];
         Question {
             kind: QuestionKind::ShortAnswer, text: vec![String::from(text)],
@@ -702,7 +702,7 @@ impl Question {
     ///
     /// The `num` argument is the question number in the quiz, which is printed before
     /// the text of the question.
-    fn ask<W: io::Write, R: MyReadline>(
+    pub fn ask<W: io::Write, R: MyReadline>(
         &self, writer: &mut W, reader: &mut R, num: usize
     ) -> Result<QuestionResult, QuizError> {
         let mut rng = thread_rng();
@@ -1023,7 +1023,7 @@ impl Answer {
 
 impl QuizTakeOptions {
     #[allow(dead_code)]
-    fn new() -> Self {
+    pub fn new() -> Self {
         QuizTakeOptions {
             name: String::new(), num_to_ask: None, best: None, worst: None, most: None,
             least: None, save: false, no_color: true, in_order: false, flip: false,
@@ -1035,7 +1035,7 @@ impl QuizTakeOptions {
 
 impl QuizFilterOptions {
     #[allow(dead_code)]
-    fn new() -> Self {
+    pub fn new() -> Self {
         QuizFilterOptions {
             tags: Vec::new(), exclude: Vec::new(), never: false, keywords: Vec::new(),
         }
@@ -1817,223 +1817,7 @@ mod tests {
         assert_eq!(*output, expected_output);
     }
 
-    #[test]
-    fn can_take_test1_quiz() {
-        let mut options = QuizTakeOptions::new();
-        options.name = s(".test1");
-
-        let responses = vec![
-            s("Ulan Bator\n"),
-            s("no\n"),
-        ];
-
-        let mut mock_stdin = MockStdin { responses };
-        let mut mock_stdout = MockStdout { sink: String::new() };
-
-        let result = main_take(&mut mock_stdout, &mut mock_stdin, options);
-
-        assert!(result.is_ok());
-        assert!(mock_stdin.responses.len() == 0);
-
-        assert_in_order(
-            &mock_stdout,
-            &[
-                "What is the capital of Mongolia?",
-                "100.0%",
-                "1 correct",
-                "0 partially correct",
-                "0 incorrect",
-                "0 ungraded",
-            ]
-        );
-    }
-
-    #[test]
-    fn can_take_test2_quiz() {
-        let mut options = QuizTakeOptions::new();
-        options.name = s(".test2");
-        options.in_order = true;
-
-        let responses = vec![
-            s("a\n"),
-            s("Wilhelm I\n"),
-            s("Wilhelm II\n"),
-            s("Wilhelm II\n"),
-            s("no\n"),
-        ];
-
-        let mut mock_stdin = MockStdin { responses };
-        let mut mock_stdout = MockStdout { sink: String::new() };
-
-        let result = main_take(&mut mock_stdout, &mut mock_stdin, options);
-
-        assert!(result.is_ok());
-        assert!(mock_stdin.responses.len() == 0);
-
-        assert_in_order(
-            &mock_stdout,
-            &[
-                "Who was President of the United States during the Korean War?",
-                "List the modern Emperors of Germany in chronological order.",
-                "Incorrect. The correct answer was Frederick III.",
-                "Score for this question: 66.7%",
-                "1 partially correct",
-                "0 ungraded",
-            ]
-        );
-
-        // Since the order of multiple-choice answers is random, we don't know whether
-        // guessing 'a' was right or not.
-        assert!(
-            mock_stdout.has("1 incorrect") ||
-            mock_stdout.has("1 correct")
-        );
-    }
-
-    #[test]
-    fn can_take_test_dependency_quiz() {
-        let mut options = QuizTakeOptions::new();
-        options.name = s(".test_dependency");
-        options.in_order = true;
-
-        let responses = vec![
-            s("Brazil"),
-            s("Brasilia"),
-            s("no\n"),
-        ];
-
-        let mut mock_stdin = MockStdin { responses };
-        let mut mock_stdout = MockStdout { sink: String::new() };
-
-        let result = main_take(&mut mock_stdout, &mut mock_stdin, options);
-
-        assert!(result.is_ok());
-        assert!(mock_stdin.responses.len() == 0);
-
-        assert_in_order(
-            &mock_stdout,
-            &[
-                "What is the largest country in South America?",
-                "What is the capital of Brazil?",
-                "100.0%",
-            ]
-        );
-    }
-
-    #[test]
-    fn can_take_flashcard_quiz() {
-        let mut options = QuizTakeOptions::new();
-        options.name = s(".test_flashcard");
-        options.in_order = true;
-
-        let responses = vec![s("bread"), s("wine"), s("butter"), s("no\n")];
-
-        let mut mock_stdin = MockStdin { responses };
-        let mut mock_stdout = MockStdout { sink: String::new() };
-
-        let result = main_take(&mut mock_stdout, &mut mock_stdin, options);
-
-        assert!(result.is_ok());
-        assert!(mock_stdin.responses.len() == 0);
-
-        assert_in_order(
-            &mock_stdout,
-            &[
-                "el pan",
-                "el vino",
-                "la mantequilla",
-                "100.0%",
-            ]
-        );
-    }
-
-    #[test]
-    fn can_take_flipped_flashcard_quiz() {
-        let mut options = QuizTakeOptions::new();
-        options.name = s(".test_flashcard");
-        options.in_order = true;
-        options.flip = true;
-
-        let responses = vec![s("el pan"), s("el vino"), s("la mantequilla"), s("no\n")];
-
-        let mut mock_stdin = MockStdin { responses };
-        let mut mock_stdout = MockStdout { sink: String::new() };
-
-        let result = main_take(&mut mock_stdout, &mut mock_stdin, options);
-
-        assert!(result.is_ok());
-        assert!(mock_stdin.responses.len() == 0);
-
-        assert_in_order(
-            &mock_stdout,
-            &[
-                "bread",
-                "wine",
-                "butter",
-                "100.0%",
-            ]
-        );
-    }
-
     fn s(mystr: &str) -> String {
         String::from(mystr)
-    }
-
-    fn assert_in_order(mock_stdout: &MockStdout, data: &[&str]) {
-        assert!(
-            mock_stdout.has_in_order(data), "Contents of stdout: {:?}", mock_stdout.sink
-        );
-    }
-
-    struct MockStdin {
-        responses: Vec<String>,
-    }
-
-    struct MockStdout {
-        sink: String,
-    }
-
-    impl MockStdout {
-        fn has(&self, datum: &str) -> bool {
-            self.sink.contains(datum)
-        }
-
-        fn has_in_order(&self, data: &[&str]) -> bool {
-            let mut last_pos = 0;
-            for datum in data {
-                if let Some(pos) = self.find(datum) {
-                    if pos < last_pos {
-                        return false;
-                    } else {
-                        last_pos = pos;
-                    }
-                } else {
-                    return false;
-                }
-            }
-            true
-        }
-
-        fn find(&self, datum: &str) -> Option<usize> {
-            self.sink.find(datum)
-        }
-    }
-
-    impl MyReadline for MockStdin {
-        fn read_line(&mut self, _prompt: &str) -> Result<String, QuizError> {
-            Ok(self.responses.remove(0))
-        }
-    }
-
-    impl io::Write for MockStdout {
-        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-            let as_utf8 = String::from_utf8(buf.to_vec()).unwrap();
-            self.sink.push_str(&as_utf8);
-            Ok(buf.len())
-        }
-
-        fn flush(&mut self) -> io::Result<()> {
-            Ok(())
-        }
     }
 }
