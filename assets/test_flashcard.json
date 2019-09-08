@@ -1,0 +1,17 @@
+{
+  "default_kind": "Flashcard",
+  "questions": [
+    {
+      "side1": "el pan",
+      "side2": "bread"
+    },
+    {
+      "side1": "el vino",
+      "side2": "wine"
+    },
+    {
+      "side1": "la mantequilla",
+      "side2": "butter"
+    }
+  ]
+}
