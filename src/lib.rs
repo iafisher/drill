@@ -23,7 +23,10 @@ use structopt::StructOpt;
 
 /// Represents an entire quiz.
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 struct Quiz {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    default_kind: Option<String>,
     instructions: Option<String>,
     questions: Vec<Question>,
 }
@@ -31,6 +34,7 @@ struct Quiz {
 
 /// Represents a question.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 struct Question {
     kind: QuestionKind,
     /// The text of the question. It is a vector instead of a string so that multiple
@@ -71,6 +75,7 @@ enum QuestionKind {
 
 /// Represents an answer.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 struct Answer {
     /// Each member of the `variants` vector should be an equivalent answer, e.g.
     /// `vec!["Mount Everest", "Everest"]`, not different answers to the same question.
@@ -82,6 +87,7 @@ struct Answer {
 
 /// Represents the result of answering a question on a particular occasion.
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 struct QuestionResult {
     #[serde(skip)]
     text: String,
