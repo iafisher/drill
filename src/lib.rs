@@ -995,9 +995,12 @@ impl Question {
         self.answer_list.len()
     }
 
-    /// Flip flashcards. Does not nothing if `self.kind` is not `Flashcard`.
+    /// Flip flashcards. Does nothing if `self.kind` is not `Flashcard`.
     fn flip(&mut self) {
         if self.kind == QuestionKind::Flashcard {
+            let mut rng = thread_rng();
+            self.answer_list.shuffle(&mut rng);
+
             let side1 = self.text.remove(0);
             let side2 = self.answer_list.remove(0).variants.remove(0);
 
