@@ -162,7 +162,7 @@ Before the test suite can be run, a couple of set-up steps are necessary:
 
 ```shell
 $ cargo build
-$ ./setup_tests
+$ ./tools/setup_tests
 ```
 
 After that, the test suite can be run with:
