@@ -6,12 +6,14 @@
  */
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::env;
 use std::error;
 use std::fmt;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
 use std::process::Command;
+use std::os;
 
 use colored::*;
 use rand::seq::SliceRandom;
@@ -234,6 +236,9 @@ pub struct QuizEditOptions {
     /// Edit the results file rather than the quiz itself.
     #[structopt(short = "r", long = "results")]
     pub results: bool,
+    /// Create a new quiz in the current directory, symlinked to the app directory.
+    #[structopt(short = "l", long = "link")]
+    pub link: bool,
 }
 
 #[derive(StructOpt)]
@@ -413,6 +418,12 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
     } else {
         get_quiz_path(&options.name)
     };
+
+    if options.link {
+        let mut dir = env::current_dir().map_err(QuizError::Io)?;
+        dir.push(&options.name);
+        os::unix::fs::symlink(&dir, &path).map_err(QuizError::Io)?;
+    }
 
     // Spawn an editor in a child process.
     let editor = ::std::env::var("EDITOR").unwrap_or(String::from("nano"));
