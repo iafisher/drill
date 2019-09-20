@@ -53,11 +53,6 @@ struct Question {
     /// Prior results of answering the question.
     #[serde(default)]
     prior_results: Vec<QuestionResult>,
-    /// Optional string identifier.
-    id: Option<String>,
-    /// If provided, should be the `id` of another `Question` which must be asked before
-    /// this one.
-    depends: Option<String>,
     /// User-defined tags for the question.
     #[serde(default)]
     tags: Vec<String>,
@@ -651,21 +646,6 @@ impl Quiz {
             candidates.truncate(num_to_ask);
         }
 
-        // Respect basic dependence relations.
-        //
-        // Make sure that this is the very last operation on the candidates.
-        for i in 0..candidates.len() {
-            for j in (i+1)..candidates.len() {
-                if let Some(id) = &candidates[j].id {
-                    if let Some(depends) = &candidates[i].depends {
-                        if id == depends {
-                            candidates.swap(i, j);
-                        }
-                    }
-                }
-            }
-        }
-
         candidates
     }
 }
@@ -709,8 +689,7 @@ impl Question {
         Question {
             kind: QuestionKind::ShortAnswer, text: vec![String::from(text)],
             tags: Vec::new(), answer_list: answers, candidates: Vec::new(),
-            prior_results: Vec::new(), id: None, depends: None,
-            explanations: Vec::new(),
+            prior_results: Vec::new(), explanations: Vec::new(),
         }
     }
 
@@ -1755,8 +1734,6 @@ mod tests {
             candidates: Vec::new(),
             prior_results: Vec::new(),
             tags: Vec::new(),
-            id: None,
-            depends: None,
             explanations: Vec::new(),
         };
 
@@ -1796,8 +1773,6 @@ mod tests {
             candidates: Vec::new(),
             prior_results: Vec::new(),
             tags: Vec::new(),
-            id: None,
-            depends: None,
             explanations: Vec::new(),
         };
 
@@ -1829,8 +1804,6 @@ mod tests {
             answer_list: vec![Answer { variants: vec![s("Khmer")] } ],
             prior_results: Vec::new(),
             tags: Vec::new(),
-            id: None,
-            depends: None,
             explanations: Vec::new(),
         };
 

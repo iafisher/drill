@@ -77,36 +77,6 @@ fn can_take_test2_quiz() {
 }
 
 #[test]
-fn can_take_test_dependency_quiz() {
-    let mut options = popquiz::QuizTakeOptions::new();
-    options.name = s(".test_dependency");
-    options.in_order = true;
-
-    let responses = vec![
-        s("Brazil"),
-        s("Brasilia"),
-        s("no\n"),
-    ];
-
-    let mut mock_stdin = MockStdin { responses };
-    let mut mock_stdout = MockStdout { sink: String::new() };
-
-    let result = popquiz::main_take(&mut mock_stdout, &mut mock_stdin, options);
-
-    assert!(result.is_ok());
-    assert!(mock_stdin.responses.len() == 0);
-
-    assert_in_order(
-        &mock_stdout,
-        &[
-            "What is the largest country in South America?",
-            "What is the capital of Brazil?",
-            "100.0%",
-        ]
-    );
-}
-
-#[test]
 fn can_take_flashcard_quiz() {
     let mut options = popquiz::QuizTakeOptions::new();
     options.name = s(".test_flashcard");
