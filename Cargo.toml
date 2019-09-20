@@ -1,6 +1,6 @@
 [package]
 name = "popquiz"
-version = "0.1.0"
+version = "2.0.0"
 authors = ["Ian Fisher <iafisher@protonmail.com>"]
 edition = "2018"
 

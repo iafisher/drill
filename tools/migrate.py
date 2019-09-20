@@ -48,8 +48,7 @@ def migrate(quiz, writer):
             writer.write(",".join(map(escape_answer, question["candidates"])))
             writer.write("\n")
         elif kind == "Ungraded":
-            writer.write("a: ...\n")
-            writer.write("- ungraded: true\n")
+            raise RuntimeError("Ungraded questions are no longer supported")
         elif kind == "Flashcard":
             writer.write("s1: ")
             writer.write(question["side1"])

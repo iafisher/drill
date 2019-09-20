@@ -66,7 +66,7 @@ struct Question {
 /// An enumeration for the `kind` field of `Question` objects.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 enum QuestionKind {
-    ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice, Flashcard, Ungraded,
+    ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice, Flashcard,
 }
 
 
@@ -722,9 +722,6 @@ impl Question {
             QuestionKind::MultipleChoice => {
                 self.ask_multiple_choice(writer, reader)
             },
-            QuestionKind::Ungraded => {
-                self.ask_ungraded(writer, reader)
-            }
         }
     }
 
@@ -890,16 +887,6 @@ impl Question {
                 return Ok(self.result(Some(answer.clone()), Some(0.0)));
             }
         }
-    }
-
-    /// Implementation of `ask` assuming that `self.kind` is `Ungraded`.
-    fn ask_ungraded<W: io::Write, R: MyReadline>(
-        &self, writer: &mut W, reader: &mut R
-    ) -> Result<QuestionResult, QuizError> {
-        let response = prompt(reader, "> ")?;
-        my_writeln!(writer, "\n{}", "Sample correct answer:\n".white())?;
-        prettyprint(writer, &self.answer_list[0].variants[0], Some("  "))?;
-        Ok(self.result(response, None))
     }
 
     /// Construct a `QuestionResult` object.
