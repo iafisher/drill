@@ -1,3 +1,14 @@
+#!/usr/bin/env python3
+"""
+Use this script to migrate quizzes from the old JSON format of version 1 to the textual
+format of version 2.
+
+Note that ungraded questions and dependencies are no longer supported in version 2. Some
+niche use cases (like having "q" as the first side of a flashcard) may no longer work.
+
+Author:  Ian Fisher (iafisher@protonmail.com)
+Version: September 2019
+"""
 import argparse
 import json
 import sys
@@ -50,10 +61,11 @@ def migrate(quiz, writer):
         elif kind == "Ungraded":
             raise RuntimeError("Ungraded questions are no longer supported")
         elif kind == "Flashcard":
-            writer.write("s1: ")
+            if question["side1"] == "q":
+                raise RuntimeError("side 1 of a flashcard cannot be 'q'")
+
             writer.write(question["side1"])
-            writer.write("\n")
-            writer.write("s2: ")
+            writer.write(": ")
             if isinstance(question["side2"], list):
                 writer.write(",".join(map(escape_answer, question["side2"])))
             else:
