@@ -1,28 +1,12 @@
-use std::io;
-
-use popquiz;
+use std::io::Write;
+use std::process::{Command, Stdio};
 
 
 #[test]
 fn can_take_test1_quiz() {
-    let mut options = popquiz::QuizTakeOptions::new();
-    options.name = s(".test1");
-
-    let responses = vec![
-        s("Ulan Bator\n"),
-        s("no\n"),
-    ];
-
-    let mut mock_stdin = MockStdin { responses };
-    let mut mock_stdout = MockStdout { sink: String::new() };
-
-    let result = popquiz::main_take(&mut mock_stdout, &mut mock_stdin, options);
-
-    assert!(result.is_ok());
-    assert!(mock_stdin.responses.len() == 0);
-
+    let output = spawn_and_mock(".test1", &["Ulan Bator", "no"], &[]);
     assert_in_order(
-        &mock_stdout,
+        &output,
         &[
             "What is the capital of Mongolia?",
             "100.0%",
@@ -34,30 +18,15 @@ fn can_take_test1_quiz() {
     );
 }
 
+
 #[test]
 fn can_take_test2_quiz() {
-    let mut options = popquiz::QuizTakeOptions::new();
-    options.name = s(".test2");
-    options.in_order = true;
-
-    let responses = vec![
-        s("a\n"),
-        s("Wilhelm I\n"),
-        s("Wilhelm II\n"),
-        s("Wilhelm II\n"),
-        s("no\n"),
-    ];
-
-    let mut mock_stdin = MockStdin { responses };
-    let mut mock_stdout = MockStdout { sink: String::new() };
-
-    let result = popquiz::main_take(&mut mock_stdout, &mut mock_stdin, options);
-
-    assert!(result.is_ok());
-    assert!(mock_stdin.responses.len() == 0);
+    let output = spawn_and_mock(
+        ".test2", &["a", "Wilhelm I", "Wilhelm II", "Wilhelm II"], &["--in-order"],
+    );
 
     assert_in_order(
-        &mock_stdout,
+        &output,
         &[
             "Who was President of the United States during the Korean War?",
             "List the modern Emperors of Germany in chronological order.",
@@ -70,30 +39,17 @@ fn can_take_test2_quiz() {
 
     // Since the order of multiple-choice answers is random, we don't know whether
     // guessing 'a' was right or not.
-    assert!(
-        mock_stdout.has("1 incorrect") ||
-        mock_stdout.has("1 correct")
-    );
+    assert!(output.contains("1 incorrect") || output.contains("1 correct"));
 }
 
 #[test]
 fn can_take_flashcard_quiz() {
-    let mut options = popquiz::QuizTakeOptions::new();
-    options.name = s(".test_flashcard");
-    options.in_order = true;
-
-    let responses = vec![s("bread"), s("wine"), s("butter"), s("no\n")];
-
-    let mut mock_stdin = MockStdin { responses };
-    let mut mock_stdout = MockStdout { sink: String::new() };
-
-    let result = popquiz::main_take(&mut mock_stdout, &mut mock_stdin, options);
-
-    assert!(result.is_ok());
-    assert!(mock_stdin.responses.len() == 0);
+    let output = spawn_and_mock(
+        ".test_flashcard", &["bread", "wine", "butter", "no"], &["--in-order"],
+    );
 
     assert_in_order(
-        &mock_stdout,
+        &output,
         &[
             "el pan",
             "el vino",
@@ -105,23 +61,14 @@ fn can_take_flashcard_quiz() {
 
 #[test]
 fn can_take_flipped_flashcard_quiz() {
-    let mut options = popquiz::QuizTakeOptions::new();
-    options.name = s(".test_flashcard");
-    options.in_order = true;
-    options.flip = true;
-
-    let responses = vec![s("el pan"), s("el vino"), s("la mantequilla"), s("no\n")];
-
-    let mut mock_stdin = MockStdin { responses };
-    let mut mock_stdout = MockStdout { sink: String::new() };
-
-    let result = popquiz::main_take(&mut mock_stdout, &mut mock_stdin, options);
-
-    assert!(result.is_ok());
-    assert!(mock_stdin.responses.len() == 0);
+    let output = spawn_and_mock(
+        ".test_flashcard",
+        &["el pan", "el vino", "la mantequilla", "no"],
+        &["--in-order", "--flip"],
+    );
 
     assert_in_order(
-        &mock_stdout,
+        &output,
         &[
             "bread",
             "wine",
@@ -131,64 +78,44 @@ fn can_take_flipped_flashcard_quiz() {
     );
 }
 
-fn s(mystr: &str) -> String {
-    String::from(mystr)
-}
-
-fn assert_in_order(mock_stdout: &MockStdout, data: &[&str]) {
-    assert!(
-        mock_stdout.has_in_order(data), "Contents of stdout: {:?}", mock_stdout.sink
-    );
-}
-
-struct MockStdin {
-    responses: Vec<String>,
-}
-
-struct MockStdout {
-    sink: String,
-}
-
-impl MockStdout {
-    fn has(&self, datum: &str) -> bool {
-        self.sink.contains(datum)
-    }
-
-    fn has_in_order(&self, data: &[&str]) -> bool {
-        let mut last_pos = 0;
-        for datum in data {
-            if let Some(pos) = self.find(datum) {
-                if pos < last_pos {
-                    return false;
-                } else {
-                    last_pos = pos;
-                }
+fn assert_in_order(mock_stdout: &str, data: &[&str]) {
+    let mut last_pos = 0;
+    let mut in_order = true;
+    for datum in data {
+        if let Some(pos) = mock_stdout.find(datum) {
+            if pos < last_pos {
+                in_order = false;
+                break;
             } else {
-                return false;
+                last_pos = pos;
             }
+        } else {
+            in_order = false;
+            break;
         }
-        true
     }
-
-    fn find(&self, datum: &str) -> Option<usize> {
-        self.sink.find(datum)
-    }
+    assert!(in_order, "Contents of stdout: {:?}", mock_stdout);
 }
 
-impl popquiz::MyReadline for MockStdin {
-    fn read_line(&mut self, _prompt: &str) -> Result<String, popquiz::QuizError> {
-        Ok(self.responses.remove(0))
-    }
-}
+fn spawn_and_mock(quiz: &str, input: &[&str], extra_args: &[&str]) -> String {
+    let mut child = Command::new("./target/debug/popquiz")
+        .arg("take")
+        .arg("--no-color")
+        .args(extra_args)
+        .arg(&quiz)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn child process");
 
-impl io::Write for MockStdout {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let as_utf8 = String::from_utf8(buf.to_vec()).unwrap();
-        self.sink.push_str(&as_utf8);
-        Ok(buf.len())
+    {
+        let stdin = child.stdin.as_mut().expect("Failed to open stdin");
+        for line in input {
+            stdin.write_all(line.as_bytes()).expect("Failed to write to stdin");
+            stdin.write_all("\n".as_bytes()).expect("Failed to write to stdin");
+        }
     }
 
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
+    let result = child.wait_with_output().expect("Failed to read stdout");
+    String::from_utf8_lossy(&result.stdout).to_string()
 }
