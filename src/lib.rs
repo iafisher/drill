@@ -97,8 +97,7 @@ struct QuestionResult {
     /// field.
     #[serde(skip_serializing_if = "Option::is_none")]
     response_list: Option<Vec<String>>,
-    /// Optional, because ungraded questions don't have scores.
-    score: Option<f64>,
+    score: f64,
 
     // It would be convenient to include a reference to the `Question` object as a field
     // of this struct, but Rust's lifetimes makes it more difficult than it's worth.
@@ -118,11 +117,10 @@ impl Eq for QuestionResult {}
 #[derive(Debug)]
 struct QuizResult {
     time_taken: chrono::DateTime<chrono::Utc>,
-    total_answered: usize,
+    total: usize,
     total_correct: usize,
     total_partially_correct: usize,
     total_incorrect: usize,
-    total_ungraded: usize,
     score: f64,
     per_question: Vec<QuestionResult>,
 }
@@ -305,8 +303,7 @@ pub fn main_take<W: io::Write, R: MyReadline>(
     let results = quiz.take(writer, reader, &options)?;
     output_results(writer, &results)?;
 
-    let total_graded = results.total_answered - results.total_ungraded;
-    if total_graded > 0 && (options.save || yesno(reader, "\nSave results? ")) {
+    if results.total > 0 && (options.save || yesno(reader, "\nSave results? ")) {
         save_results(&options.name, &results)?;
     }
     Ok(())
@@ -316,16 +313,15 @@ pub fn main_take<W: io::Write, R: MyReadline>(
 fn output_results<W: io::Write>(
     writer: &mut W, results: &QuizResult
 ) -> Result<(), QuizError> {
-    let total_graded = results.total_answered - results.total_ungraded;
-    if total_graded > 0 {
+    if results.total > 0 {
         let score_as_str = format!("{:.1}%", results.score);
 
         my_write!(writer, "\n\n")?;
         my_write!(writer, "{}", "Score: ".white())?;
         my_write!(writer, "{}", score_as_str.cyan())?;
         my_write!(writer, "{}", " out of ".white())?;
-        my_write!(writer, "{}", format!("{}", results.total_answered).cyan())?;
-        if results.total_answered == 1 {
+        my_write!(writer, "{}", format!("{}", results.total).cyan())?;
+        if results.total == 1 {
             my_writeln!(writer, "{}", " question".white())?;
         } else {
             my_writeln!(writer, "{}", " questions".white())?;
@@ -336,10 +332,6 @@ fn output_results<W: io::Write>(
         my_write!(writer, "{}\n", " partially correct".white())?;
         my_write!(writer, "  {}", format!("{}", results.total_incorrect).red())?;
         my_write!(writer, "{}\n", " incorrect".white())?;
-        my_write!(writer, "  {}", format!("{}", results.total_ungraded).cyan())?;
-        my_write!(writer, "{}\n", " ungraded".white())?;
-    } else if results.total_ungraded > 0 {
-        my_writeln!(writer, "{}", "\n\nAll questions were ungraded.".white())?;
     }
     Ok(())
 }
@@ -531,7 +523,6 @@ impl Quiz {
         let mut results = Vec::new();
         let mut total_correct = 0;
         let mut total_partially_correct = 0;
-        let mut total_ungraded = 0;
         let mut total = 0;
         let mut aggregate_score = 0.0;
 
@@ -552,19 +543,15 @@ impl Quiz {
             my_write!(writer, "\n")?;
             let result = question.ask(writer, reader, i+1);
             if let Ok(result) = result {
-                let score_option = result.score;
+                let score = result.score;
                 results.push(result);
 
-                if let Some(score) = score_option {
-                    total += 1;
-                    aggregate_score += score;
-                    if score == 1.0 {
-                        total_correct += 1;
-                    } else if score > 0.0 {
-                        total_partially_correct += 1;
-                    }
-                } else {
-                    total_ungraded += 1;
+                total += 1;
+                aggregate_score += score;
+                if score == 1.0 {
+                    total_correct += 1;
+                } else if score > 0.0 {
+                    total_partially_correct += 1;
                 }
             } else if let Err(QuizError::ReadlineInterrupted) = result {
                 break;
@@ -577,11 +564,10 @@ impl Quiz {
         let score = (aggregate_score / (total as f64)) * 100.0;
         Ok(QuizResult {
             time_taken: chrono::Utc::now(),
-            total_answered: total + total_ungraded,
+            total,
             total_correct,
             total_partially_correct,
             total_incorrect,
-            total_ungraded,
             score,
             per_question: results,
         })
@@ -745,9 +731,9 @@ impl Question {
         let score = if result { 1.0 } else { 0.0 };
 
         if let Some(guess) = guess {
-            Ok(self.result(Some(guess.to_lowercase()), Some(score)))
+            Ok(self.result(Some(guess.to_lowercase()), score))
         } else {
-            Ok(self.result(None, Some(score)))
+            Ok(self.result(None, score))
         }
     }
 
@@ -802,7 +788,7 @@ impl Question {
             )?;
         }
 
-        Ok(self.result_with_list(responses, Some(score)))
+        Ok(self.result_with_list(responses, score))
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `OrderedListAnswer`.
@@ -838,7 +824,7 @@ impl Question {
             )?;
         }
 
-        Ok(self.result_with_list(responses, Some(score)))
+        Ok(self.result_with_list(responses, score))
     }
 
     /// Implementation of `ask` assuming that `self.kind` is `MultipleChoice`.
@@ -874,23 +860,23 @@ impl Question {
                     let guess = &candidates[(index - 97) as usize];
                     if self.check_any(guess) {
                         self.correct(writer)?;
-                        return Ok(self.result(Some(answer.clone()), Some(1.0)));
+                        return Ok(self.result(Some(answer.clone()), 1.0));
                     } else {
                         self.incorrect(writer, Some(&answer), Some(guess))?;
-                        return Ok(self.result(Some(answer.clone()), Some(0.0)));
+                        return Ok(self.result(Some(answer.clone()), 0.0));
                     }
                 } else {
                     continue;
                 }
             } else {
                 self.incorrect(writer, Some(&answer), None)?;
-                return Ok(self.result(Some(answer.clone()), Some(0.0)));
+                return Ok(self.result(Some(answer.clone()), 0.0));
             }
         }
     }
 
     /// Construct a `QuestionResult` object.
-    fn result(&self, response: Option<String>, score: Option<f64>) -> QuestionResult {
+    fn result(&self, response: Option<String>, score: f64) -> QuestionResult {
         QuestionResult {
             text: self.text[0].clone(),
             score,
@@ -901,7 +887,7 @@ impl Question {
     }
 
     /// Construct a `QuestionResult` object with a list of responses.
-    fn result_with_list(&self, responses: Vec<String>, score: Option<f64>) -> QuestionResult {
+    fn result_with_list(&self, responses: Vec<String>, score: f64) -> QuestionResult {
         QuestionResult {
             text: self.text[0].clone(),
             score,
@@ -1359,16 +1345,13 @@ fn normalize_question_json(question: &JSONMap, default_kind: &str) -> JSONMap {
 
 
 /// Return the percentage of correct responses in the vector of results. `None` is
-/// returned when the vector is empty or none of the results were graded (i.e., for
-/// ungraded questions).
+/// returned when the vector is empty.
 fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
     let mut sum = 0.0;
     let mut graded_count = 0;
     for result in results.iter() {
-        if let Some(score) = result.score {
-            sum += score;
-            graded_count += 1;
-        }
+        sum += result.score;
+        graded_count += 1;
     }
 
     if graded_count > 0 {

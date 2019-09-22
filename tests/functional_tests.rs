@@ -13,7 +13,6 @@ fn can_take_test1_quiz() {
             "1 correct",
             "0 partially correct",
             "0 incorrect",
-            "0 ungraded",
         ]
     );
 }
@@ -33,7 +32,6 @@ fn can_take_test2_quiz() {
             "Incorrect. The correct answer was Frederick III.",
             "Score for this question: 66.7%",
             "1 partially correct",
-            "0 ungraded",
         ]
     );
 
