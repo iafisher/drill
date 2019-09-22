@@ -145,14 +145,14 @@ pub enum QuizOptions {
     #[structopt(name = "edit")]
     Edit(QuizEditOptions),
     /// Delete a quiz.
-    #[structopt(name = "delete")]
-    Delete(QuizDeleteOptions),
+    #[structopt(name = "rm")]
+    Rm(QuizRmOptions),
     /// Rename a quiz.
-    #[structopt(name = "rename")]
-    Rename(QuizRenameOptions),
+    #[structopt(name = "mv")]
+    Mv(QuizMvOptions),
     /// List all available quizzes.
-    #[structopt(name = "list")]
-    List(QuizListOptions),
+    #[structopt(name = "ls")]
+    Ls(QuizLsOptions),
     /// Print file paths of quizzes.
     #[structopt(name = "path")]
     Path(QuizPathOptions),
@@ -237,7 +237,7 @@ pub struct QuizEditOptions {
 }
 
 #[derive(StructOpt)]
-pub struct QuizDeleteOptions {
+pub struct QuizRmOptions {
     /// The name of the quiz to delete.
     #[structopt(default_value = "main")]
     pub name: String,
@@ -247,7 +247,7 @@ pub struct QuizDeleteOptions {
 }
 
 #[derive(StructOpt)]
-pub struct QuizRenameOptions {
+pub struct QuizMvOptions {
     /// The old name of the quiz to rename.
     pub old_name: String,
     /// The new name.
@@ -269,7 +269,7 @@ pub struct QuizResultsOptions {
 
 
 #[derive(StructOpt)]
-pub struct QuizListOptions {
+pub struct QuizLsOptions {
     /// List quizzes whose name begins with a period.
     #[structopt(short = "a", long = "all")]
     pub all: bool,
@@ -431,8 +431,8 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_delete<R: MyReadline>(
-    reader: &mut R, options: QuizDeleteOptions
+pub fn main_rm<R: MyReadline>(
+    reader: &mut R, options: QuizRmOptions
 ) -> Result<(), QuizError> {
     require_app_dir_path()?;
 
@@ -449,7 +449,7 @@ pub fn main_delete<R: MyReadline>(
 }
 
 
-pub fn main_rename(options: QuizRenameOptions) -> Result<(), QuizError> {
+pub fn main_mv(options: QuizMvOptions) -> Result<(), QuizError> {
     require_app_dir_path()?;
 
     let quiz_path = get_quiz_path(&options.old_name);
@@ -466,8 +466,8 @@ pub fn main_rename(options: QuizRenameOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_list<W: io::Write>(
-    writer: &mut W, options: QuizListOptions
+pub fn main_ls<W: io::Write>(
+    writer: &mut W, options: QuizLsOptions
 ) -> Result<(), QuizError> {
     let mut dirpath = get_app_dir_path();
     dirpath.push("quizzes");

@@ -29,14 +29,14 @@ fn main() {
         QuizOptions::Edit(options) => {
             main_edit(options)
         },
-        QuizOptions::Delete(options) => {
-            main_delete(&mut reader, options)
+        QuizOptions::Rm(options) => {
+            main_rm(&mut reader, options)
         },
-        QuizOptions::Rename(options) => {
-            main_rename(options)
+        QuizOptions::Mv(options) => {
+            main_mv(options)
         },
-        QuizOptions::List(options) => {
-            main_list(&mut writer, options)
+        QuizOptions::Ls(options) => {
+            main_ls(&mut writer, options)
         },
         QuizOptions::Path(options) => {
             main_path(&mut writer, options)
