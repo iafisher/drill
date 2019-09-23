@@ -289,6 +289,21 @@ pub struct QuizPathOptions {
 }
 
 
+#[macro_export]
+macro_rules! my_println {
+    ($($arg:tt)*) => (
+        writeln!(std::io::stdout(), $($arg)*).map_err(QuizError::Io)
+    );
+}
+
+#[macro_export]
+macro_rules! my_print {
+    ($($arg:tt)*) => (
+        write!(std::io::stdout(), $($arg)*).map_err(QuizError::Io)
+    );
+}
+
+
 // One main function for each subcommand.
 
 
@@ -1562,35 +1577,6 @@ impl error::Error for QuizError {
             _ => None,
         }
     }
-}
-
-
-#[macro_export]
-macro_rules! my_writeln {
-    ($dst:expr, $($arg:tt)*) => (
-        writeln!($dst, $($arg)*).map_err(QuizError::Io)
-    );
-}
-
-#[macro_export]
-macro_rules! my_println {
-    ($($arg:tt)*) => (
-        writeln!(std::io::stdout(), $($arg)*).map_err(QuizError::Io)
-    );
-}
-
-#[macro_export]
-macro_rules! my_write {
-    ($dst:expr, $($arg:tt)*) => (
-        write!($dst, $($arg)*).map_err(QuizError::Io)
-    );
-}
-
-#[macro_export]
-macro_rules! my_print {
-    ($($arg:tt)*) => (
-        write!(std::io::stdout(), $($arg)*).map_err(QuizError::Io)
-    );
 }
 
 
