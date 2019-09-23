@@ -4,6 +4,7 @@
  * Author:  Ian Fisher (iafisher@protonmail.com)
  * Version: September 2019
  */
+mod parser;
 mod quiz;
 
 use colored::*;
@@ -38,6 +39,11 @@ fn main() {
         },
         QuizOptions::Path(options) => {
             quiz::main_path(options)
+        },
+        // Temporary
+        QuizOptions::MigrateTest(options) => {
+            println!("{:?}", parser::parse(&options.name));
+            Ok(())
         },
     };
 

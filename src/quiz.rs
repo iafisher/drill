@@ -27,18 +27,18 @@ use structopt::StructOpt;
 /// Represents an entire quiz.
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-struct Quiz {
+pub struct Quiz {
     #[serde(skip_serializing_if = "Option::is_none")]
-    default_kind: Option<String>,
-    instructions: Option<String>,
-    questions: Vec<Question>,
+    pub default_kind: Option<String>,
+    pub instructions: Option<String>,
+    pub questions: Vec<Question>,
 }
 
 
 /// Represents a question.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-struct Question {
+pub struct Question {
     kind: QuestionKind,
     /// The text of the question. It is a vector instead of a string so that multiple
     /// variants of the same question can be stored.
@@ -86,7 +86,7 @@ struct Answer {
 /// Represents the result of answering a question on a particular occasion.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-struct QuestionResult {
+pub struct QuestionResult {
     #[serde(skip)]
     text: String,
     time_asked: chrono::DateTime<chrono::Utc>,
@@ -116,7 +116,7 @@ impl Eq for QuestionResult {}
 
 /// Represents the results of taking a quiz on a particular occasion.
 #[derive(Debug)]
-struct QuizResult {
+pub struct QuizResult {
     time_taken: chrono::DateTime<chrono::Utc>,
     total: usize,
     total_correct: usize,
@@ -155,6 +155,10 @@ pub enum QuizOptions {
     /// Print file paths of quizzes.
     #[structopt(name = "path")]
     Path(QuizPathOptions),
+
+    // Temporary
+    #[structopt(name = "m")]
+    MigrateTest(QuizTakeOptions),
 }
 
 #[derive(StructOpt)]
