@@ -1007,9 +1007,9 @@ impl QuizFilterOptions {
 /// Otherwise, `Ok(Some(line))` is returned where `line` is the last line of input the
 /// user entered without leading and trailing whitespace.
 fn prompt(message: &str) -> Result<Option<String>, QuizError> {
+    let mut rl = rustyline::Editor::<()>::new();
     loop {
-        let mut rl = rustyline::Editor::<()>::new();
-        let result = rl.readline(message);
+        let result = rl.readline(&format!("{}", message.white()));
         match result {
             Ok(response) => {
                 let response = response.trim();
@@ -1517,8 +1517,6 @@ pub enum QuizError {
     CannotWriteToFile(PathBuf),
     Io(io::Error),
     ReadlineInterrupted,
-    ReadlineEof,
-    ReadlineOther,
     EmptyQuiz,
 }
 
@@ -1553,12 +1551,6 @@ impl fmt::Display for QuizError {
             QuizError::ReadlineInterrupted => {
                 Ok(())
             },
-            QuizError::ReadlineEof => {
-                Ok(())
-            },
-            QuizError::ReadlineOther => {
-                write!(f, "error while reading input")
-            },
         }
     }
 }
@@ -1579,22 +1571,6 @@ impl error::Error for QuizError {
         match *self {
             QuizError::Json(ref err) => Some(err),
             _ => None,
-        }
-    }
-}
-
-
-pub trait MyReadline {
-    fn read_line(&mut self, prompt: &str) -> Result<String, QuizError>;
-}
-
-impl<H: rustyline::Helper> MyReadline for rustyline::Editor<H> {
-    fn read_line(&mut self, prompt: &str) -> Result<String, QuizError> {
-        match self.readline(&format!("{}", prompt.white())) {
-            Ok(s) => Ok(s),
-            Err(ReadlineError::Interrupted) => Err(QuizError::ReadlineInterrupted),
-            Err(ReadlineError::Eof) => Err(QuizError::ReadlineEof),
-            _ => Err(QuizError::ReadlineOther),
         }
     }
 }
