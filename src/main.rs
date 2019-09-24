@@ -42,8 +42,7 @@ fn main() {
         },
         // Temporary
         QuizOptions::MigrateTest(options) => {
-            println!("{:?}", parser::parse(&options.name));
-            Ok(())
+            quiz::main_tmp_migrate(options)
         },
     };
 

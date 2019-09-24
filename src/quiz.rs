@@ -10,7 +10,9 @@ use std::env;
 use std::error;
 use std::fmt;
 use std::fs;
+use std::fs::File;
 use std::io;
+use std::io::BufReader;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
@@ -22,6 +24,8 @@ use rand::thread_rng;
 use rustyline::error::ReadlineError;
 use serde::{Serialize, Deserialize};
 use structopt::StructOpt;
+
+use super::parser;
 
 
 /// Represents an entire quiz.
@@ -510,6 +514,14 @@ pub fn main_path(options: QuizPathOptions) -> Result<(), QuizError> {
     } else {
         Err(QuizError::QuizNotFound(options.name.to_string()))
     }
+}
+
+
+// Temporary
+pub fn main_tmp_migrate(options: QuizTakeOptions) -> Result<(), QuizError> {
+    let f = File::open(get_quiz_path(&options.name)).unwrap();
+    println!("{:?}", parser::parse(&mut BufReader::new(f)));
+    Ok(())
 }
 
 
