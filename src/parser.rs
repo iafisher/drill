@@ -11,6 +11,7 @@ use std::io::BufReader;
 use super::quiz;
 
 
+#[derive(Debug)]
 struct QuestionAttribute {
     field: String,
     value: String,
@@ -22,7 +23,23 @@ struct QuestionAttribute {
 type QuestionEntry = Vec<QuestionAttribute>;
 
 
-pub fn parse(reader: &mut BufReader<File>) -> quiz::Quiz {
+#[derive(Debug)]
+pub enum QuestionV2 {
+    ShortAnswer { text: Vec<String>, answer: quiz::Answer },
+    Flashcard { top: String, bottom: quiz::Answer },
+    List { text: Vec<String>, answers: Vec<quiz::Answer>, ordered: bool },
+}
+
+
+#[derive(Debug)]
+pub struct QuestionWrapper {
+    question: QuestionV2,
+    tags: Vec<String>,
+}
+
+
+pub fn parse(path: &PathBuf) -> Vec<QuestionWrapper> {
+    let contents = fs::read_to_string(path).unwrap();
     let entries = read_file(reader);
     let mut questions = Vec::new();
     for entry in entries.iter() {
@@ -30,11 +47,49 @@ pub fn parse(reader: &mut BufReader<File>) -> quiz::Quiz {
             continue;
         }
 
-        if entry[0].field == "q" && entry[1].field == "a" {
-            questions.push(quiz::Question::new(&entry[0].value, &entry[1].value));
-        }
+        let mut wrapper = if entry[0].field == "q" {
+            // Either a ShortAnswer or a List question.
+            let mut text_variants = Vec::new();
+            let mut answers = Vec::new();
+            let mut i = 0;
+            while i < entry.len() && !entry[i].dashed {
+                if entry[i].field == "q" {
+                    text_variants.push(entry[i].value.clone());
+                } else {
+                    answers.push(quiz::Answer { 
+                        variants: split_answer(&entry[i].value)
+                    });
+                }
+                i += 1;
+            }
+
+            let q = if answers.len() == 1 {
+                QuestionV2::ShortAnswer {
+                    text: vec![entry[0].value.clone()],
+                    answer: answers[0].clone() ,
+                }
+            } else {
+                QuestionV2::List {
+                    text: vec![entry[0].value.clone()],
+                    answers: answers,
+                    ordered: false,
+                }
+            };
+
+            QuestionWrapper { question: q, tags: Vec::new() }
+        } else {
+            // A Flashcard question.
+            let q = QuestionV2::Flashcard {
+                top: entry[0].field.clone(),
+                bottom: quiz::Answer { variants: split_answer(&entry[0].value) },
+            };
+            QuestionWrapper { question: q, tags: Vec::new() }
+        };
+
+        println!("{:?}", wrapper);
+        questions.push(wrapper);
     }
-    quiz::Quiz { default_kind: None, instructions: None, questions }
+    questions
 }
 
 
@@ -110,4 +165,9 @@ fn read_line(reader: &mut BufReader<File>) -> Option<String> {
     } else {
         Some(line)
     }
+}
+
+
+fn split_answer(answer: &str) -> Vec<String> {
+    answer.split("/").map(|w| w.to_string()).collect()
 }

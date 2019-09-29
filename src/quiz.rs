@@ -76,14 +76,14 @@ enum QuestionKind {
 
 
 /// Represents an answer.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(deny_unknown_fields)]
-struct Answer {
+pub struct Answer {
     /// Each member of the `variants` vector should be an equivalent answer, e.g.
     /// `vec!["Mount Everest", "Everest"]`, not different answers to the same question.
     /// The first element of the vector is taken to be the canonical form of the answer
     /// for display.
-    variants: Vec<String>,
+    pub variants: Vec<String>,
 }
 
 
@@ -519,8 +519,8 @@ pub fn main_path(options: QuizPathOptions) -> Result<(), QuizError> {
 
 // Temporary
 pub fn main_tmp_migrate(options: QuizTakeOptions) -> Result<(), QuizError> {
-    let f = File::open(get_quiz_path(&options.name)).unwrap();
-    println!("{:?}", parser::parse(&mut BufReader::new(f)));
+    let quiz = parser::parse(&get_quiz_path(&options.name));
+    // println!("{:?}", quiz);
     Ok(())
 }
 
