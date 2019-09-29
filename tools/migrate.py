@@ -94,7 +94,7 @@ def get_path(name):
 def migrate(quiz, writer):
     default_kind = quiz.get("default_kind", "ShortAnswer")
     for i, question in enumerate(quiz["questions"]):
-        writer.write("[{:0>6}]\n".format(i))
+        writer.write("[{}]\n".format(i+1))
         kind = question.get("kind", default_kind)
         if "text" in question:
             writer.write("q = [")
@@ -132,16 +132,15 @@ def migrate(quiz, writer):
         elif kind == "Ungraded":
             raise RuntimeError("Ungraded questions are no longer supported")
         elif kind == "Flashcard":
-            if question["side1"] == "q":
-                raise RuntimeError("side 1 of a flashcard cannot be 'q'")
-
-            writer.write(question["side1"])
-            writer.write(": ")
+            writer.write("t = " + to_toml_str(question["side1"]) + "\n")
             if isinstance(question["side2"], list):
-                writer.write("/".join(map(escape_answer, question["side2"])))
+                writer.write("b = [")
+                writer.write(",".join(map(to_toml_str, question["side2"])))
+                writer.write("]\n")
             else:
-                writer.write(question["side2"])
-            writer.write("\n")
+                writer.write("b = ")
+                writer.write(to_toml_str(question["side2"]))
+                writer.write("\n")
         else:
             raise RuntimeError("unknown kind: " + kind)
 
