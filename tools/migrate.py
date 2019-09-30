@@ -54,15 +54,17 @@ def main():
         except RuntimeError as e:
             error(str(e))
     else:
-        if args.force:
-            new_path = path
-            info("Overwriting quiz at {} due to -f flag.", path)
+        pathname, ext = os.path.splitext(path)
+        new_path = pathname + "-v2" + ext
+        if os.path.exists(new_path):
+            if not args.force:
+                error(
+                    "Quiz named '{}-v2' already exists. Use -f to overwrite.", args.name
+                )
+            else:
+                info("Overwriting quiz at '{}' due to -f flag.", new_path)
         else:
-            if get_path(args.name + "-v2") is not None:
-                error("Quiz named '{}-v2' already exists. ", args.name)
-            pathname, ext = os.path.splitext(path)
-            new_path = pathname + "-v2" + ext
-            info("Creating new quiz at {}.", new_path)
+            info("Creating new quiz at '{}'.", new_path)
 
         try:
             with open(new_path, "w") as writer:
@@ -73,6 +75,9 @@ def main():
             error("Could not write to '{}' due to IO error.", path)
         except RuntimeError as e:
             error(str(e))
+
+    if EXPLANATIONS:
+        warning("'explanations' field is no longer supported.")
 
 
 def get_path(name):
@@ -91,90 +96,62 @@ def get_path(name):
         return path
 
 
+EXPLANATIONS = False
 def migrate(quiz, writer):
     default_kind = quiz.get("default_kind", "ShortAnswer")
     for i, question in enumerate(quiz["questions"]):
-        writer.write("[{}]\n".format(i+1))
+        writer.write("[{}] ".format(i+1))
         kind = question.get("kind", default_kind)
         if "text" in question:
-            writer.write("q = [")
             if isinstance(question["text"], str):
-                writer.write(to_toml_str(question["text"]))
+                writer.write(question["text"])
             else:
-                for i, text in enumerate(question["text"]):
-                    writer.write(to_toml_str(text))
-                    if i != len(question["text"]) - 1:
-                        writer.write(", ")
-            writer.write("]\n")
+                writer.write(question["text"][0])
+            writer.write("\n")
         elif kind != "Flashcard":
             raise RuntimeError("question missing `text` field")
 
         if kind == "ShortAnswer":
-            writer.write("a = ")
             write_answer(question["answer"], writer)
-            writer.write("\n")
         elif kind == "ListAnswer" or kind == "OrderedListAnswer":
-            writer.write("answers = [")
-            for i, answer in enumerate(question["answer_list"]):
+            for answer in question["answer_list"]:
                 write_answer(answer, writer)
-                if i != len(question["answer_list"]) - 1:
-                    writer.write(", ")
-            writer.write("]\n")
             if kind == "OrderedListAnswer":
-                writer.write("ordered = true\n")
+                writer.write("- ordered: true\n")
         elif kind == "MultipleChoice":
-            writer.write("a = ")
             write_answer(question["answer"], writer)
-            writer.write("\n")
-            writer.write("choices = [")
-            writer.write(", ".join(map(to_toml_str, question["candidates"])))
-            writer.write("]\n")
+            writer.write("- choices:  ")
+            write_answer(question["candidates"], writer)
         elif kind == "Ungraded":
             raise RuntimeError("Ungraded questions are no longer supported")
         elif kind == "Flashcard":
-            writer.write("t = " + to_toml_str(question["side1"]) + "\n")
-            if isinstance(question["side2"], list):
-                writer.write("b = [")
-                writer.write(",".join(map(to_toml_str, question["side2"])))
-                writer.write("]\n")
-            else:
-                writer.write("b = ")
-                writer.write(to_toml_str(question["side2"]))
-                writer.write("\n")
+            writer.write(question["side1"])
+            writer.write(" = ")
+            write_answer(question["side2"], writer)
         else:
             raise RuntimeError("unknown kind: " + kind)
 
-#         if "explanations" in question:
-#             for variants, explanation in question["explanations"]:
-#                 writer.write(
-#                     "explain(" + ", ".join(map(escape_answer, variants)) + "): "
-#                 )
-#                 writer.write(explanation)
-#                 writer.write("\n")
+        if "explanations" in question:
+            EXPLANATIONS = True
 
         if "tags" in question:
-            writer.write("tags = [")
-            writer.write(", ".join(map(to_toml_str, question["tags"])))
-            writer.write("]\n")
+            writer.write("- tags: ")
+            writer.write(", ".join(question["tags"]))
+            writer.write("\n")
 
         writer.write("\n")
 
 
 def write_answer(answer, writer):
-    writer.write("[")
     if isinstance(answer, str):
-        writer.write(to_toml_str(answer))
+        writer.write(answer)
     else:
-        writer.write(", ".join(map(to_toml_str, answer)))
-    writer.write("]")
+        writer.write(" / ".join(answer))
+    writer.write("\n")
 
 
 def escape_answer(answer):
     return answer.replace("/", "\\/").replace(",", "\\,")
-
-
-def to_toml_str(s):
-    return '"' + s.replace('"', '\\"') + '"'
 
 
 def info(msg, *args):

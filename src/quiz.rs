@@ -520,7 +520,7 @@ pub fn main_path(options: QuizPathOptions) -> Result<(), QuizError> {
 // Temporary
 pub fn main_tmp_migrate(options: QuizTakeOptions) -> Result<(), QuizError> {
     let quiz = parser::parse(&get_quiz_path(&options.name));
-    println!("{:?}", quiz);
+    // println!("{:?}", quiz);
     Ok(())
 }
 
