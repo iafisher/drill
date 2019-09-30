@@ -120,7 +120,7 @@ def migrate(quiz, writer):
                 writer.write("- ordered: true\n")
         elif kind == "MultipleChoice":
             write_answer(question["answer"], writer)
-            writer.write("- choices:  ")
+            writer.write("- choices: ")
             write_answer(question["candidates"], writer)
         elif kind == "Ungraded":
             raise RuntimeError("Ungraded questions are no longer supported")

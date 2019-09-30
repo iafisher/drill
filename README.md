@@ -32,141 +32,56 @@ If `<name>` is left out of any of these commands, it defaults to `main`.
 
 
 ## Quiz file format
-You create the quizzes yourself as JSON files. This section documents the format of the JSON, although note that since popquiz is under active development, the format may change in backwards-incompatible fashion without warning.
-
-The root JSON object must have a `questions` field mapping to an array of question objects:
+Here's an example of a quiz file:
 
 ```
-{
-  "questions": [
-    ...
-  ]
-}
+[1] Which English countess is regarded as the first computer programmer?
+Ada Lovelace / Lady Lovelace / Ada, Countess of Lovelace
+
+[2] Name the four Home Islands of Japan.
+Hokkaido
+Honshu
+Shikoku
+Kyushu
+- tags: geography, japan
+
+[3] Who were the first three Presidents of the United States, in order?
+George Washington / Washington
+John Adams / Adams
+Thomas Jefferson / Jefferson
+- ordered: true
+
+[4] In what year did the Russo-Japanese War end?
+1905
+- choices: 1878 / 1945 / 1918 / 1908
+
+[5] woman = la mujer
 ```
 
-It may also have a `default_kind` field mapping to a string that specifies the default value for the `kind` field of each question object (see below), when `kind` is not explicitly provided. For example, if your quiz contains only questions of kind `"Flashcard"`, you can avoid putting `"kind": "Flashcard"` on every object by having `"default_kind": "Flashcard"` at the top level.
+Each question begins with a line of the format `[id] text` and ends with a blank line
+(or the end of the file). Each subsequent line of a question that does not begin with a
+dash is a required answer to the question. Multiple variants of the same answer are
+separated by slashes.
 
-The format of the question objects depends on the kind of questions. popquiz currently supports four question types:
+In the special case that the question has no subsequent non-dashed lines, the question
+text is interpreted as a flashcard whose two sides are separated by an equal signs. The
+right-hand side may have multiple variants.
 
-- Short answer questions
-- Unordered list questions
-- Ordered list questions
-- Multiple-choice questions
+Lines beginning with a dash (technically a dash and a space, so that you can have, e.g.,
+`-5` be the answer to a question) are for metadata and extra configuration. They must
+consist of a key not containing whitespace, followed by a colon, followed by at least
+one non-whitespace character. The currently-recognized keys are
 
-The quiz object may also have a string `instructions` field for instructions to be printed out at the beginning of the quiz.
+- `choices`: Turns the question into a multiple choice question.
+- `ordered`: Answers must be supplied in the order given in the quiz file.
+- `tags`: Comma-separated list of tags.
 
+Keys not in this list are ignored.
 
-### Short answer questions
-```json
-{
-  "kind": "ShortAnswer",
-  "text": "Which English countess is regarded as the first computer programmer?",
-  "answer": "Ada Lovelace"
-}
-```
+The `id` in the first line of each question allows popquiz to keep track of your results
+on each question even if you tweak the text of the question. It is conventionally a
+number, but it can be any sequence of characters except for `]`. It must be unique
+within a quiz file. Only change it when you change the question enough that previous
+results become irrelevant.
 
-The `kind` field defaults to `"ShortAnswer"` so it is optional here. The `text` field is the text of the question, and the `answer` field is the correct answer, as a string.
-
-
-### Unordered list questions
-These are questions for which the quiz-taker must supply a list of answers, in any order.
-
-```json
-{
-  "kind": "ListAnswer",
-  "text": [
-    "Name the four Home Islands of Japan.",
-    "What are the four principal islands of the Japanese archipelago?"
-  ],
-  "answer_list": ["Hokkaido", "Honshu", "Shikoku", "Kyushu"]
-}
-```
-
-Unordered list questions use an `answer_list` field instead of an `answer` field.
-
-
-### Ordered list questions
-These are questions for which the quiz-taker must supply a list of answers in a specified order.
-
-```json
-{
-  "kind": "OrderedListAnswer",
-  "text": "Who were the first three Presidents of the United States, in order?",
-  "answer_list": [
-    "George Washington",
-    "John Adams",
-    "Thomas  Jefferson"
-  ]
-}
-```
-
-The format of ordered list questions is almost the same as for unordered list questions, except that the order of `answer_list` is significant.
-
-
-## Multiple-choice questions
-```json
-{
-  "kind": "MultipleChoice",
-  "text": "In what year did the Russo-Japanese War end?",
-  "candidates": ["1878", "1945", "1918", "1908"],
-  "answer": "1905"
-}
-```
-
-The `candidates` field is for the incorrect answers to be displayed as options. It should **not** contain the correct answer, which goes in the `answer` field.
-
-
-### Ungraded questions
-```json
-{
-  "kind": "Ungraded",
-  "text": "Describe the late medieval period in England.",
-  "answer": "The late medieval period in England was an era of domestic turmoil and recurring war abroad in France. Beginning in the reign of the unstable Henry VI of the House of Lancaster, the legitimacy of the Lancastrian monopoly..."
-}
-```
-
-For ungraded questions, popquiz will prompt for an answer, but it will not check the user's response, and the question will not count towards either the total correct or total incorrect for the quiz. After the user enters her answer, the text in the `answer` field will be displayed as a sample correct answer. The `Ungraded` kind is intended for long-answer questions which could not reasonably be graded automatically.
-
-### Other fields
-The following notes apply to all question types.
-
-The `text` field may be an array of strings, to allow for multiple wordings of the same question.
-
-In the `answer` and `answer_list` fields, an array of strings may be used instead of a single string, for multiple acceptable variants of the same answer.
-
-Questions may have a `tags` field, which should be a list of strings. Tagged questions can be filtered using the command-line `--tag` and `--exclude` options.
-
-Questions may have an `explanations` field to provide explanations for incorrect answers. For example, if a question had the following as its `explanations` field:
-
-```json
-"explanations": [
-  [["charleston"], "Charleston is the capital of West Virginia, not South Carolina."]
-]
-```
-
-then if a user answered the question with "Charleston", the given message would be printed. Each entry in the `explanations` array should be an array of two elements. The first element is another array which lists all variants which should yield the given explanation. The second element is the explanation itself, as a string.
-
-Questions may have an `id` field with a unique string value. The purpose of this field is to support another optional field, `depends`. If question A has `depends` set to `"some-id"`, and question B's `id` field is `"some-id"`, then question A will always be asked after question B.
-
-**Note**: Currently the dependency resolver is not very sophisticated, so for the time being the following constraints hold:
-
-- A question may only declare one dependency. If you provide a list of strings instead of a string in the `depends` field, a JSON parse error will occur.
-- A question may only be involved in one dependence relation, so if question A depends on question B, then question B may not depend on any other question, and no other question may depend on question B. If you violate this constraint, no error will occur, but the question ordering algorithm may or may not produce an order that respects your dependencies. Future versions of popquiz may eliminate this constraint.
-
-
-For a complete example of a quiz file, see `sample.json` in the root of this repository.
-
-
-## Test suite
-Before the test suite can be run, a couple of set-up steps are necessary:
-
-```shell
-$ cargo build
-$ ./tools/setup_tests
-```
-
-After that, the test suite can be run with:
-
-```shell
-$ cargo test
-```
+For the old, JSON format of version 1, see [here](https://github.com/iafisher/popquiz/blob/52143169f9ffdfd1d3d029c3a3200f2c488476ea/README.md).
