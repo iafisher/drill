@@ -1354,7 +1354,7 @@ fn get_results_path(quiz_name: &str) -> PathBuf {
 fn get_quiz_path(quiz_name: &str) -> PathBuf {
     let mut dirpath = get_app_dir_path();
     dirpath.push("quizzes");
-    dirpath.push(format!("{}.json", quiz_name));
+    dirpath.push(quiz_name);
     dirpath
 }
 
