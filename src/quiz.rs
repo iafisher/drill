@@ -10,9 +10,7 @@ use std::env;
 use std::error;
 use std::fmt;
 use std::fs;
-use std::fs::File;
 use std::io;
-use std::io::BufReader;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
@@ -1186,10 +1184,7 @@ fn load_quiz(name: &str) -> Result<Quiz, QuizError> {
 fn load_quiz_from_file(
     name: &str, path: &PathBuf, results_path: &PathBuf
 ) -> Result<Quiz, QuizError> {
-    let data = fs::read_to_string(path)
-        .or(Err(QuizError::QuizNotFound(name.to_string())))?;
-
-    let mut quiz = load_quiz_from_json(&data)?;
+    let mut quiz = parser::parse(&path);
 
     // Attach previous results to the `Question` objects.
     let old_results = load_results_from_file(results_path)?;
@@ -1200,41 +1195,6 @@ fn load_quiz_from_file(
     }
 
     Ok(quiz)
-}
-
-
-/// Load a `Quiz` object from a string containing JSON data.
-fn load_quiz_from_json(data: &str) -> Result<Quiz, QuizError> {
-    let mut quiz_as_json: serde_json::Value = serde_json::from_str(&data)
-        .map_err(QuizError::Json)?;
-
-    // Expand each JSON object before doing strongly-typed deserialization.
-    if let Some(quiz_as_object) = quiz_as_json.as_object_mut() {
-        // `kind` defaults to "ShortAnswer" unless otherwise specified.
-        let mut default_kind = String::from("ShortAnswer");
-        if let Some(val) = quiz_as_object.get("default_kind") {
-            if let Some(s) = val.as_str() {
-                default_kind = String::from(s);
-            }
-        }
-
-        if let Some(questions) = quiz_as_object.get_mut("questions") {
-            if let Some(questions_as_array) = questions.as_array_mut() {
-                for i in 0..questions_as_array.len() {
-                    // Expand each individual question object.
-                    if let Some(question) = questions_as_array[i].as_object() {
-                        questions_as_array[i] = serde_json::to_value(
-                            normalize_question_json(&question, &default_kind)
-                        ).unwrap();
-                    }
-                }
-            }
-        }
-    }
-
-    let ret: Quiz = serde_json::from_value(quiz_as_json)
-        .map_err(QuizError::Json)?;
-    Ok(ret)
 }
 
 
@@ -1256,89 +1216,6 @@ fn load_results_from_file(path: &PathBuf) -> Result<StoredResults, QuizError> {
             Ok(HashMap::new())
         }
     }
-}
-
-
-type JSONMap = serde_json::Map<String, serde_json::Value>;
-
-
-/// Given a JSON object in the disk format, return an equivalent JSON object in the
-/// format that the deserialization library understands (i.e., a format that is
-/// isomorphic to the fields of the `Question` struct).
-fn normalize_question_json(question: &JSONMap, default_kind: &str) -> JSONMap {
-    let mut ret = question.clone();
-
-    // If not explicitly provided, supply a default `kind` field.
-    if !ret.contains_key("kind") {
-        ret.insert(String::from("kind"), serde_json::json!(default_kind));
-    }
-
-    // Convert `side1` and `side2` fields.
-    if let Some(side1) = ret.get("side1") {
-        ret.insert(String::from("text"), serde_json::json!(side1));
-        ret.remove("side1");
-    }
-    if let Some(side2) = ret.get("side2") {
-        ret.insert(String::from("answer"), serde_json::json!(side2));
-        ret.remove("side2");
-    }
-
-    // Convert answer objects from [...] to { "variants": [...] }.
-    if let Some(answer_list) = question.get("answer_list") {
-        if let Some(answers_as_array) = answer_list.as_array() {
-            ret.remove("answer_list");
-            let mut new_answers = Vec::new();
-            for i in 0..answers_as_array.len() {
-                if answers_as_array[i].is_array() {
-                    new_answers.push(
-                        serde_json::json!({"variants": answers_as_array[i].clone()})
-                    );
-                } else if answers_as_array[i].is_string() {
-                    new_answers.push(
-                        serde_json::json!({"variants": [answers_as_array[i].clone()]})
-                    );
-                } else {
-                    // If not an array, don't touch it.
-                    new_answers.push(answers_as_array[i].clone());
-                }
-            }
-
-            // Replace the old answer_list array with the newly constructed one.
-            ret.insert(
-                String::from("answer_list"), serde_json::to_value(new_answers).unwrap()
-            );
-        }
-    }
-
-    // Text fields of the form `[text]` may be abbreviated as just `text`.
-    if let Some(text) = ret.get("text") {
-        if text.is_string() {
-            ret.insert(String::from("text"), serde_json::json!([text]));
-        }
-    }
-
-    // Multiple-choice and short answer questions may use an `answer` field with a
-    // single value rather than an `answer_list` field with an array of values.
-    if !ret.contains_key("answer_list") {
-        if let Some(answer) = ret.get("answer") {
-            if answer.is_array() {
-                // If array, make {"variants": answer}
-                ret.insert(
-                    String::from("answer_list"),
-                    serde_json::json!([{"variants": answer.clone()}])
-                );
-            } else {
-                // If not array, make {"variants": [answer]}
-                ret.insert(
-                    String::from("answer_list"),
-                    serde_json::json!([{"variants": [answer.clone()]}])
-                );
-            }
-            ret.remove("answer");
-        }
-    }
-
-    ret
 }
 
 
@@ -1640,102 +1517,6 @@ mod tests {
         assert!(ans.check("Obama"));
         assert!(ans.check("obama"));
         assert!(!ans.check("Mitt Romney"));
-    }
-
-    #[test]
-    fn can_expand_short_answer_json() {
-        let input = r#"
-        {
-          "questions": [
-            {"text": "When did WW2 start?", "answer": "1939"}
-          ]
-        }
-        "#;
-        let output = &load_quiz_from_json(&input).unwrap().questions[0];
-
-        let expected_output = Question {
-            kind: QuestionKind::ShortAnswer,
-            text: vec![s("When did WW2 start?")],
-            answer_list: vec![
-                Answer { variants: vec![s("1939")] }
-            ],
-            candidates: Vec::new(),
-            prior_results: Vec::new(),
-            tags: Vec::new(),
-            explanations: Vec::new(),
-        };
-
-        assert_eq!(*output, expected_output);
-    }
-
-    #[test]
-    fn can_expand_list_answer_json() {
-        let input = r#"
-        {
-          "questions": [
-            {
-              "kind": "ListAnswer",
-              "text": "List the four countries of the United Kingdom.",
-              "answer_list": [
-                  "England", "Scotland", ["Northern Ireland", "N. Ireland"], "Wales"
-              ]
-            }
-          ]
-        }
-        "#;
-        let output = &load_quiz_from_json(&input).unwrap().questions[0];
-
-        let expected_output = Question {
-            kind: QuestionKind::ListAnswer,
-            text: vec![s("List the four countries of the United Kingdom.")],
-            answer_list: vec![
-                Answer { variants: vec![s("England")] },
-                Answer { variants: vec![s("Scotland")] },
-                Answer {
-                    variants: vec![
-                        s("Northern Ireland"), s("N. Ireland"),
-                    ]
-                },
-                Answer { variants: vec![s("Wales")] },
-            ],
-            candidates: Vec::new(),
-            prior_results: Vec::new(),
-            tags: Vec::new(),
-            explanations: Vec::new(),
-        };
-
-        assert_eq!(*output, expected_output);
-    }
-
-    #[test]
-    fn can_expand_multiple_choice_json() {
-        let input = r#"
-        {
-          "questions": [
-            {
-              "kind": "MultipleChoice",
-              "text": "What language is spoken in Cambodia?",
-              "candidates": ["Thai", "French", "Vietnamese", "Burmese", "Tagalog"],
-              "answer": "Khmer"
-            }
-          ]
-        }
-        "#;
-
-        let output = &load_quiz_from_json(&input).unwrap().questions[0];
-        let expected_output = Question {
-            kind: QuestionKind::MultipleChoice,
-            text: vec![s("What language is spoken in Cambodia?")],
-            candidates: vec![
-                s("Thai"), s("French"), s("Vietnamese"), s("Burmese"), s("Tagalog")
-            ],
-            answer_list: vec![Answer { variants: vec![s("Khmer")] } ],
-            prior_results: Vec::new(),
-            tags: Vec::new(),
-            explanations: Vec::new(),
-        };
-
-        assert_eq!(*output, expected_output);
     }
 
     fn s(mystr: &str) -> String {

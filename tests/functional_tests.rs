@@ -4,7 +4,7 @@ use std::process::{Command, Stdio};
 
 #[test]
 fn can_take_test1_quiz() {
-    let output = spawn_and_mock(".test1", &["Ulan Bator", "no"], &[]);
+    let output = spawn_and_mock(".test1-v2", &["Ulan Bator", "no"], &[]);
     assert_in_order(
         &output,
         &[
@@ -21,7 +21,7 @@ fn can_take_test1_quiz() {
 #[test]
 fn can_take_test2_quiz() {
     let output = spawn_and_mock(
-        ".test2", &["a", "Wilhelm I", "Wilhelm II", "Wilhelm II"], &["--in-order"],
+        ".test2-v2", &["a", "Wilhelm I", "Wilhelm II", "Wilhelm II"], &["--in-order"],
     );
 
     assert_in_order(
@@ -43,7 +43,7 @@ fn can_take_test2_quiz() {
 #[test]
 fn can_take_flashcard_quiz() {
     let output = spawn_and_mock(
-        ".test_flashcard", &["bread", "wine", "butter", "no"], &["--in-order"],
+        ".test_flashcard-v2", &["bread", "wine", "butter", "no"], &["--in-order"],
     );
 
     assert_in_order(
@@ -60,7 +60,7 @@ fn can_take_flashcard_quiz() {
 #[test]
 fn can_take_flipped_flashcard_quiz() {
     let output = spawn_and_mock(
-        ".test_flashcard",
+        ".test_flashcard-v2",
         &["el pan", "el vino", "la mantequilla", "no"],
         &["--in-order", "--flip"],
     );
