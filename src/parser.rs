@@ -10,34 +10,10 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::path::PathBuf;
 
-use serde::Deserialize;
-use toml;
-use toml::Value;
-
-use super::quiz;
+use super::quiz::{Answer, Question, QuestionKind, Quiz};
 
 
-type AnswerV2 = Vec<String>;
-
-
-#[derive(Debug)]
-pub enum QuestionV2 {
-    ShortAnswer { text: Vec<String>, answer: AnswerV2 },
-    Flashcard { top: String, bottom: AnswerV2 },
-    List { text: Vec<String>, answers: Vec<AnswerV2>, ordered: bool },
-    MultipleChoice { text: Vec<String>, answer: AnswerV2, choices: Vec<String> },
-}
-
-
-#[derive(Debug)]
-pub struct QuestionWrapper {
-    id: String,
-    question: QuestionV2,
-    tags: Vec<String>,
-}
-
-
-pub fn parse(path: &PathBuf) -> Vec<QuestionWrapper> {
+pub fn parse(path: &PathBuf) -> Quiz {
     let mut reader = BufReader::new(File::open(path).unwrap());
     let mut questions = Vec::new();
     loop {
@@ -48,30 +24,51 @@ pub fn parse(path: &PathBuf) -> Vec<QuestionWrapper> {
             break;
         }
     }
-    questions
+    Quiz { default_kind: None, instructions: None, questions }
 }
 
-fn entry_to_question(entry: &FileEntry) -> QuestionWrapper {
+fn entry_to_question(entry: &FileEntry) -> Question {
+    let tags = entry.attributes.get("tags")
+        .map(|v| split(v, ","))
+        .unwrap_or(Vec::new());
+
     // TODO: Handle multiple question texts.
-    let q = if entry.following.len() == 1 {
+    if entry.following.len() == 1 {
         if let Some(choices) = entry.attributes.get("choices") {
-            QuestionV2::MultipleChoice {
+            Question {
+                kind: QuestionKind::MultipleChoice,
                 text: vec![entry.text.clone()],
-                answer: split(&entry.following[0], "/"),
-                choices: split(&choices, "/"),
+                answer_list: vec![split_to_answer(&entry.following[0], "/")],
+                candidates: split(&choices, "/"),
+                prior_results: Vec::new(),
+                tags,
+                explanations: Vec::new(),
             }
         } else {
-            QuestionV2::ShortAnswer {
+            Question {
+                kind: QuestionKind::ShortAnswer,
                 text: vec![entry.text.clone()],
-                answer: split(&entry.following[0], "/"),
+                answer_list: vec![split_to_answer(&entry.following[0], "/")],
+                candidates: Vec::new(),
+                prior_results: Vec::new(),
+                tags,
+                explanations: Vec::new(),
             }
         }
     } else if entry.following.len() == 0 {
         // TODO: Handle case where there is no '='.
         let equal = entry.text.find("=").unwrap();
         let top = entry.text[..equal].trim().to_string();
-        let bottom = split(&entry.text[equal+1..], "/");
-        QuestionV2::Flashcard { top, bottom }
+        let bottom = split_to_answer(&entry.text[equal+1..], "/");
+        Question {
+            kind: QuestionKind::Flashcard,
+            text: vec![top],
+            answer_list: vec![bottom],
+            candidates: Vec::new(),
+            prior_results: Vec::new(),
+            tags,
+            explanations: Vec::new(),
+        }
     } else {
         let ordered = if let Some(_ordered) = entry.attributes.get("ordered") {
             // TODO: Error if not in correct format.
@@ -79,19 +76,29 @@ fn entry_to_question(entry: &FileEntry) -> QuestionWrapper {
         } else {
             false
         };
-        QuestionV2::List {
-            text: vec![entry.text.clone()],
-            answers: entry.following.iter().map(|l| split(&l, "/")).collect(),
-            ordered,
+
+        if ordered {
+            Question {
+                kind: QuestionKind::OrderedListAnswer,
+                text: vec![entry.text.clone()],
+                answer_list: entry.following.iter().map(|l| split_to_answer(&l, "/")).collect(),
+                candidates: Vec::new(),
+                prior_results: Vec::new(),
+                tags,
+                explanations: Vec::new(),
+            }
+        } else {
+            Question {
+                kind: QuestionKind::ListAnswer,
+                text: vec![entry.text.clone()],
+                answer_list: entry.following.iter().map(|l| split_to_answer(&l, "/")).collect(),
+                candidates: Vec::new(),
+                prior_results: Vec::new(),
+                tags,
+                explanations: Vec::new(),
+            }
         }
-    };
-    // TODO: Parse tags.
-    let tags = entry.attributes.get("tags")
-        .map(|v| split(v, ","))
-        .unwrap_or(Vec::new());
-    let w = QuestionWrapper { id: entry.id.clone(), question: q, tags };
-    println!("{:?}", w);
-    w
+    }
 }
 
 fn read_entry(reader: &mut BufReader<File>) -> Option<FileEntry> {
@@ -157,6 +164,11 @@ fn read_line(reader: &mut BufReader<File>) -> Option<FileLine> {
 
 fn split(s: &str, splitter: &str) -> Vec<String> {
     s.split(splitter).map(|w| w.trim().to_string()).collect()
+}
+
+
+fn split_to_answer(s: &str, splitter: &str) -> Answer {
+    Answer { variants: split(s, splitter) }
 }
 
 

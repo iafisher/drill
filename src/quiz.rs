@@ -43,34 +43,34 @@ pub struct Quiz {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Question {
-    kind: QuestionKind,
+    pub kind: QuestionKind,
     /// The text of the question. It is a vector instead of a string so that multiple
     /// variants of the same question can be stored.
-    text: Vec<String>,
+    pub text: Vec<String>,
     /// Correct answers to the question. When `kind` is equal to `ShortAnswer` or
     /// `MultipleChoice`, this vector should have only one element.
-    answer_list: Vec<Answer>,
+    pub answer_list: Vec<Answer>,
     /// Candidate answers to the question. This field is only used when `kind` is set to
     /// `MultipleChoice`, in which case the candidates are incorrect answers to the
     /// question.
     #[serde(default)]
-    candidates: Vec<String>,
+    pub candidates: Vec<String>,
     /// Prior results of answering the question.
     #[serde(default)]
-    prior_results: Vec<QuestionResult>,
+    pub prior_results: Vec<QuestionResult>,
     /// User-defined tags for the question.
     #[serde(default)]
-    tags: Vec<String>,
+    pub tags: Vec<String>,
     /// Incorrect answers may be given specific explanations for why they are not
     /// right.
     #[serde(default)]
-    explanations: Vec<(Vec<String>, String)>,
+    pub explanations: Vec<(Vec<String>, String)>,
 }
 
 
 /// An enumeration for the `kind` field of `Question` objects.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-enum QuestionKind {
+pub enum QuestionKind {
     ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice, Flashcard,
 }
 
