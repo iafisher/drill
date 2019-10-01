@@ -21,7 +21,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Migrate quizzes from old JSON format to new text format."
     )
-    parser.add_argument("name")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("name", nargs="?")
+    group.add_argument("--all", action="store_true")
     parser.add_argument(
         "-f", "--force", action="store_true", help="Overwrite old quiz."
     )
@@ -30,51 +32,56 @@ def main():
     )
     args = parser.parse_args()
 
-    path = get_path(args.name)
-    if path is None:
-        warning(
-            "No such quiz named '{}'; assuming that it is a file path instead.",
-            args.name
-        )
-        path = args.name
+    if args.all:
+        paths = get_all_paths()
     else:
-        info("Detected quiz at {}.", path)
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            quiz = json.load(f, object_hook=OrderedDict)
-    except FileNotFoundError:
-        error("Could not open '{}' for reading.", path)
-    except IOError:
-        error("Could not read from '{}' due to IO error.", path)
-
-    if args.stdout:
-        try:
-            migrate(quiz, sys.stdout)
-        except RuntimeError as e:
-            error(str(e))
-    else:
-        pathname, ext = os.path.splitext(path)
-        new_path = pathname + "-v2" + ext
-        if os.path.exists(new_path):
-            if not args.force:
-                error(
-                    "Quiz named '{}-v2' already exists. Use -f to overwrite.", args.name
-                )
-            else:
-                info("Overwriting quiz at '{}' due to -f flag.", new_path)
+        paths = [get_path(args.name)]
+        if path is None:
+            warning(
+                "No such quiz named '{}'; assuming that it is a file path instead.",
+                args.name
+            )
+            path = args.name
         else:
-            info("Creating new quiz at '{}'.", new_path)
+            info("Detected quiz at {}.", path)
 
+    for path in paths:
         try:
-            with open(new_path, "w") as writer:
-                migrate(quiz, writer)
+            with open(path, "r", encoding="utf-8") as f:
+                quiz = json.load(f, object_hook=OrderedDict)
         except FileNotFoundError:
-            error("Could not open '{}' for writing.", path)
+            error("Could not open '{}' for reading.", path)
         except IOError:
-            error("Could not write to '{}' due to IO error.", path)
-        except RuntimeError as e:
-            error(str(e))
+            error("Could not read from '{}' due to IO error.", path)
+
+        if args.stdout:
+            try:
+                migrate(quiz, sys.stdout)
+            except RuntimeError as e:
+                error(str(e))
+        else:
+            pathname, ext = os.path.splitext(path)
+            new_path = pathname + "-v2" + ext
+            if os.path.exists(new_path):
+                if not args.force:
+                    error(
+                        "Quiz named '{}-v2' already exists. Use -f to overwrite.",
+                        args.name
+                    )
+                else:
+                    info("Overwriting quiz at '{}' due to -f flag.", new_path)
+            else:
+                info("Creating new quiz at '{}'.", new_path)
+
+            try:
+                with open(new_path, "w") as writer:
+                    migrate(quiz, writer)
+            except FileNotFoundError:
+                error("Could not open '{}' for writing.", path)
+            except IOError:
+                error("Could not write to '{}' due to IO error.", path)
+            except RuntimeError as e:
+                error(str(e))
 
     if EXPLANATIONS:
         warning("'explanations' field is no longer supported.")
@@ -94,6 +101,19 @@ def get_path(name):
         return None
     else:
         return path
+
+
+def get_all_paths():
+    env = os.environ.copy()
+    env["NO_COLOR"] = "yes"
+    proc = subprocess.run(
+        ["quiz", "ls", "-a"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env,
+    )
+    output = proc.stdout.strip().decode("utf-8")
+    if output.startswith(("Error", "error")):
+        return None
+    else:
+        return [line.strip() for line in output.splitlines()[1:]]
 
 
 EXPLANATIONS = False
