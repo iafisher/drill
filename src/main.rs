@@ -15,6 +15,11 @@ use quiz::QuizOptions;
 fn main() {
     let options = quiz::parse_options();
 
+    if let Err(e) = quiz::require_app_dir_path() {
+        eprintln!("{}: {}", "Error".red(), e);
+        ::std::process::exit(2);
+    }
+
     let result = match options {
         QuizOptions::Take(options) => {
             quiz::main_take(options)

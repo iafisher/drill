@@ -409,8 +409,6 @@ pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
 
 
 pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
-    require_app_dir_path()?;
-
     let path = if options.results {
         get_results_path(&options.name)
     } else {
@@ -435,8 +433,6 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
 
 
 pub fn main_rm(options: QuizRmOptions) -> Result<(), QuizError> {
-    require_app_dir_path()?;
-
     let path = get_quiz_path(&options.name);
     if path.exists() {
         let yesno_prompt = "Are you sure you want to delete the quiz? ";
@@ -451,8 +447,6 @@ pub fn main_rm(options: QuizRmOptions) -> Result<(), QuizError> {
 
 
 pub fn main_mv(options: QuizMvOptions) -> Result<(), QuizError> {
-    require_app_dir_path()?;
-
     let quiz_path = get_quiz_path(&options.old_name);
     let new_quiz_path = get_quiz_path(&options.new_name);
     fs::rename(&quiz_path, &new_quiz_path).map_err(QuizError::Io)?;
@@ -1138,8 +1132,6 @@ fn list_tags(quiz: &Quiz) -> Result<(), QuizError> {
 /// Save `results` to a file in the popquiz application's data directory, appending the
 /// results if previous results have been saved.
 fn save_results(name: &str, results: &QuizResult) -> Result<(), QuizError> {
-    require_app_dir_path()?;
-
     // Load old data, if it exists.
     let path = get_results_path(name);
     let data = fs::read_to_string(&path);
@@ -1368,7 +1360,7 @@ fn get_app_dir_path() -> PathBuf {
 
 /// Return the path to the application directory, creating it and all necessary
 /// subdirectories if they don't exist.
-fn require_app_dir_path() -> Result<PathBuf, QuizError> {
+pub fn require_app_dir_path() -> Result<PathBuf, QuizError> {
     let mut dirpath = dirs::data_dir().unwrap();
     dirpath.push("iafisher_popquiz");
     make_directory(&dirpath).or(Err(QuizError::CannotMakeAppDir))?;
