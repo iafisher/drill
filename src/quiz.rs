@@ -517,8 +517,7 @@ pub fn main_path(options: QuizPathOptions) -> Result<(), QuizError> {
 
 // Temporary
 pub fn main_tmp_migrate(options: QuizTakeOptions) -> Result<(), QuizError> {
-    let quiz = parser::parse(&get_quiz_path(&options.name));
-    // println!("{:?}", quiz);
+    let quiz = parser::parse(&get_quiz_path(&options.name))?;
     Ok(())
 }
 
@@ -1184,7 +1183,7 @@ fn load_quiz(name: &str) -> Result<Quiz, QuizError> {
 fn load_quiz_from_file(
     name: &str, path: &PathBuf, results_path: &PathBuf
 ) -> Result<Quiz, QuizError> {
-    let mut quiz = parser::parse(&path);
+    let mut quiz = parser::parse(&path)?;
 
     // Attach previous results to the `Question` objects.
     let old_results = load_results_from_file(results_path)?;
@@ -1407,6 +1406,7 @@ pub enum QuizError {
     Io(io::Error),
     ReadlineInterrupted,
     EmptyQuiz,
+    Parse { line: usize, whole_entry: bool },
 }
 
 
@@ -1440,6 +1440,13 @@ impl fmt::Display for QuizError {
             QuizError::ReadlineInterrupted => {
                 Ok(())
             },
+            QuizError::Parse { line, whole_entry } => {
+                if !whole_entry {
+                    write!(f, "parse error on line {}", line)
+                } else {
+                    write!(f, "parse error in entry beginning on line {}", line)
+                }
+            }
         }
     }
 }

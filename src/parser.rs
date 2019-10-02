@@ -2,32 +2,40 @@
  * Implementation of the v2 parser for quizzes in the new textual format.
  *
  * Author:  Ian Fisher (iafisher@protonmail.com)
- * Version: September 2019
+ * Version: October 2019
  */
 use std::collections::HashMap;
 use std::fs::File;
+use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::PathBuf;
 
-use super::quiz::{Answer, Question, QuestionKind, Quiz};
+use super::quiz::{Answer, Question, QuestionKind, Quiz, QuizError};
 
 
-pub fn parse(path: &PathBuf) -> Quiz {
-    let mut reader = BufReader::new(File::open(path).unwrap());
+pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
+    let file = File::open(path).map_err(QuizError::Io)?;
+    let mut reader = LineBufReader { reader: BufReader::new(file), line: 0 };
     let mut questions = Vec::new();
     loop {
-        if let Some(entry) = read_entry(&mut reader) {
-            let q = entry_to_question(&entry);
-            questions.push(q);
-        } else {
-            break;
+        match read_entry(&mut reader) {
+            Ok(Some(entry)) => {
+                let q = entry_to_question(&entry)?;
+                questions.push(q);
+            },
+            Ok(None) => {
+                break;
+            },
+            Err(e) => {
+                return Err(e);
+            }
         }
     }
-    Quiz { default_kind: None, instructions: None, questions }
+    Ok(Quiz { default_kind: None, instructions: None, questions })
 }
 
-fn entry_to_question(entry: &FileEntry) -> Question {
+fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
     let tags = entry.attributes.get("tags")
         .map(|v| split(v, ","))
         .unwrap_or(Vec::new());
@@ -35,7 +43,7 @@ fn entry_to_question(entry: &FileEntry) -> Question {
     // TODO: Handle multiple question texts.
     if entry.following.len() == 1 {
         if let Some(choices) = entry.attributes.get("choices") {
-            Question {
+            return Ok(Question {
                 kind: QuestionKind::MultipleChoice,
                 text: vec![entry.text.clone()],
                 answer_list: vec![split_to_answer(&entry.following[0], "/")],
@@ -43,9 +51,9 @@ fn entry_to_question(entry: &FileEntry) -> Question {
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
-            }
+            });
         } else {
-            Question {
+            return Ok(Question {
                 kind: QuestionKind::ShortAnswer,
                 text: vec![entry.text.clone()],
                 answer_list: vec![split_to_answer(&entry.following[0], "/")],
@@ -53,32 +61,36 @@ fn entry_to_question(entry: &FileEntry) -> Question {
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
-            }
+            });
         }
     } else if entry.following.len() == 0 {
-        // TODO: Handle case where there is no '='.
-        let equal = entry.text.find("=").unwrap();
-        let top = entry.text[..equal].trim().to_string();
-        let bottom = split_to_answer(&entry.text[equal+1..], "/");
-        Question {
-            kind: QuestionKind::Flashcard,
-            text: vec![top],
-            answer_list: vec![bottom],
-            candidates: Vec::new(),
-            prior_results: Vec::new(),
-            tags,
-            explanations: Vec::new(),
+        if let Some(equal) = entry.text.find("=") {
+            let top = entry.text[..equal].trim().to_string();
+            let bottom = split_to_answer(&entry.text[equal+1..], "/");
+            return Ok(Question {
+                kind: QuestionKind::Flashcard,
+                text: vec![top],
+                answer_list: vec![bottom],
+                candidates: Vec::new(),
+                prior_results: Vec::new(),
+                tags,
+                explanations: Vec::new(),
+            });
+        } else {
+            return Err(QuizError::Parse { line: entry.line, whole_entry: true });
         }
     } else {
         let ordered = if let Some(_ordered) = entry.attributes.get("ordered") {
-            // TODO: Error if not in correct format.
+            if _ordered != "true" && _ordered != "false" {
+                return Err(QuizError::Parse { line: entry.line, whole_entry: true });
+            }
             _ordered == "true"
         } else {
             false
         };
 
         if ordered {
-            Question {
+            return Ok(Question {
                 kind: QuestionKind::OrderedListAnswer,
                 text: vec![entry.text.clone()],
                 answer_list: entry.following.iter().map(|l| split_to_answer(&l, "/")).collect(),
@@ -86,9 +98,9 @@ fn entry_to_question(entry: &FileEntry) -> Question {
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
-            }
+            });
         } else {
-            Question {
+            return Ok(Question {
                 kind: QuestionKind::ListAnswer,
                 text: vec![entry.text.clone()],
                 answer_list: entry.following.iter().map(|l| split_to_answer(&l, "/")).collect(),
@@ -96,19 +108,28 @@ fn entry_to_question(entry: &FileEntry) -> Question {
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
-            }
+            });
         }
     }
 }
 
-fn read_entry(reader: &mut BufReader<File>) -> Option<FileEntry> {
-    match read_line(reader) {
+
+/// Read an entry from the file.
+///
+/// `Ok(Some(entry))` is returned on a successful read. `Ok(None)` is returned when the
+/// end of file is reached. `Err(e)` is returned if a parse error occurs.
+fn read_entry(reader: &mut LineBufReader) -> Result<Option<FileEntry>, QuizError> {
+    match read_line(reader)? {
         Some(FileLine::First(id, text)) => {
             let mut entry = FileEntry {
-                id, text, following: Vec::new(), attributes: HashMap::new(),
+                id,
+                text,
+                following: Vec::new(),
+                attributes: HashMap::new(),
+                line: reader.line,
             };
             loop {
-                match read_line(reader) {
+                match read_line(reader)? {
                     Some(FileLine::Blank) | None => {
                         break;
                     },
@@ -119,45 +140,50 @@ fn read_entry(reader: &mut BufReader<File>) -> Option<FileEntry> {
                         entry.attributes.insert(key, value);
                     },
                     Some(FileLine::First(..)) => {
-                        // TODO: Return an error.
+                        return Err(
+                            QuizError::Parse { line: reader.line, whole_entry: false }
+                        );
                     }
                 }
             }
-            Some(entry)
+            Ok(Some(entry))
         },
         Some(_) => {
-            // TODO: Return an error.
-            None
+            Err(QuizError::Parse { line: reader.line, whole_entry: false })
         },
         None => {
-            None
+            Ok(None)
         },
     }
 }
 
-fn read_line(reader: &mut BufReader<File>) -> Option<FileLine> {
+fn read_line(reader: &mut LineBufReader) -> Result<Option<FileLine>, QuizError> {
     let mut line = String::new();
-    if reader.read_line(&mut line).unwrap() == 0 {
-        return None;
+    let nread = reader.read_line(&mut line).map_err(QuizError::Io)?;
+    if nread == 0 {
+        return Ok(None);
     }
 
     let trimmed = line.trim();
     if trimmed.starts_with("#") {
         read_line(reader)
     } else if trimmed.len() == 0 {
-        Some(FileLine::Blank)
+        Ok(Some(FileLine::Blank))
     } else if trimmed.starts_with("- ") {
-        let colon = trimmed.find(":").unwrap();
-        let key = trimmed[2..colon].trim().to_string();
-        let value = trimmed[colon+1..].trim().to_string();
-        Some(FileLine::Pair(key, value))
+        if let Some(colon) = trimmed.find(":") {
+            let key = trimmed[2..colon].trim().to_string();
+            let value = trimmed[colon+1..].trim().to_string();
+            Ok(Some(FileLine::Pair(key, value)))
+        } else {
+            Err(QuizError::Parse { line: reader.line, whole_entry: false })
+        }
     } else if trimmed.starts_with("[") && trimmed.find("]").is_some() {
         let brace = trimmed.find("]").unwrap();
         let id = &trimmed[1..brace];
         let rest = &trimmed[brace+1..];
-        Some(FileLine::First(id.trim().to_string(), rest.trim().to_string()))
+        Ok(Some(FileLine::First(id.trim().to_string(), rest.trim().to_string())))
     } else {
-        Some(FileLine::Following(trimmed.to_string()))
+        Ok(Some(FileLine::Following(trimmed.to_string())))
     }
 }
 
@@ -184,4 +210,19 @@ struct FileEntry {
     text: String,
     following: Vec<String>,
     attributes: HashMap<String, String>,
+    line: usize,
+}
+
+
+struct LineBufReader {
+    reader: BufReader<File>,
+    line: usize,
+}
+
+
+impl LineBufReader {
+    pub fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
+        self.line += 1;
+        self.reader.read_line(buf)
+    }
 }
