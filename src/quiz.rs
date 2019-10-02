@@ -160,10 +160,6 @@ pub enum QuizOptions {
     /// Invoke git in the quiz folder.
     #[structopt(name = "git")]
     Git { args: Vec<String> },
-
-    // Temporary
-    #[structopt(name = "m")]
-    MigrateTest(QuizTakeOptions),
 }
 
 #[derive(StructOpt)]
@@ -522,13 +518,6 @@ pub fn main_git(args: Vec<String>) -> Result<(), QuizError> {
     let dir = get_app_dir_path();
     let mut child = Command::new("git").args(args).current_dir(dir).spawn().unwrap();
     child.wait().unwrap();
-    Ok(())
-}
-
-
-// Temporary
-pub fn main_tmp_migrate(options: QuizTakeOptions) -> Result<(), QuizError> {
-    let quiz = parser::parse(&get_quiz_path(&options.name))?;
     Ok(())
 }
 

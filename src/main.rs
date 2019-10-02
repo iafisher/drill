@@ -43,10 +43,6 @@ fn main() {
         QuizOptions::Git { args } => {
             quiz::main_git(args)
         }
-        // Temporary
-        QuizOptions::MigrateTest(options) => {
-            quiz::main_tmp_migrate(options)
-        },
     };
 
     if let Err(e) = result {
