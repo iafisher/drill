@@ -469,6 +469,13 @@ pub fn main_ls(options: QuizLsOptions) -> Result<(), QuizError> {
     if let Ok(iter) = dirpath.read_dir() {
         for entry in iter {
             if let Ok(entry) = entry {
+                if let Ok(file_type) = entry.file_type() {
+                    // For example, a .git entry.
+                    if entry.file_type.is_dir() {
+                        continue;
+                    }
+                }
+
                 if let Some(stem) = entry.path().file_stem() {
                     quiz_names.push(String::from(stem.to_string_lossy()));
                 }
@@ -1034,6 +1041,14 @@ fn prompt(message: &str) -> Result<Option<String>, QuizError> {
             _ => {}
         }
     }
+}
+
+
+/// Return `true` if the quiz directory is a git repository.
+fn is_git_repo() -> bool {
+    let mut dirpath = get_quiz_dir_path();
+    dirpath.push(".git");
+    dirpath.exists()
 }
 
 
