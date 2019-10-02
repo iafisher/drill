@@ -429,8 +429,8 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
         child.wait()
             .or(Err(QuizError::CannotOpenEditor))?;
 
-        // Try to parse it again to make sure it's okay.
         if path.exists() {
+            // Parse it again to make sure it's okay.
             if let Err(e) = parser::parse(&path) {
                 eprintln!("{}: {}", "Error".red(), e);
                 if !yesno("Do you want to save anyway? ") {
@@ -441,7 +441,7 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
         break;
     }
 
-    if path.exists() {
+    if path.exists() && is_git_repo() {
         git(&["add", &path.as_path().to_string_lossy()])?;
         git(&["commit", "-m", &format!("Edit {}", options.name)])?;
     }
@@ -457,6 +457,12 @@ pub fn main_rm(options: QuizRmOptions) -> Result<(), QuizError> {
         if options.force || yesno(yesno_prompt) {
             fs::remove_file(&path).map_err(QuizError::Io)?;
         }
+
+        if is_git_repo() {
+            git(&["rm", &path.as_path().to_string_lossy()])?;
+            git(&["commit", "-m", &format!("Remove {}", options.name)])?;
+        }
+
         Ok(())
     } else {
         Err(QuizError::QuizNotFound(options.name.clone()))
@@ -473,6 +479,18 @@ pub fn main_mv(options: QuizMvOptions) -> Result<(), QuizError> {
     let new_results_path = get_results_path(&options.new_name);
     if results_path.exists() {
         fs::rename(&results_path, &new_results_path).map_err(QuizError::Io)?;
+    }
+
+    if is_git_repo() {
+        git(&["rm", &quiz_path.as_path().to_string_lossy()])?;
+        git(&["add", &new_quiz_path.as_path().to_string_lossy()])?;
+        git(
+            &[
+                "commit",
+                "-m",
+                &format!("Rename {} to {}", options.old_name, options.new_name)
+            ]
+        )?;
     }
 
     Ok(())
