@@ -420,7 +420,7 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
         child.wait()
             .or(Err(QuizError::CannotOpenEditor))?;
 
-        if path.exists() {
+        if !options.results && path.exists() {
             // Parse it again to make sure it's okay.
             if let Err(e) = parser::parse(&path) {
                 eprintln!("{}: {}", "Error".red(), e);
@@ -432,7 +432,7 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
         break;
     }
 
-    if path.exists() && is_git_repo() {
+    if !options.results && path.exists() && is_git_repo() {
         git(&["add", &path.as_path().to_string_lossy()])?;
         git(&["commit", "-m", &format!("Edit {}", options.name)])?;
     }
