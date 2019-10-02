@@ -421,12 +421,30 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
         os::unix::fs::symlink(&dir, &path).map_err(QuizError::Io)?;
     }
 
-    // Spawn an editor in a child process.
-    let editor = ::std::env::var("EDITOR").unwrap_or(String::from("nano"));
-    let mut child = Command::new(editor).arg(path).spawn()
-        .or(Err(QuizError::CannotOpenEditor))?;
-    child.wait()
-        .or(Err(QuizError::CannotOpenEditor))?;
+    loop {
+        // Spawn an editor in a child process.
+        let editor = ::std::env::var("EDITOR").unwrap_or(String::from("nano"));
+        let mut child = Command::new(editor).arg(&path).spawn()
+            .or(Err(QuizError::CannotOpenEditor))?;
+        child.wait()
+            .or(Err(QuizError::CannotOpenEditor))?;
+
+        // Try to parse it again to make sure it's okay.
+        if path.exists() {
+            if let Err(e) = parser::parse(&path) {
+                eprintln!("{}: {}", "Error".red(), e);
+                if !yesno("Do you want to save anyway? ") {
+                    continue;
+                }
+            }
+        }
+        break;
+    }
+
+    if path.exists() {
+        git(&["add", &path.as_path().to_string_lossy()])?;
+        git(&["commit", "-m", &format!("Edit {}", options.name)])?;
+    }
 
     Ok(())
 }
@@ -471,7 +489,7 @@ pub fn main_ls(options: QuizLsOptions) -> Result<(), QuizError> {
             if let Ok(entry) = entry {
                 if let Ok(file_type) = entry.file_type() {
                     // For example, a .git entry.
-                    if entry.file_type.is_dir() {
+                    if file_type.is_dir() {
                         continue;
                     }
                 }
@@ -516,14 +534,11 @@ pub fn main_path(options: QuizPathOptions) -> Result<(), QuizError> {
 
 
 pub fn main_git(args: Vec<String>) -> Result<(), QuizError> {
-    let dir = get_quiz_dir_path();
-    let mut child = Command::new("git")
-        .args(args)
-        .current_dir(dir)
-        .spawn()
-        .or(Err(QuizError::CannotRunGit))?;
-    child.wait().map_err(QuizError::Io)?;
-    Ok(())
+    let mut args_as_str = Vec::new();
+    for arg in args.iter() {
+        args_as_str.push(arg.as_str());
+    }
+    git(&args_as_str[..])
 }
 
 
@@ -1049,6 +1064,18 @@ fn is_git_repo() -> bool {
     let mut dirpath = get_quiz_dir_path();
     dirpath.push(".git");
     dirpath.exists()
+}
+
+
+fn git(args: &[&str]) -> Result<(), QuizError> {
+    let dir = get_quiz_dir_path();
+    let mut child = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .spawn()
+        .or(Err(QuizError::CannotRunGit))?;
+    child.wait().map_err(QuizError::Io)?;
+    Ok(())
 }
 
 

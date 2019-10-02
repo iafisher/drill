@@ -36,14 +36,14 @@ def main():
         paths = get_all_paths()
     else:
         paths = [get_path(args.name)]
-        if path is None:
+        if paths[0] is None:
             warning(
                 "No such quiz named '{}'; assuming that it is a file path instead.",
                 args.name
             )
-            path = args.name
+            paths[0] = args.name
         else:
-            info("Detected quiz at {}.", path)
+            info("Detected quiz at {}.", paths[0])
 
     for path in paths:
         try:
@@ -60,8 +60,8 @@ def main():
             except RuntimeError as e:
                 error(str(e))
         else:
-            pathname, ext = os.path.splitext(path)
-            new_path = pathname + "-v2" + ext
+            pathname, _ = os.path.splitext(path)
+            new_path = pathname + "-v2"
             if os.path.exists(new_path):
                 if not args.force:
                     error(
