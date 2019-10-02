@@ -509,9 +509,13 @@ pub fn main_path(options: QuizPathOptions) -> Result<(), QuizError> {
 
 
 pub fn main_git(args: Vec<String>) -> Result<(), QuizError> {
-    let dir = get_app_dir_path();
-    let mut child = Command::new("git").args(args).current_dir(dir).spawn().unwrap();
-    child.wait().unwrap();
+    let dir = get_quiz_dir_path();
+    let mut child = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .spawn()
+        .or(Err(QuizError::CannotRunGit))?;
+    child.wait().map_err(QuizError::Io)?;
     Ok(())
 }
 
@@ -1343,8 +1347,7 @@ fn get_results_path(quiz_name: &str) -> PathBuf {
 
 /// Return the path to the file where the given quiz is stored.
 fn get_quiz_path(quiz_name: &str) -> PathBuf {
-    let mut dirpath = get_app_dir_path();
-    dirpath.push("quizzes");
+    let mut dirpath = get_quiz_dir_path();
     dirpath.push(quiz_name);
     dirpath
 }
@@ -1354,6 +1357,14 @@ fn get_quiz_path(quiz_name: &str) -> PathBuf {
 fn get_app_dir_path() -> PathBuf {
     let mut dirpath = dirs::data_dir().unwrap();
     dirpath.push("iafisher_popquiz");
+    dirpath
+}
+
+
+/// Return the path to the quiz directory.
+fn get_quiz_dir_path() -> PathBuf {
+    let mut dirpath = get_app_dir_path();
+    dirpath.push("quizzes");
     dirpath
 }
 
@@ -1394,6 +1405,7 @@ pub enum QuizError {
     Json(serde_json::Error),
     /// For when the user's system editor cannot be opened.
     CannotOpenEditor,
+    CannotRunGit,
     CannotWriteToFile(PathBuf),
     Io(io::Error),
     ReadlineInterrupted,
@@ -1419,6 +1431,9 @@ impl fmt::Display for QuizError {
             },
             QuizError::CannotOpenEditor => {
                 write!(f, "unable to open system editor")
+            },
+            QuizError::CannotRunGit => {
+                write!(f, "unable to run git (is it installed and on the PATH?)")
             },
             QuizError::CannotWriteToFile(ref path) => {
                 write!(f, "cannot write to file '{}'", path.to_string_lossy())
