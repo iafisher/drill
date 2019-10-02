@@ -765,7 +765,7 @@ impl Question {
         let score = if result { 1.0 } else { 0.0 };
 
         if let Some(guess) = guess {
-            Ok(self.result(Some(guess.to_lowercase()), score))
+            Ok(self.result(Some(guess), score))
         } else {
             Ok(self.result(None, score))
         }
@@ -782,7 +782,7 @@ impl Question {
         let mut responses = Vec::new();
         while count < self.answer_list.len() {
             if let Some(guess) = prompt("> ")? {
-                responses.push(guess.to_lowercase().clone());
+                responses.push(guess.clone());
 
                 let index = self.check_one(&guess);
                 if index == self.answer_list.len() {
@@ -828,7 +828,7 @@ impl Question {
         let mut responses = Vec::new();
         for answer in self.answer_list.iter() {
             if let Some(guess) = prompt("> ")? {
-                responses.push(guess.to_lowercase().clone());
+                responses.push(guess.clone());
 
                 if answer.check(&guess) {
                     self.correct()?;
