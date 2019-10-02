@@ -157,6 +157,9 @@ pub enum QuizOptions {
     /// Print file paths of quizzes.
     #[structopt(name = "path")]
     Path(QuizPathOptions),
+    /// Invoke git in the quiz folder.
+    #[structopt(name = "git")]
+    Git { args: Vec<String> },
 
     // Temporary
     #[structopt(name = "m")]
@@ -512,6 +515,14 @@ pub fn main_path(options: QuizPathOptions) -> Result<(), QuizError> {
     } else {
         Err(QuizError::QuizNotFound(options.name.to_string()))
     }
+}
+
+
+pub fn main_git(args: Vec<String>) -> Result<(), QuizError> {
+    let dir = get_app_dir_path();
+    let mut child = Command::new("git").args(args).current_dir(dir).spawn().unwrap();
+    child.wait().unwrap();
+    Ok(())
 }
 
 

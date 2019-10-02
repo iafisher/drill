@@ -40,6 +40,9 @@ fn main() {
         QuizOptions::Path(options) => {
             quiz::main_path(options)
         },
+        QuizOptions::Git { args } => {
+            quiz::main_git(args)
+        }
         // Temporary
         QuizOptions::MigrateTest(options) => {
             quiz::main_tmp_migrate(options)
