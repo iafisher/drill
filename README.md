@@ -85,3 +85,7 @@ within a quiz file. Only change it when you change the question enough that prev
 results become irrelevant.
 
 For the old, JSON format of version 1, see [here](https://github.com/iafisher/popquiz/blob/52143169f9ffdfd1d3d029c3a3200f2c488476ea/README.md).
+
+If you need to automatically migrate your quizzes from the version 1 format to the
+version 2 format, use the interactive `./tools/migrate` script. It will migrate both
+your quizzes and your quiz result files.
