@@ -5,7 +5,7 @@
  * Version: October 2019
  */
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::error;
 use std::fmt;
 use std::fs;
@@ -37,6 +37,7 @@ pub struct Quiz {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Question {
     pub kind: QuestionKind,
+    pub id: String,
     /// The text of the question. It is a vector instead of a string so that multiple
     /// variants of the same question can be stored.
     pub text: Vec<String>,
@@ -80,7 +81,7 @@ pub struct Answer {
 #[serde(deny_unknown_fields)]
 pub struct QuestionResult {
     #[serde(skip)]
-    text: String,
+    id: String,
     time_asked: chrono::DateTime<chrono::Utc>,
     /// If the question asked was a short answer question, then the user's response goes
     /// in this field.
@@ -93,7 +94,7 @@ pub struct QuestionResult {
     score: f64,
 
     // It would be convenient to include a reference to the `Question` object as a field
-    // of this struct, but Rust's lifetimes makes it more difficult than it's worth.
+    // of this struct, but Rust's lifetime makes it more difficult than it's worth.
 }
 
 
@@ -703,9 +704,14 @@ impl Question {
     pub fn new(text: &str, answer: &str) -> Self {
         let answers = vec![Answer { variants: vec![String::from(answer)] }];
         Question {
-            kind: QuestionKind::ShortAnswer, text: vec![String::from(text)],
-            tags: Vec::new(), answer_list: answers, candidates: Vec::new(),
-            prior_results: Vec::new(), explanations: Vec::new(),
+            kind: QuestionKind::ShortAnswer,
+            id: String::from("1"),
+            text: vec![String::from(text)],
+            tags: Vec::new(),
+            answer_list: answers,
+            candidates: Vec::new(),
+            prior_results: Vec::new(),
+            explanations: Vec::new(),
         }
     }
 
@@ -894,7 +900,7 @@ impl Question {
     /// Construct a `QuestionResult` object.
     fn result(&self, response: Option<String>, score: f64) -> QuestionResult {
         QuestionResult {
-            text: self.text[0].clone(),
+            id: self.id.clone(),
             score,
             response,
             response_list: None,
@@ -905,7 +911,7 @@ impl Question {
     /// Construct a `QuestionResult` object with a list of responses.
     fn result_with_list(&self, responses: Vec<String>, score: f64) -> QuestionResult {
         QuestionResult {
-            text: self.text[0].clone(),
+            id: self.id.clone(),
             score,
             response: None,
             response_list: Some(responses),
@@ -1180,23 +1186,23 @@ fn save_results(name: &str, results: &QuizResult) -> Result<(), QuizError> {
     // Load old data, if it exists.
     let path = get_results_path(name);
     let data = fs::read_to_string(&path);
-    let mut hash: HashMap<String, Vec<QuestionResult>> = match data {
+    let mut hash: BTreeMap<String, Vec<QuestionResult>> = match data {
         Ok(ref data) => {
             serde_json::from_str(&data)
                 .map_err(QuizError::Json)?
         },
         Err(_) => {
-            HashMap::new()
+            BTreeMap::new()
         }
     };
 
     // Store the results as a map from the text of the questions to a list of individual
     // time-stamped results.
     for result in results.per_question.iter() {
-        if !hash.contains_key(&result.text) {
-            hash.insert(result.text.to_string(), Vec::new());
+        if !hash.contains_key(&result.id) {
+            hash.insert(result.id.to_string(), Vec::new());
         }
-        hash.get_mut(&result.text).unwrap().push(result.clone());
+        hash.get_mut(&result.id).unwrap().push(result.clone());
     }
 
     let serialized_results = serde_json::to_string_pretty(&hash)

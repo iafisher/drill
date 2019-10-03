@@ -45,6 +45,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
         if let Some(choices) = entry.attributes.get("choices") {
             return Ok(Question {
                 kind: QuestionKind::MultipleChoice,
+                id: entry.id.clone(),
                 text: vec![entry.text.clone()],
                 answer_list: vec![split_to_answer(&entry.following[0], "/")],
                 candidates: split(&choices, "/"),
@@ -55,6 +56,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
         } else {
             return Ok(Question {
                 kind: QuestionKind::ShortAnswer,
+                id: entry.id.clone(),
                 text: vec![entry.text.clone()],
                 answer_list: vec![split_to_answer(&entry.following[0], "/")],
                 candidates: Vec::new(),
@@ -69,6 +71,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
             let bottom = split_to_answer(&entry.text[equal+1..], "/");
             return Ok(Question {
                 kind: QuestionKind::Flashcard,
+                id: entry.id.clone(),
                 text: vec![top],
                 answer_list: vec![bottom],
                 candidates: Vec::new(),
@@ -92,6 +95,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
         if ordered {
             return Ok(Question {
                 kind: QuestionKind::OrderedListAnswer,
+                id: entry.id.clone(),
                 text: vec![entry.text.clone()],
                 answer_list: entry.following.iter().map(|l| split_to_answer(&l, "/")).collect(),
                 candidates: Vec::new(),
@@ -102,6 +106,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
         } else {
             return Ok(Question {
                 kind: QuestionKind::ListAnswer,
+                id: entry.id.clone(),
                 text: vec![entry.text.clone()],
                 answer_list: entry.following.iter().map(|l| split_to_answer(&l, "/")).collect(),
                 candidates: Vec::new(),
