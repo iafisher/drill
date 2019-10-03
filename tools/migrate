@@ -41,11 +41,12 @@ def main():
             text_to_id = migrate(quiz, writer)
 
         result_path = get_results_path(path)
-        with open(result_path, "r", encoding="utf-8") as f:
-            results = json.load(f)
+        if os.path.exists(result_path):
+            with open(result_path, "r", encoding="utf-8") as f:
+                results = json.load(f)
 
-        with open(result_path, "w", encoding="utf-8") as writer:
-            migrate_results(text_to_id, results, writer)
+            with open(result_path, "w", encoding="utf-8") as writer:
+                migrate_results(text_to_id, results, writer)
 
         count += 1
         print("Successfully migrated '{}'.\n".format(shortname))
