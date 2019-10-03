@@ -1,9 +1,3 @@
-{
-  "questions": [
-    {
-      "kind": "ShortAnswer",
-      "text": "What is the capital of Mongolia?",
-      "answer": "Ulan Bator"
-    }
-  ]
-}
+[1] What is the capital of Mongolia?
+Ulan Bator
+

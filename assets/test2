@@ -1,19 +1,10 @@
-{
-  "questions": [
-    {
-      "kind": "MultipleChoice",
-      "text": "Who was President of the United States during the Korean War?",
-      "candidates": [
-        "Franklin D. Roosevelt", "John F. Kennedy", "Lyndon Johnson"
-      ],
-      "answer": "Harry S. Truman"
-    },
-    {
-      "kind": "OrderedListAnswer",
-      "text": "List the modern Emperors of Germany in chronological order.",
-      "answer_list": [
-        "Wilhelm I", "Frederick III", "Wilhelm II"
-      ]
-    }
-  ]
-}
+[1] Who was President of the United States during the Korean War?
+Harry S. Truman
+- choices: Franklin D. Roosevelt / John F. Kennedy / Lyndon Johnson
+
+[2] List the modern Emperors of Germany in chronological order.
+Wilhelm I
+Frederick III
+Wilhelm II
+- ordered: true
+
