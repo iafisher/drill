@@ -310,7 +310,7 @@ pub fn main_take(options: QuizTakeOptions) -> Result<(), QuizError> {
     let results = quiz.take(&options)?;
     output_results(&results)?;
 
-    if results.total > 0 && (options.save || yesno("\nSave results? ")) {
+    if results.total > 0 && (options.save || ask("\nSave results? ")) {
         save_results(&options.name, &results)?;
     }
     Ok(())
@@ -415,7 +415,7 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
             // Parse it again to make sure it's okay.
             if let Err(e) = parser::parse(&path) {
                 eprintln!("{}: {}", "Error".red(), e);
-                if !yesno("Do you want to save anyway? ") {
+                if !ask("Do you want to save anyway? ") {
                     continue;
                 }
             }
@@ -435,8 +435,8 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
 pub fn main_rm(options: QuizRmOptions) -> Result<(), QuizError> {
     let path = get_quiz_path(&options.name);
     if path.exists() {
-        let yesno_prompt = "Are you sure you want to delete the quiz? ";
-        if options.force || yesno(yesno_prompt) {
+        let ask_prompt = "Are you sure you want to delete the quiz? ";
+        if options.force || ask(ask_prompt) {
             fs::remove_file(&path).map_err(QuizError::Io)?;
         }
 
@@ -1128,7 +1128,7 @@ fn color_optional(text: &str, color: Option<Color>) -> ColoredString {
 
 
 /// Prompt the user with a yes-no question and return `true` if they enter yes.
-fn yesno(message: &str) -> bool {
+fn ask(message: &str) -> bool {
     match prompt(message) {
         Ok(Some(response)) => {
             response.trim_start().to_lowercase().starts_with("y")
