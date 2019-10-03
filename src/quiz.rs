@@ -494,8 +494,11 @@ pub fn main_ls(options: QuizLsOptions) -> Result<(), QuizError> {
                     }
                 }
 
-                if let Some(stem) = entry.path().file_stem() {
-                    quiz_names.push(String::from(stem.to_string_lossy()));
+                if let Some(name) = entry.path().file_name() {
+                    if name == ".gitignore" {
+                        continue;
+                    }
+                    quiz_names.push(String::from(name.to_string_lossy()));
                 }
             }
         }
