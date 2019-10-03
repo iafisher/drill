@@ -2,11 +2,10 @@
  * Implementation of the popquiz application.
  *
  * Author:  Ian Fisher (iafisher@protonmail.com)
- * Version: September 2019
+ * Version: October 2019
  */
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::env;
 use std::error;
 use std::fmt;
 use std::fs;
@@ -14,7 +13,6 @@ use std::io;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
-use std::os;
 
 use colored::*;
 use rand::seq::SliceRandom;
@@ -27,10 +25,8 @@ use super::parser;
 
 
 /// Represents an entire quiz.
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug)]
 pub struct Quiz {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub default_kind: Option<String>,
     pub instructions: Option<String>,
     pub questions: Vec<Question>,
@@ -38,8 +34,7 @@ pub struct Quiz {
 
 
 /// Represents a question.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Question {
     pub kind: QuestionKind,
     /// The text of the question. It is a vector instead of a string so that multiple
@@ -51,31 +46,26 @@ pub struct Question {
     /// Candidate answers to the question. This field is only used when `kind` is set to
     /// `MultipleChoice`, in which case the candidates are incorrect answers to the
     /// question.
-    #[serde(default)]
     pub candidates: Vec<String>,
     /// Prior results of answering the question.
-    #[serde(default)]
     pub prior_results: Vec<QuestionResult>,
     /// User-defined tags for the question.
-    #[serde(default)]
     pub tags: Vec<String>,
     /// Incorrect answers may be given specific explanations for why they are not
     /// right.
-    #[serde(default)]
     pub explanations: Vec<(Vec<String>, String)>,
 }
 
 
 /// An enumeration for the `kind` field of `Question` objects.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum QuestionKind {
     ShortAnswer, ListAnswer, OrderedListAnswer, MultipleChoice, Flashcard,
 }
 
 
 /// Represents an answer.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Answer {
     /// Each member of the `variants` vector should be an equivalent answer, e.g.
     /// `vec!["Mount Everest", "Everest"]`, not different answers to the same question.
