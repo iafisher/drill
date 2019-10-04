@@ -420,7 +420,7 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
 
     if !options.results && path.exists() && is_git_repo() {
         git(&["add", &path.as_path().to_string_lossy()])?;
-        git(&["commit", "-m", &format!("Edit {}", options.name)])?;
+        git(&["commit", "-m", &format!("Edit '{}'", options.name)])?;
     }
 
     Ok(())
@@ -457,7 +457,7 @@ pub fn main_rm(options: QuizRmOptions) -> Result<(), QuizError> {
 
         if is_git_repo() {
             git(&["rm", &path.as_path().to_string_lossy()])?;
-            git(&["commit", "-m", &format!("Remove {}", options.name)])?;
+            git(&["commit", "-m", &format!("Remove '{}'", options.name)])?;
         }
 
         Ok(())
@@ -485,7 +485,7 @@ pub fn main_mv(options: QuizMvOptions) -> Result<(), QuizError> {
             &[
                 "commit",
                 "-m",
-                &format!("Rename {} to {}", options.old_name, options.new_name)
+                &format!("Rename '{}' to '{}'", options.old_name, options.new_name)
             ]
         )?;
     }
