@@ -34,7 +34,7 @@ pub struct Quiz {
 
 
 /// Represents a question.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Question {
     pub kind: QuestionKind,
     pub id: String,
@@ -55,7 +55,11 @@ pub struct Question {
     /// Incorrect answers may be given specific explanations for why they are not
     /// right.
     pub explanations: Vec<(Vec<String>, String)>,
+
+    /// The location where the question is defined.
+    pub location: Option<parser::Location>,
 }
+
 
 
 /// An enumeration for the `kind` field of `Question` objects.
@@ -66,7 +70,7 @@ pub enum QuestionKind {
 
 
 /// Represents an answer.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Clone)]
 pub struct Answer {
     /// Each member of the `variants` vector should be an equivalent answer, e.g.
     /// `vec!["Mount Everest", "Everest"]`, not different answers to the same question.
@@ -96,15 +100,6 @@ pub struct QuestionResult {
     // It would be convenient to include a reference to the `Question` object as a field
     // of this struct, but Rust's lifetime makes it more difficult than it's worth.
 }
-
-
-impl PartialEq for QuestionResult {
-    fn eq(&self, other: &QuestionResult) -> bool {
-        self.time_asked == other.time_asked && self.response == other.response &&
-            self.score == other.score
-    }
-}
-impl Eq for QuestionResult {}
 
 
 /// Represents the results of taking a quiz on a particular occasion.
@@ -730,6 +725,7 @@ impl Question {
             candidates: Vec::new(),
             prior_results: Vec::new(),
             explanations: Vec::new(),
+            location: None,
         }
     }
 

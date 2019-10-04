@@ -19,7 +19,7 @@ pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
     let mut reader = LineBufReader { reader: BufReader::new(file), line: 0 };
     let mut questions = Vec::new();
     loop {
-        match read_entry(&mut reader) {
+        match read_entry(&path, &mut reader) {
             Ok(Some(entry)) => {
                 let q = entry_to_question(&entry)?;
                 questions.push(q);
@@ -52,6 +52,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
+                location: Some(entry.location.clone()),
             });
         } else {
             return Ok(Question {
@@ -63,6 +64,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
+                location: Some(entry.location.clone()),
             });
         }
     } else if entry.following.len() == 0 {
@@ -78,14 +80,15 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
+                location: Some(entry.location.clone()),
             });
         } else {
-            return Err(QuizError::Parse { line: entry.line, whole_entry: true });
+            return Err(QuizError::Parse { line: entry.location.line, whole_entry: true });
         }
     } else {
         let ordered = if let Some(_ordered) = entry.attributes.get("ordered") {
             if _ordered != "true" && _ordered != "false" {
-                return Err(QuizError::Parse { line: entry.line, whole_entry: true });
+                return Err(QuizError::Parse { line: entry.location.line, whole_entry: true });
             }
             _ordered == "true"
         } else {
@@ -102,6 +105,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
+                location: Some(entry.location.clone()),
             });
         } else {
             return Ok(Question {
@@ -113,6 +117,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
+                location: Some(entry.location.clone()),
             });
         }
     }
@@ -123,7 +128,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
 ///
 /// `Ok(Some(entry))` is returned on a successful read. `Ok(None)` is returned when the
 /// end of file is reached. `Err(e)` is returned if a parse error occurs.
-fn read_entry(reader: &mut LineBufReader) -> Result<Option<FileEntry>, QuizError> {
+fn read_entry(path: &PathBuf, reader: &mut LineBufReader) -> Result<Option<FileEntry>, QuizError> {
     match read_line(reader)? {
         Some(FileLine::First(id, text)) => {
             let mut entry = FileEntry {
@@ -131,7 +136,7 @@ fn read_entry(reader: &mut LineBufReader) -> Result<Option<FileEntry>, QuizError
                 text,
                 following: Vec::new(),
                 attributes: HashMap::new(),
-                line: reader.line,
+                location: Location { line: reader.line, path: path.clone() },
             };
             loop {
                 match read_line(reader)? {
@@ -215,7 +220,13 @@ struct FileEntry {
     text: String,
     following: Vec<String>,
     attributes: HashMap<String, String>,
+    location: Location,
+}
+
+#[derive(Debug, Clone)]
+pub struct Location {
     line: usize,
+    path: PathBuf,
 }
 
 
