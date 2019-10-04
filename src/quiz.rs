@@ -404,12 +404,7 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
     };
 
     loop {
-        // Spawn an editor in a child process.
-        let editor = ::std::env::var("EDITOR").unwrap_or(String::from("nano"));
-        let mut child = Command::new(editor).arg(&path).spawn()
-            .or(Err(QuizError::CannotOpenEditor))?;
-        child.wait()
-            .or(Err(QuizError::CannotOpenEditor))?;
+        launch_editor(&path, None)?;
 
         if !options.results && path.exists() {
             // Parse it again to make sure it's okay.
@@ -428,6 +423,26 @@ pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
         git(&["commit", "-m", &format!("Edit {}", options.name)])?;
     }
 
+    Ok(())
+}
+
+
+/// Spawn an editor in a child process.
+pub fn launch_editor(path: &PathBuf, line: Option<usize>) -> Result<(), QuizError> {
+    let editor = ::std::env::var("EDITOR").unwrap_or(String::from("nano"));
+    let mut cmd = Command::new(&editor);
+    cmd.arg(&path);
+
+    if editor == "vim" {
+        if let Some(line) = line {
+            cmd.arg(format!("+{}", line));
+        } else {
+            cmd.arg("+");
+        }
+    }
+
+    let mut child = cmd.spawn().or(Err(QuizError::CannotOpenEditor))?;
+    child.wait().or(Err(QuizError::CannotOpenEditor))?;
     Ok(())
 }
 
