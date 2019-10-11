@@ -9,23 +9,25 @@ $ cd popquiz
 $ cargo run -- edit <name>
 ```
 
-The last command will open up an editor for you to create a new quiz. Follow the format described in the section below. When done, check out these commands:
+The last command will open up an editor for you to create a new quiz. Follow the format
+described in the section below. When done, check out these commands (after adding the
+executable to your PATH, of course):
 
 ```shell
 # Take a quiz.
-$ cargo run -- take <name>
+$ popquiz take <name>
 
 # Count the questions in a quiz.
-$ cargo run -- count <name>
+$ popquiz count <name>
 
 # See previous results for a quiz.
-$ cargo run -- results <name>
+$ popquiz results <name>
 
 # Edit a quiz.
-$ cargo run -- edit <name>
+$ popquiz edit <name>
 
 # Delete a quiz.
-$ cargo run -- delete <name>
+$ popquiz rm <name>
 ```
 
 If `<name>` is left out of any of these commands, it defaults to `main`.
@@ -89,3 +91,21 @@ For the old, JSON format of version 1, see [here](https://github.com/iafisher/po
 If you need to automatically migrate your quizzes from the version 1 format to the
 version 2 format, use the interactive `./tools/migrate` script. It will migrate both
 your quizzes and your quiz result files.
+
+
+## Git integration
+You can run git commands in the folder where popquiz internally stores its quizzes. Just
+enter `popquiz git <any git command and flags>`. If you've initialized a git repo in your
+quiz directory, popquiz will automatically commit your changes whenever you edit your
+quizzes.
+
+
+## Why does popquiz keep quiz files in its own special folder?
+- So that the folder can be version-controlled as a git repository.
+- So that quiz results can be handled seamlessly, e.g. if you rename a quiz it will still
+  be associated with the same results file, and if you delete a quiz its results will also
+  be deleted.
+
+
+**NOTE**: While anyone is welcome to use this tool, it is primarily for my personal use
+and I do not guarantee that backwards compability will be maintained.
