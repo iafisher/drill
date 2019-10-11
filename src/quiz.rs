@@ -5,14 +5,13 @@
  * Version: October 2019
  */
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::PathBuf;
-use std::process::Command;
 
 use colored::*;
 use rand::seq::SliceRandom;
@@ -85,17 +84,17 @@ pub struct Answer {
 #[serde(deny_unknown_fields)]
 pub struct QuestionResult {
     #[serde(skip)]
-    id: String,
-    time_asked: chrono::DateTime<chrono::Utc>,
+    pub id: String,
+    pub time_asked: chrono::DateTime<chrono::Utc>,
     /// If the question asked was a short answer question, then the user's response goes
     /// in this field.
     #[serde(skip_serializing_if = "Option::is_none")]
-    response: Option<String>,
+    pub response: Option<String>,
     /// If the question asked was a list question, then the user's responses go in this
     /// field.
     #[serde(skip_serializing_if = "Option::is_none")]
-    response_list: Option<Vec<String>>,
-    score: f64,
+    pub response_list: Option<Vec<String>>,
+    pub score: f64,
 
     // It would be convenient to include a reference to the `Question` object as a field
     // of this struct, but Rust's lifetime makes it more difficult than it's worth.
@@ -105,175 +104,13 @@ pub struct QuestionResult {
 /// Represents the results of taking a quiz on a particular occasion.
 #[derive(Debug)]
 pub struct QuizResult {
-    time_taken: chrono::DateTime<chrono::Utc>,
-    total: usize,
-    total_correct: usize,
-    total_partially_correct: usize,
-    total_incorrect: usize,
-    score: f64,
-    per_question: Vec<QuestionResult>,
-}
-
-
-/// Holds the command-line configuration for the application.
-#[derive(StructOpt)]
-#[structopt(name = "popquiz", about = "Take quizzes from the command line.")]
-pub enum QuizOptions {
-    /// Take a quiz.
-    #[structopt(name = "take")]
-    Take(QuizTakeOptions),
-    /// Count questions or tags.
-    #[structopt(name = "count")]
-    Count(QuizCountOptions),
-    /// Report results of previous attempts.
-    #[structopt(name = "results")]
-    Results(QuizResultsOptions),
-    /// Edit or create a quiz.
-    #[structopt(name = "edit")]
-    Edit(QuizEditOptions),
-    /// Delete a quiz.
-    #[structopt(name = "rm")]
-    Rm(QuizRmOptions),
-    /// Rename a quiz.
-    #[structopt(name = "mv")]
-    Mv(QuizMvOptions),
-    /// List all available quizzes.
-    #[structopt(name = "ls")]
-    Ls(QuizLsOptions),
-    /// Print file paths of quizzes.
-    #[structopt(name = "path")]
-    Path(QuizPathOptions),
-    /// Invoke git in the quiz folder.
-    #[structopt(name = "git")]
-    Git { args: Vec<String> },
-}
-
-#[derive(StructOpt)]
-pub struct QuizTakeOptions {
-    /// Name of the quiz to take.
-    #[structopt(default_value = "main")]
-    pub name: String,
-    /// Limit the total number of questions.
-    #[structopt(short = "n")]
-    pub num_to_ask: Option<usize>,
-    /// Choose from the `n` questions with the highest previous scores.
-    #[structopt(long = "best")]
-    pub best: Option<usize>,
-    /// Choose from the `n` questions with the lowest previous scores.
-    #[structopt(long = "worst")]
-    pub worst: Option<usize>,
-    /// Choose from the `n` questions with the most previous attempts.
-    #[structopt(long = "most")]
-    pub most: Option<usize>,
-    /// Choose from the `n` questions with the least previous attempts.
-    #[structopt(long = "least")]
-    pub least: Option<usize>,
-    /// Save results without prompting.
-    #[structopt(long = "save")]
-    pub save: bool,
-    /// Do not emit colorized output.
-    #[structopt(long = "no-color")]
-    pub no_color: bool,
-    /// Ask the questions in the order they appear in the quiz file.
-    #[structopt(long = "in-order")]
-    pub in_order: bool,
-    /// Flip flashcards.
-    #[structopt(long = "flip")]
-    pub flip: bool,
-    #[structopt(flatten)]
-    pub filter_opts: QuizFilterOptions,
-}
-
-#[derive(StructOpt)]
-pub struct QuizCountOptions {
-    /// Name of the quiz to count.
-    #[structopt(default_value = "main")]
-    pub name: String,
-    /// List tags instead of counting questions.
-    #[structopt(long = "list-tags")]
-    pub list_tags: bool,
-    #[structopt(flatten)]
-    pub filter_opts: QuizFilterOptions,
-}
-
-/// These filtering options are shared between the `take` and `count` subcommands.
-#[derive(StructOpt)]
-pub struct QuizFilterOptions {
-    /// Only include questions with the given tag.
-    #[structopt(long = "tag")]
-    pub tags: Vec<String>,
-    /// Exclude questions with the given tag.
-    #[structopt(long = "exclude")]
-    pub exclude: Vec<String>,
-    /// Only include questions that have never been asked before.
-    #[structopt(long = "never")]
-    pub never: bool,
-    /// Filter by keyword.
-    #[structopt(short = "k", long = "keyword")]
-    pub keywords: Vec<String>,
-}
-
-#[derive(StructOpt)]
-pub struct QuizEditOptions {
-    /// The name of the quiz to edit.
-    #[structopt(default_value = "main")]
-    pub name: String,
-    /// Edit the results file rather than the quiz itself.
-    #[structopt(short = "r", long = "results")]
-    pub results: bool,
-}
-
-#[derive(StructOpt)]
-pub struct QuizRmOptions {
-    /// The name of the quiz to delete.
-    #[structopt(default_value = "main")]
-    pub name: String,
-    /// Delete without prompting for confirmation.
-    #[structopt(short = "f", long = "force")]
-    pub force: bool,
-}
-
-#[derive(StructOpt)]
-pub struct QuizMvOptions {
-    /// The old name of the quiz to rename.
-    pub old_name: String,
-    /// The new name.
-    pub new_name: String,
-}
-
-#[derive(StructOpt)]
-pub struct QuizResultsOptions {
-    /// The name of the quiz for which to fetch the results.
-    #[structopt(default_value = "main")]
-    pub name: String,
-    /// One of 'best', 'worst', 'most' or 'least'. Defaults to 'best'.
-    #[structopt(short = "s", long = "sort", default_value = "best")]
-    pub sort: String,
-    /// Only show the first `n` results.
-    #[structopt(short = "n")]
-    pub num_to_show: Option<usize>,
-}
-
-
-#[derive(StructOpt)]
-pub struct QuizLsOptions {
-    /// List quizzes whose name begins with a period.
-    #[structopt(short = "a", long = "all")]
-    pub all: bool,
-}
-
-
-#[derive(StructOpt)]
-pub struct QuizPathOptions {
-    /// The name of the quiz.
-    #[structopt(default_value = "main")]
-    pub name: String,
-    /// Show the path to the results file instead of the quiz file.
-    #[structopt(short = "r", long = "results")]
-    pub results: bool,
-    /// Display the path that would be used even if the quiz does not exist.
-    #[structopt(short = "f", long = "force")]
-    pub force: bool,
+    pub time_taken: chrono::DateTime<chrono::Utc>,
+    pub total: usize,
+    pub total_correct: usize,
+    pub total_partially_correct: usize,
+    pub total_incorrect: usize,
+    pub score: f64,
+    pub per_question: Vec<QuestionResult>,
 }
 
 
@@ -289,269 +126,6 @@ macro_rules! my_print {
     ($($arg:tt)*) => (
         write!(std::io::stdout(), $($arg)*).map_err(QuizError::Io)
     );
-}
-
-
-// One main function for each subcommand.
-
-
-/// The main function for the `take` subcommand.
-pub fn main_take(options: QuizTakeOptions) -> Result<(), QuizError> {
-    if options.no_color {
-        colored::control::set_override(false);
-    }
-
-    let mut quiz = load_quiz(&options.name)?;
-    let results = quiz.take(&options)?;
-    output_results(&results)?;
-
-    if results.total > 0 && (options.save || ask("\nSave results? ")) {
-        save_results(&options.name, &results)?;
-    }
-    Ok(())
-}
-
-
-fn output_results(results: &QuizResult) -> Result<(), QuizError> {
-    if results.total > 0 {
-        let score_as_str = format!("{:.1}%", results.score);
-
-        my_print!("\n\n")?;
-        my_print!("{}", "Score: ".white())?;
-        my_print!("{}", score_as_str.cyan())?;
-        my_print!("{}", " out of ".white())?;
-        my_print!("{}", format!("{}", results.total).cyan())?;
-        if results.total == 1 {
-            my_println!("{}", " question".white())?;
-        } else {
-            my_println!("{}", " questions".white())?;
-        }
-        my_print!("  {}", format!("{}", results.total_correct).bright_green())?;
-        my_print!("{}\n", " correct".white())?;
-        my_print!("  {}", format!("{}", results.total_partially_correct).green())?;
-        my_print!("{}\n", " partially correct".white())?;
-        my_print!("  {}", format!("{}", results.total_incorrect).red())?;
-        my_print!("{}\n", " incorrect".white())?;
-    }
-    Ok(())
-}
-
-
-/// The main function for the `count` subcommand.
-pub fn main_count(options: QuizCountOptions) -> Result<(), QuizError> {
-    let quiz = load_quiz(&options.name)?;
-    if options.list_tags {
-        list_tags(&quiz)?;
-    } else {
-        let filtered = quiz.filter_questions(&options.filter_opts);
-        my_println!("{}", filtered.len())?;
-    }
-    Ok(())
-}
-
-
-/// The main function for the `results` subcommand.
-pub fn main_results(options: QuizResultsOptions) -> Result<(), QuizError> {
-    let results = load_results(&options.name)?;
-
-    if results.len() == 0 {
-        my_println!("No results have been recorded for this quiz.")?;
-        return Ok(());
-    }
-
-    let mut aggregated: Vec<(f64, usize, String)> = Vec::new();
-    for (key, result) in results.iter() {
-        // Only include questions that have scored results.
-        if let Some(score) = aggregate_results(&result) {
-            aggregated.push((score, result.len(), key.clone()));
-        }
-    }
-
-    if options.sort == "best" {
-        aggregated.sort_by(cmp_results_best);
-    } else if options.sort == "worst" {
-        aggregated.sort_by(cmp_results_worst);
-    } else if options.sort == "most" {
-        aggregated.sort_by(cmp_results_most);
-    } else if options.sort == "least" {
-        aggregated.sort_by(cmp_results_least);
-    } else {
-    }
-
-    if let Some(n) = options.num_to_show {
-        aggregated.truncate(n);
-    }
-
-    for (score, attempts, question) in aggregated.iter() {
-        let first_prefix = format!("{:>5.1}%  of {:>2}   ", score, attempts);
-        prettyprint_colored(&question, Some(&first_prefix), None, Some(Color::Cyan))?;
-    }
-
-    Ok(())
-}
-
-
-pub fn main_edit(options: QuizEditOptions) -> Result<(), QuizError> {
-    let path = if options.results {
-        get_results_path(&options.name)
-    } else {
-        get_quiz_path(&options.name)
-    };
-
-    loop {
-        launch_editor(&path, None)?;
-
-        if !options.results && path.exists() {
-            // Parse it again to make sure it's okay.
-            if let Err(e) = parser::parse(&path) {
-                eprintln!("{}: {}", "Error".red(), e);
-                if !ask("Do you want to save anyway? ") {
-                    continue;
-                }
-            }
-        }
-        break;
-    }
-
-    if !options.results && path.exists() && is_git_repo() {
-        git(&["add", &path.as_path().to_string_lossy()])?;
-        git(&["commit", "-m", &format!("Edit '{}'", options.name)])?;
-    }
-
-    Ok(())
-}
-
-
-/// Spawn an editor in a child process.
-pub fn launch_editor(path: &PathBuf, line: Option<usize>) -> Result<(), QuizError> {
-    let editor = ::std::env::var("EDITOR").unwrap_or(String::from("nano"));
-    let mut cmd = Command::new(&editor);
-    cmd.arg(&path);
-
-    if editor == "vim" {
-        if let Some(line) = line {
-            cmd.arg(format!("+{}", line));
-        } else {
-            cmd.arg("+");
-        }
-    }
-
-    let mut child = cmd.spawn().or(Err(QuizError::CannotOpenEditor))?;
-    child.wait().or(Err(QuizError::CannotOpenEditor))?;
-    Ok(())
-}
-
-
-pub fn main_rm(options: QuizRmOptions) -> Result<(), QuizError> {
-    let path = get_quiz_path(&options.name);
-    if path.exists() {
-        let ask_prompt = "Are you sure you want to delete the quiz? ";
-        if options.force || ask(ask_prompt) {
-            fs::remove_file(&path).map_err(QuizError::Io)?;
-        }
-
-        if is_git_repo() {
-            git(&["rm", &path.as_path().to_string_lossy()])?;
-            git(&["commit", "-m", &format!("Remove '{}'", options.name)])?;
-        }
-
-        Ok(())
-    } else {
-        Err(QuizError::QuizNotFound(options.name.clone()))
-    }
-}
-
-
-pub fn main_mv(options: QuizMvOptions) -> Result<(), QuizError> {
-    let quiz_path = get_quiz_path(&options.old_name);
-    let new_quiz_path = get_quiz_path(&options.new_name);
-    fs::rename(&quiz_path, &new_quiz_path).map_err(QuizError::Io)?;
-
-    let results_path = get_results_path(&options.old_name);
-    let new_results_path = get_results_path(&options.new_name);
-    if results_path.exists() {
-        fs::rename(&results_path, &new_results_path).map_err(QuizError::Io)?;
-    }
-
-    if is_git_repo() {
-        git(&["rm", &quiz_path.as_path().to_string_lossy()])?;
-        git(&["add", &new_quiz_path.as_path().to_string_lossy()])?;
-        git(
-            &[
-                "commit",
-                "-m",
-                &format!("Rename '{}' to '{}'", options.old_name, options.new_name)
-            ]
-        )?;
-    }
-
-    Ok(())
-}
-
-
-pub fn main_ls(options: QuizLsOptions) -> Result<(), QuizError> {
-    let mut dirpath = get_app_dir_path();
-    dirpath.push("quizzes");
-
-    let mut quiz_names = Vec::new();
-    if let Ok(iter) = dirpath.read_dir() {
-        for entry in iter {
-            if let Ok(entry) = entry {
-                if let Ok(file_type) = entry.file_type() {
-                    // For example, a .git entry.
-                    if file_type.is_dir() {
-                        continue;
-                    }
-                }
-
-                if let Some(name) = entry.path().file_name() {
-                    if name == ".gitignore" {
-                        continue;
-                    }
-                    quiz_names.push(String::from(name.to_string_lossy()));
-                }
-            }
-        }
-    }
-
-    if quiz_names.len() > 0 {
-        quiz_names.sort_by(cmp_string_ignore_dot);
-        my_println!("Available quizzes:")?;
-        for name in quiz_names.iter() {
-            if !name.starts_with(".") || options.all {
-                my_println!("  {}", name)?;
-            }
-        }
-    } else {
-        my_println!("No quizzes found.")?;
-    }
-
-    Ok(())
-}
-
-
-pub fn main_path(options: QuizPathOptions) -> Result<(), QuizError> {
-    let path = if options.results {
-        get_results_path(&options.name)
-    } else {
-        get_quiz_path(&options.name)
-    };
-
-    if path.exists() || options.force {
-        my_println!("{}", path.as_path().to_string_lossy())?;
-        Ok(())
-    } else {
-        Err(QuizError::QuizNotFound(options.name.to_string()))
-    }
-}
-
-
-pub fn main_git(args: Vec<String>) -> Result<(), QuizError> {
-    let mut args_as_str = Vec::new();
-    for arg in args.iter() {
-        args_as_str.push(arg.as_str());
-    }
-    git(&args_as_str[..])
 }
 
 
@@ -619,7 +193,7 @@ impl Quiz {
 
     /// Return the questions filtered by the given command-line options (e.g., `--tag`
     /// and `--exclude`).
-    fn filter_questions(&self, options: &QuizFilterOptions) -> Vec<&Question> {
+    pub fn filter_questions(&self, options: &QuizFilterOptions) -> Vec<&Question> {
         let mut candidates = Vec::new();
         for question in self.questions.iter() {
             if filter_question(question, options) {
@@ -1027,34 +601,12 @@ impl Answer {
 }
 
 
-impl QuizTakeOptions {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        QuizTakeOptions {
-            name: String::new(), num_to_ask: None, best: None, worst: None, most: None,
-            least: None, save: false, no_color: true, in_order: false, flip: false,
-            filter_opts: QuizFilterOptions::new()
-        }
-    }
-}
-
-
-impl QuizFilterOptions {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        QuizFilterOptions {
-            tags: Vec::new(), exclude: Vec::new(), never: false, keywords: Vec::new(),
-        }
-    }
-}
-
-
 /// Display a prompt and read a line from standard input continually until the user
 /// enters a line with at least one non-whitespace character. If the user presses Ctrl+D
 /// then `Ok(None)` is returned. If the user pressed Ctrl+C then `Err(())` is returned.
 /// Otherwise, `Ok(Some(line))` is returned where `line` is the last line of input the
 /// user entered without leading and trailing whitespace.
-fn prompt(message: &str) -> Result<Option<String>, QuizError> {
+pub fn prompt(message: &str) -> Result<Option<String>, QuizError> {
     let mut rl = rustyline::Editor::<()>::new();
     loop {
         let result = rl.readline(&format!("{}", message.white()));
@@ -1078,35 +630,15 @@ fn prompt(message: &str) -> Result<Option<String>, QuizError> {
 }
 
 
-/// Return `true` if the quiz directory is a git repository.
-fn is_git_repo() -> bool {
-    let mut dirpath = get_quiz_dir_path();
-    dirpath.push(".git");
-    dirpath.exists()
-}
-
-
-fn git(args: &[&str]) -> Result<(), QuizError> {
-    let dir = get_quiz_dir_path();
-    let mut child = Command::new("git")
-        .args(args)
-        .current_dir(dir)
-        .spawn()
-        .or(Err(QuizError::CannotRunGit))?;
-    child.wait().map_err(QuizError::Io)?;
-    Ok(())
-}
-
-
 /// Print `message` to standard output, breaking lines according to the current width
 /// of the terminal. If `prefix` is not `None`, then prepend it to the first line and
 /// indent all subsequent lines by its length.
-fn prettyprint(message: &str, prefix: Option<&str>) -> Result<(), QuizError> {
+pub fn prettyprint(message: &str, prefix: Option<&str>) -> Result<(), QuizError> {
     prettyprint_colored(message, prefix, None, None)
 }
 
 
-fn prettyprint_colored(
+pub fn prettyprint_colored(
     message: &str, prefix: Option<&str>, message_color: Option<Color>,
     prefix_color: Option<Color>
 ) -> Result<(), QuizError> {
@@ -1138,97 +670,8 @@ fn color_optional(text: &str, color: Option<Color>) -> ColoredString {
 }
 
 
-/// Prompt the user with a yes-no question and return `true` if they enter yes.
-fn ask(message: &str) -> bool {
-    match prompt(message) {
-        Ok(Some(response)) => {
-            response.trim_start().to_lowercase().starts_with("y")
-        },
-        _ => false
-    }
-}
-
-
-/// Parse command-line arguments.
-pub fn parse_options() -> QuizOptions {
-    let options = QuizOptions::from_args();
-
-    if let QuizOptions::Results(options) = &options {
-        let s = &options.sort;
-        if s != "most" && s != "least" && s != "best" && s != "worst" {
-            eprintln!("{}: unknown value `{}` for --sort.", "Error".red(), s);
-            ::std::process::exit(2);
-        }
-    }
-
-    options
-}
-
-
-/// Print a list of tags.
-fn list_tags(quiz: &Quiz) -> Result<(), QuizError> {
-    // Count how many times each tag has been used.
-    let mut tags = HashMap::<&str, u32>::new();
-    for question in quiz.questions.iter() {
-        for tag in question.tags.iter() {
-            if let Some(n) = tags.get(tag.as_str()) {
-                tags.insert(tag.as_str(), n+1);
-            } else {
-                tags.insert(tag.as_str(), 1);
-            }
-        }
-    }
-
-    if tags.len() == 0 {
-        my_println!("No questions have been assigned tags.")?;
-    } else {
-        my_println!("Available tags:")?;
-
-        let mut tags_in_order: Vec<(&str, u32)> = tags.into_iter().collect();
-        tags_in_order.sort();
-        for (tag, count) in tags_in_order.iter() {
-            my_println!("  {} ({})", tag, count)?;
-        }
-    }
-    Ok(())
-}
-
-
-/// Save `results` to a file in the popquiz application's data directory, appending the
-/// results if previous results have been saved.
-fn save_results(name: &str, results: &QuizResult) -> Result<(), QuizError> {
-    // Load old data, if it exists.
-    let path = get_results_path(name);
-    let data = fs::read_to_string(&path);
-    let mut hash: BTreeMap<String, Vec<QuestionResult>> = match data {
-        Ok(ref data) => {
-            serde_json::from_str(&data)
-                .map_err(QuizError::Json)?
-        },
-        Err(_) => {
-            BTreeMap::new()
-        }
-    };
-
-    // Store the results as a map from the text of the questions to a list of individual
-    // time-stamped results.
-    for result in results.per_question.iter() {
-        if !hash.contains_key(&result.id) {
-            hash.insert(result.id.to_string(), Vec::new());
-        }
-        hash.get_mut(&result.id).unwrap().push(result.clone());
-    }
-
-    let serialized_results = serde_json::to_string_pretty(&hash)
-        .map_err(QuizError::Json)?;
-    fs::write(&path, serialized_results)
-        .or(Err(QuizError::CannotWriteToFile(path.clone())))?;
-    Ok(())
-}
-
-
 /// Load a `Quiz` object given its name.
-fn load_quiz(name: &str) -> Result<Quiz, QuizError> {
+pub fn load_quiz(name: &str) -> Result<Quiz, QuizError> {
     let path = get_quiz_path(name);
     let results_path = get_results_path(name);
     load_quiz_from_file(name, &path, &results_path)
@@ -1257,7 +700,7 @@ fn load_quiz_from_file(
 type StoredResults = HashMap<String, Vec<QuestionResult>>;
 
 
-fn load_results(name: &str) -> Result<StoredResults, QuizError> {
+pub fn load_results(name: &str) -> Result<StoredResults, QuizError> {
     let path = get_results_path(name);
     load_results_from_file(&path)
 }
@@ -1277,7 +720,7 @@ fn load_results_from_file(path: &PathBuf) -> Result<StoredResults, QuizError> {
 
 /// Return the percentage of correct responses in the vector of results. `None` is
 /// returned when the vector is empty.
-fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
+pub fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
     let mut sum = 0.0;
     let mut graded_count = 0;
     for result in results.iter() {
@@ -1290,65 +733,6 @@ fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
     } else {
         None
     }
-}
-
-
-fn cmp_string_ignore_dot(a: &String, b: &String) -> Ordering {
-    fn cmp_helper(a: &str, b: &str) -> Ordering {
-        if a.starts_with(".") {
-            cmp_helper(&a[1..], b)
-        } else if b.starts_with(".") {
-            cmp_helper(a, &b[1..])
-        } else {
-            a.cmp(b)
-        }
-    }
-
-    cmp_helper(a, b)
-}
-
-
-/// An alias for a commonly-used typed in comparison functions.
-type CmpQuestionResult = (f64, usize, String);
-
-
-/// Comparison function that sorts an array of question results such that the best
-/// results come first.
-fn cmp_results_best(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
-    if a.0 < b.0 {
-        return Ordering::Greater;
-    } else if a.0 > b.0 {
-        return Ordering::Less;
-    } else {
-        return cmp_results_most(a, b);
-    }
-}
-
-
-/// Comparison function that sorts an array of question results such that the worst
-/// results come first.
-fn cmp_results_worst(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
-    return cmp_results_best(a, b).reverse();
-}
-
-
-/// Comparison function that sorts an array of question results such that the results
-/// with the most attempts come first.
-fn cmp_results_most(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
-    if a.1 < b.1 {
-        return Ordering::Greater;
-    } else if a.1 > b.1 {
-        return Ordering::Less;
-    } else {
-        return Ordering::Equal;
-    }
-}
-
-
-/// Comparison function that sorts an array of question results such that the results
-/// with the least attempts come first.
-fn cmp_results_least(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
-    return cmp_results_most(a, b).reverse();
 }
 
 
@@ -1398,7 +782,7 @@ fn cmp_questions_least(a: &&Question, b: &&Question) -> Ordering {
 
 
 /// Return the path to the file where results are stored for the given quiz.
-fn get_results_path(quiz_name: &str) -> PathBuf {
+pub fn get_results_path(quiz_name: &str) -> PathBuf {
     let mut dirpath = get_app_dir_path();
     dirpath.push("results");
     dirpath.push(format!("{}_results.json", quiz_name));
@@ -1407,7 +791,7 @@ fn get_results_path(quiz_name: &str) -> PathBuf {
 
 
 /// Return the path to the file where the given quiz is stored.
-fn get_quiz_path(quiz_name: &str) -> PathBuf {
+pub fn get_quiz_path(quiz_name: &str) -> PathBuf {
     let mut dirpath = get_quiz_dir_path();
     dirpath.push(quiz_name);
     dirpath
@@ -1415,7 +799,7 @@ fn get_quiz_path(quiz_name: &str) -> PathBuf {
 
 
 /// Return the path to the application directory.
-fn get_app_dir_path() -> PathBuf {
+pub fn get_app_dir_path() -> PathBuf {
     let mut dirpath = dirs::data_dir().unwrap();
     dirpath.push("iafisher_popquiz");
     dirpath
@@ -1423,7 +807,7 @@ fn get_app_dir_path() -> PathBuf {
 
 
 /// Return the path to the quiz directory.
-fn get_quiz_dir_path() -> PathBuf {
+pub fn get_quiz_dir_path() -> PathBuf {
     let mut dirpath = get_app_dir_path();
     dirpath.push("quizzes");
     dirpath
@@ -1535,6 +919,190 @@ impl error::Error for QuizError {
         match *self {
             QuizError::Json(ref err) => Some(err),
             _ => None,
+        }
+    }
+}
+
+
+/// Holds the command-line configuration for the application.
+#[derive(StructOpt)]
+#[structopt(name = "popquiz", about = "Take quizzes from the command line.")]
+pub enum QuizOptions {
+    /// Take a quiz.
+    #[structopt(name = "take")]
+    Take(QuizTakeOptions),
+    /// Count questions or tags.
+    #[structopt(name = "count")]
+    Count(QuizCountOptions),
+    /// Report results of previous attempts.
+    #[structopt(name = "results")]
+    Results(QuizResultsOptions),
+    /// Edit or create a quiz.
+    #[structopt(name = "edit")]
+    Edit(QuizEditOptions),
+    /// Delete a quiz.
+    #[structopt(name = "rm")]
+    Rm(QuizRmOptions),
+    /// Rename a quiz.
+    #[structopt(name = "mv")]
+    Mv(QuizMvOptions),
+    /// List all available quizzes.
+    #[structopt(name = "ls")]
+    Ls(QuizLsOptions),
+    /// Print file paths of quizzes.
+    #[structopt(name = "path")]
+    Path(QuizPathOptions),
+    /// Invoke git in the quiz folder.
+    #[structopt(name = "git")]
+    Git { args: Vec<String> },
+}
+
+#[derive(StructOpt)]
+pub struct QuizTakeOptions {
+    /// Name of the quiz to take.
+    #[structopt(default_value = "main")]
+    pub name: String,
+    /// Limit the total number of questions.
+    #[structopt(short = "n")]
+    pub num_to_ask: Option<usize>,
+    /// Choose from the `n` questions with the highest previous scores.
+    #[structopt(long = "best")]
+    pub best: Option<usize>,
+    /// Choose from the `n` questions with the lowest previous scores.
+    #[structopt(long = "worst")]
+    pub worst: Option<usize>,
+    /// Choose from the `n` questions with the most previous attempts.
+    #[structopt(long = "most")]
+    pub most: Option<usize>,
+    /// Choose from the `n` questions with the least previous attempts.
+    #[structopt(long = "least")]
+    pub least: Option<usize>,
+    /// Save results without prompting.
+    #[structopt(long = "save")]
+    pub save: bool,
+    /// Do not emit colorized output.
+    #[structopt(long = "no-color")]
+    pub no_color: bool,
+    /// Ask the questions in the order they appear in the quiz file.
+    #[structopt(long = "in-order")]
+    pub in_order: bool,
+    /// Flip flashcards.
+    #[structopt(long = "flip")]
+    pub flip: bool,
+    #[structopt(flatten)]
+    pub filter_opts: QuizFilterOptions,
+}
+
+#[derive(StructOpt)]
+pub struct QuizCountOptions {
+    /// Name of the quiz to count.
+    #[structopt(default_value = "main")]
+    pub name: String,
+    /// List tags instead of counting questions.
+    #[structopt(long = "list-tags")]
+    pub list_tags: bool,
+    #[structopt(flatten)]
+    pub filter_opts: QuizFilterOptions,
+}
+
+/// These filtering options are shared between the `take` and `count` subcommands.
+#[derive(StructOpt)]
+pub struct QuizFilterOptions {
+    /// Only include questions with the given tag.
+    #[structopt(long = "tag")]
+    pub tags: Vec<String>,
+    /// Exclude questions with the given tag.
+    #[structopt(long = "exclude")]
+    pub exclude: Vec<String>,
+    /// Only include questions that have never been asked before.
+    #[structopt(long = "never")]
+    pub never: bool,
+    /// Filter by keyword.
+    #[structopt(short = "k", long = "keyword")]
+    pub keywords: Vec<String>,
+}
+
+#[derive(StructOpt)]
+pub struct QuizEditOptions {
+    /// The name of the quiz to edit.
+    #[structopt(default_value = "main")]
+    pub name: String,
+    /// Edit the results file rather than the quiz itself.
+    #[structopt(short = "r", long = "results")]
+    pub results: bool,
+}
+
+#[derive(StructOpt)]
+pub struct QuizRmOptions {
+    /// The name of the quiz to delete.
+    #[structopt(default_value = "main")]
+    pub name: String,
+    /// Delete without prompting for confirmation.
+    #[structopt(short = "f", long = "force")]
+    pub force: bool,
+}
+
+#[derive(StructOpt)]
+pub struct QuizMvOptions {
+    /// The old name of the quiz to rename.
+    pub old_name: String,
+    /// The new name.
+    pub new_name: String,
+}
+
+#[derive(StructOpt)]
+pub struct QuizResultsOptions {
+    /// The name of the quiz for which to fetch the results.
+    #[structopt(default_value = "main")]
+    pub name: String,
+    /// One of 'best', 'worst', 'most' or 'least'. Defaults to 'best'.
+    #[structopt(short = "s", long = "sort", default_value = "best")]
+    pub sort: String,
+    /// Only show the first `n` results.
+    #[structopt(short = "n")]
+    pub num_to_show: Option<usize>,
+}
+
+
+#[derive(StructOpt)]
+pub struct QuizLsOptions {
+    /// List quizzes whose name begins with a period.
+    #[structopt(short = "a", long = "all")]
+    pub all: bool,
+}
+
+
+#[derive(StructOpt)]
+pub struct QuizPathOptions {
+    /// The name of the quiz.
+    #[structopt(default_value = "main")]
+    pub name: String,
+    /// Show the path to the results file instead of the quiz file.
+    #[structopt(short = "r", long = "results")]
+    pub results: bool,
+    /// Display the path that would be used even if the quiz does not exist.
+    #[structopt(short = "f", long = "force")]
+    pub force: bool,
+}
+
+
+impl QuizTakeOptions {
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        QuizTakeOptions {
+            name: String::new(), num_to_ask: None, best: None, worst: None, most: None,
+            least: None, save: false, no_color: true, in_order: false, flip: false,
+            filter_opts: QuizFilterOptions::new()
+        }
+    }
+}
+
+
+impl QuizFilterOptions {
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        QuizFilterOptions {
+            tags: Vec::new(), exclude: Vec::new(), never: false, keywords: Vec::new(),
         }
     }
 }
