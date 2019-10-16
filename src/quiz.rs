@@ -81,6 +81,7 @@ pub type Answer = Vec<String>;
 pub struct QuestionResult {
     #[serde(skip)]
     pub id: String,
+    pub time_asked: chrono::DateTime<chrono::Utc>,
     /// If the question asked was a short answer question, then the user's response goes
     /// in this field.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -273,9 +274,7 @@ impl Question {
         let mut rng = thread_rng();
         let text = self.text.choose(&mut rng).unwrap();
         let prefix = format!("  ({}) ", num);
-        prettyprint_colored(
-            &text, Some(&prefix), Some(Color::White), Some(Color::Cyan)
-        )?;
+        prettyprint_colored(&text, Some(&prefix), None, Some(Color::Cyan))?;
         my_print!("\n")?;
 
         match self.kind {
@@ -450,6 +449,7 @@ impl Question {
     fn result(&self, response: Option<String>, score: f64) -> QuestionResult {
         QuestionResult {
             id: self.id.clone(),
+            time_asked: chrono::Utc::now(),
             score,
             response,
             response_list: None,
@@ -460,6 +460,7 @@ impl Question {
     fn result_with_list(&self, responses: Vec<String>, score: f64) -> QuestionResult {
         QuestionResult {
             id: self.id.clone(),
+            time_asked: chrono::Utc::now(),
             score,
             response: None,
             response_list: Some(responses),
