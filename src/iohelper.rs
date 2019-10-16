@@ -7,6 +7,8 @@
 use colored::*;
 use std::io::Write;
 
+use rustyline::error::ReadlineError;
+
 use super::quiz::QuizError;
 
 
@@ -22,6 +24,46 @@ macro_rules! my_print {
     ($($arg:tt)*) => (
         write!(std::io::stdout(), $($arg)*).map_err(QuizError::Io)
     );
+}
+
+
+/// Display a prompt and read a line from standard input continually until the user
+/// enters a line with at least one non-whitespace character. If the user presses Ctrl+D
+/// then `Ok(None)` is returned. If the user pressed Ctrl+C then `Err(())` is returned.
+/// Otherwise, `Ok(Some(line))` is returned where `line` is the last line of input the
+/// user entered without leading and trailing whitespace.
+pub fn prompt(message: &str) -> Result<Option<String>, QuizError> {
+    let mut rl = rustyline::Editor::<()>::new();
+    loop {
+        let result = rl.readline(&format!("{}", message.white()));
+        match result {
+            Ok(response) => {
+                let response = response.trim();
+                if response.len() > 0 {
+                    return Ok(Some(response.to_string()));
+                }
+            },
+            // Return immediately if the user hits Ctrl+D or Ctrl+C.
+            Err(ReadlineError::Interrupted) => {
+                return Err(QuizError::ReadlineInterrupted);
+            },
+            Err(ReadlineError::Eof) => {
+                return Ok(None);
+            },
+            _ => {}
+        }
+    }
+}
+
+
+/// Prompt the user with a yes-no question and return `true` if they enter yes.
+pub fn confirm(message: &str) -> bool {
+    match prompt(message) {
+        Ok(Some(response)) => {
+            response.trim_start().to_lowercase().starts_with("y")
+        },
+        _ => false
+    }
 }
 
 

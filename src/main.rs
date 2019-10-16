@@ -7,6 +7,7 @@
 #[macro_use]
 mod iohelper;
 mod parser;
+mod persistence;
 mod quiz;
 
 use std::cmp::Ordering;
@@ -19,13 +20,14 @@ use std::process::Command;
 use colored::*;
 use structopt::StructOpt;
 
+use iohelper::confirm;
 use quiz::{QuestionResult, Quiz, QuizError, QuizResult};
 
 
 fn main() {
     let options = parse_options();
 
-    if let Err(e) = quiz::require_app_dir_path() {
+    if let Err(e) = persistence::require_app_dir_path() {
         eprintln!("{}: {}", "Error".red(), e);
         ::std::process::exit(2);
     }
@@ -75,7 +77,7 @@ pub fn main_take(options: quiz::QuizTakeOptions) -> Result<(), QuizError> {
         colored::control::set_override(false);
     }
 
-    let mut quiz = quiz::load_quiz(&options.name)?;
+    let mut quiz = persistence::load_quiz(&options.name)?;
     let results = quiz.take(&options)?;
     output_results(&results)?;
 
@@ -113,7 +115,7 @@ fn output_results(results: &QuizResult) -> Result<(), QuizError> {
 
 /// The main function for the `count` subcommand.
 pub fn main_count(options: quiz::QuizCountOptions) -> Result<(), QuizError> {
-    let quiz = quiz::load_quiz(&options.name)?;
+    let quiz = persistence::load_quiz(&options.name)?;
     if options.list_tags {
         list_tags(&quiz)?;
     } else {
@@ -126,7 +128,7 @@ pub fn main_count(options: quiz::QuizCountOptions) -> Result<(), QuizError> {
 
 /// The main function for the `results` subcommand.
 pub fn main_results(options: quiz::QuizResultsOptions) -> Result<(), QuizError> {
-    let results = quiz::load_results(&options.name)?;
+    let results = persistence::load_results(&options.name)?;
 
     if results.len() == 0 {
         my_println!("No results have been recorded for this quiz.")?;
@@ -167,9 +169,9 @@ pub fn main_results(options: quiz::QuizResultsOptions) -> Result<(), QuizError> 
 
 pub fn main_edit(options: quiz::QuizEditOptions) -> Result<(), QuizError> {
     let path = if options.results {
-        quiz::get_results_path(&options.name)
+        persistence::get_results_path(&options.name)
     } else {
-        quiz::get_quiz_path(&options.name)
+        persistence::get_quiz_path(&options.name)
     };
 
     loop {
@@ -217,7 +219,7 @@ pub fn launch_editor(path: &PathBuf, line: Option<usize>) -> Result<(), QuizErro
 
 
 pub fn main_rm(options: quiz::QuizRmOptions) -> Result<(), QuizError> {
-    let path = quiz::get_quiz_path(&options.name);
+    let path = persistence::get_quiz_path(&options.name);
     if path.exists() {
         let ask_prompt = "Are you sure you want to delete the quiz? ";
         if options.force || confirm(ask_prompt) {
@@ -237,12 +239,12 @@ pub fn main_rm(options: quiz::QuizRmOptions) -> Result<(), QuizError> {
 
 
 pub fn main_mv(options: quiz::QuizMvOptions) -> Result<(), QuizError> {
-    let quiz_path = quiz::get_quiz_path(&options.old_name);
-    let new_quiz_path = quiz::get_quiz_path(&options.new_name);
+    let quiz_path = persistence::get_quiz_path(&options.old_name);
+    let new_quiz_path = persistence::get_quiz_path(&options.new_name);
     fs::rename(&quiz_path, &new_quiz_path).map_err(QuizError::Io)?;
 
-    let results_path = quiz::get_results_path(&options.old_name);
-    let new_results_path = quiz::get_results_path(&options.new_name);
+    let results_path = persistence::get_results_path(&options.old_name);
+    let new_results_path = persistence::get_results_path(&options.new_name);
     if results_path.exists() {
         fs::rename(&results_path, &new_results_path).map_err(QuizError::Io)?;
     }
@@ -264,7 +266,7 @@ pub fn main_mv(options: quiz::QuizMvOptions) -> Result<(), QuizError> {
 
 
 pub fn main_ls(options: quiz::QuizLsOptions) -> Result<(), QuizError> {
-    let mut dirpath = quiz::get_app_dir_path();
+    let mut dirpath = persistence::get_app_dir_path();
     dirpath.push("quizzes");
 
     let mut quiz_names = Vec::new();
@@ -306,9 +308,9 @@ pub fn main_ls(options: quiz::QuizLsOptions) -> Result<(), QuizError> {
 
 pub fn main_path(options: quiz::QuizPathOptions) -> Result<(), QuizError> {
     let path = if options.results {
-        quiz::get_results_path(&options.name)
+        persistence::get_results_path(&options.name)
     } else {
-        quiz::get_quiz_path(&options.name)
+        persistence::get_quiz_path(&options.name)
     };
 
     if path.exists() || options.force {
@@ -378,7 +380,7 @@ fn list_tags(quiz: &Quiz) -> Result<(), QuizError> {
 /// results if previous results have been saved.
 fn save_results(name: &str, results: &QuizResult) -> Result<(), QuizError> {
     // Load old data, if it exists.
-    let path = quiz::get_results_path(name);
+    let path = persistence::get_results_path(name);
     let data = fs::read_to_string(&path);
     let mut hash: BTreeMap<String, Vec<QuestionResult>> = match data {
         Ok(ref data) => {
@@ -409,14 +411,14 @@ fn save_results(name: &str, results: &QuizResult) -> Result<(), QuizError> {
 
 /// Return `true` if the quiz directory is a git repository.
 fn is_git_repo() -> bool {
-    let mut dirpath = quiz::get_quiz_dir_path();
+    let mut dirpath = persistence::get_quiz_dir_path();
     dirpath.push(".git");
     dirpath.exists()
 }
 
 
 fn git(args: &[&str]) -> Result<(), QuizError> {
-    let dir = quiz::get_quiz_dir_path();
+    let dir = persistence::get_quiz_dir_path();
     let mut child = Command::new("git")
         .args(args)
         .current_dir(dir)
@@ -424,17 +426,6 @@ fn git(args: &[&str]) -> Result<(), QuizError> {
         .or(Err(QuizError::CannotRunGit))?;
     child.wait().map_err(QuizError::Io)?;
     Ok(())
-}
-
-
-/// Prompt the user with a yes-no question and return `true` if they enter yes.
-pub fn confirm(message: &str) -> bool {
-    match quiz::prompt(message) {
-        Ok(Some(response)) => {
-            response.trim_start().to_lowercase().starts_with("y")
-        },
-        _ => false
-    }
 }
 
 
