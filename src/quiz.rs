@@ -85,7 +85,6 @@ pub struct Answer {
 pub struct QuestionResult {
     #[serde(skip)]
     pub id: String,
-    pub time_asked: chrono::DateTime<chrono::Utc>,
     /// If the question asked was a short answer question, then the user's response goes
     /// in this field.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -477,7 +476,6 @@ impl Question {
             score,
             response,
             response_list: None,
-            time_asked: chrono::Utc::now(),
         }
     }
 
@@ -488,7 +486,6 @@ impl Question {
             score,
             response: None,
             response_list: Some(responses),
-            time_asked: chrono::Utc::now(),
         }
     }
 
