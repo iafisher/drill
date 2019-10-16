@@ -11,7 +11,7 @@ mod persistence;
 mod quiz;
 
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
@@ -21,7 +21,7 @@ use colored::*;
 use structopt::StructOpt;
 
 use iohelper::confirm;
-use quiz::{QuestionResult, Quiz, QuizError, QuizResult};
+use quiz::{Quiz, QuizError, QuizResult};
 
 
 fn main() {
@@ -82,7 +82,7 @@ pub fn main_take(options: quiz::QuizTakeOptions) -> Result<(), QuizError> {
     output_results(&results)?;
 
     if results.total > 0 && (options.save || confirm("\nSave results? ")) {
-        save_results(&options.name, &results)?;
+        persistence::save_results(&options.name, &results)?;
     }
     Ok(())
 }
@@ -372,39 +372,6 @@ fn list_tags(quiz: &Quiz) -> Result<(), QuizError> {
             my_println!("  {} ({})", tag, count)?;
         }
     }
-    Ok(())
-}
-
-
-/// Save `results` to a file in the popquiz application's data directory, appending the
-/// results if previous results have been saved.
-fn save_results(name: &str, results: &QuizResult) -> Result<(), QuizError> {
-    // Load old data, if it exists.
-    let path = persistence::get_results_path(name);
-    let data = fs::read_to_string(&path);
-    let mut hash: BTreeMap<String, Vec<QuestionResult>> = match data {
-        Ok(ref data) => {
-            serde_json::from_str(&data)
-                .map_err(QuizError::Json)?
-        },
-        Err(_) => {
-            BTreeMap::new()
-        }
-    };
-
-    // Store the results as a map from the text of the questions to a list of individual
-    // time-stamped results.
-    for result in results.per_question.iter() {
-        if !hash.contains_key(&result.id) {
-            hash.insert(result.id.to_string(), Vec::new());
-        }
-        hash.get_mut(&result.id).unwrap().push(result.clone());
-    }
-
-    let serialized_results = serde_json::to_string_pretty(&hash)
-        .map_err(QuizError::Json)?;
-    fs::write(&path, serialized_results)
-        .or(Err(QuizError::CannotWriteToFile(path.clone())))?;
     Ok(())
 }
 
