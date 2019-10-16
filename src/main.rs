@@ -31,34 +31,34 @@ fn main() {
     require_app_dir_path();
 
     let result = match parse_options() {
-        common::QuizOptions::Take(options) => {
+        common::Options::Take(options) => {
             main_take(options)
         },
-        common::QuizOptions::Count(options) => {
+        common::Options::Count(options) => {
             main_count(options)
         },
-        common::QuizOptions::Results(options) => {
+        common::Options::Results(options) => {
             main_results(options)
         },
-        common::QuizOptions::Edit(options) => {
+        common::Options::Edit(options) => {
             main_edit(options)
         },
-        common::QuizOptions::Rm(options) => {
+        common::Options::Rm(options) => {
             main_rm(options)
         },
-        common::QuizOptions::Mv(options) => {
+        common::Options::Mv(options) => {
             main_mv(options)
         },
-        common::QuizOptions::Ls(options) => {
+        common::Options::Ls(options) => {
             main_ls(options)
         },
-        common::QuizOptions::Path(options) => {
+        common::Options::Path(options) => {
             main_path(options)
         },
-        common::QuizOptions::Search(options) => {
+        common::Options::Search(options) => {
             main_search(options)
         },
-        common::QuizOptions::Git { args } => {
+        common::Options::Git { args } => {
             main_git(args)
         },
     };
@@ -73,7 +73,7 @@ fn main() {
 
 
 /// The main function for the `take` subcommand.
-pub fn main_take(options: common::QuizTakeOptions) -> Result<(), QuizError> {
+pub fn main_take(options: common::TakeOptions) -> Result<(), QuizError> {
     if options.no_color {
         colored::control::set_override(false);
     }
@@ -115,7 +115,7 @@ fn output_results(results: &QuizResult) -> Result<(), QuizError> {
 
 
 /// The main function for the `count` subcommand.
-pub fn main_count(options: common::QuizCountOptions) -> Result<(), QuizError> {
+pub fn main_count(options: common::CountOptions) -> Result<(), QuizError> {
     let quiz = persistence::load_quiz(&options.name)?;
     if options.list_tags {
         list_tags(&quiz)?;
@@ -128,7 +128,7 @@ pub fn main_count(options: common::QuizCountOptions) -> Result<(), QuizError> {
 
 
 /// The main function for the `results` subcommand.
-pub fn main_results(options: common::QuizResultsOptions) -> Result<(), QuizError> {
+pub fn main_results(options: common::ResultsOptions) -> Result<(), QuizError> {
     let quiz = persistence::load_quiz(&options.name)?;
     let results = persistence::load_results(&options.name)?;
 
@@ -174,7 +174,7 @@ pub fn main_results(options: common::QuizResultsOptions) -> Result<(), QuizError
 }
 
 
-pub fn main_edit(options: common::QuizEditOptions) -> Result<(), QuizError> {
+pub fn main_edit(options: common::EditOptions) -> Result<(), QuizError> {
     let path = if options.results {
         persistence::get_results_path(&options.name)
     } else {
@@ -225,7 +225,7 @@ pub fn launch_editor(path: &PathBuf, line: Option<usize>) -> Result<(), QuizErro
 }
 
 
-pub fn main_rm(options: common::QuizRmOptions) -> Result<(), QuizError> {
+pub fn main_rm(options: common::RmOptions) -> Result<(), QuizError> {
     let path = persistence::get_quiz_path(&options.name);
     if path.exists() {
         let ask_prompt = "Are you sure you want to delete the quiz? ";
@@ -245,7 +245,7 @@ pub fn main_rm(options: common::QuizRmOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_mv(options: common::QuizMvOptions) -> Result<(), QuizError> {
+pub fn main_mv(options: common::MvOptions) -> Result<(), QuizError> {
     let quiz_path = persistence::get_quiz_path(&options.old_name);
     let new_quiz_path = persistence::get_quiz_path(&options.new_name);
     fs::rename(&quiz_path, &new_quiz_path).map_err(QuizError::Io)?;
@@ -272,7 +272,7 @@ pub fn main_mv(options: common::QuizMvOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_ls(options: common::QuizLsOptions) -> Result<(), QuizError> {
+pub fn main_ls(options: common::LsOptions) -> Result<(), QuizError> {
     let mut dirpath = persistence::get_app_dir_path();
     dirpath.push("quizzes");
 
@@ -313,7 +313,7 @@ pub fn main_ls(options: common::QuizLsOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_path(options: common::QuizPathOptions) -> Result<(), QuizError> {
+pub fn main_path(options: common::PathOptions) -> Result<(), QuizError> {
     let path = if options.results {
         persistence::get_results_path(&options.name)
     } else {
@@ -329,7 +329,7 @@ pub fn main_path(options: common::QuizPathOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_search(options: common::QuizSearchOptions) -> Result<(), QuizError> {
+pub fn main_search(options: common::SearchOptions) -> Result<(), QuizError> {
     let quiz = persistence::load_quiz(&options.name)?;
 
     for question in quiz.questions.iter() {
@@ -358,10 +358,10 @@ pub fn main_git(args: Vec<String>) -> Result<(), QuizError> {
 
 
 /// Parse command-line arguments.
-pub fn parse_options() -> common::QuizOptions {
-    let options = common::QuizOptions::from_args();
+pub fn parse_options() -> common::Options {
+    let options = common::Options::from_args();
 
-    if let common::QuizOptions::Results(options) = &options {
+    if let common::Options::Results(options) = &options {
         let s = &options.sort;
         if s != "most" && s != "least" && s != "best" && s != "worst" {
             eprintln!("{}: unknown value `{}` for --sort.", "Error".red(), s);

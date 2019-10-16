@@ -88,41 +88,41 @@ impl error::Error for QuizError {
 /// Holds the command-line configuration for the application.
 #[derive(StructOpt)]
 #[structopt(name = "popquiz", about = "Take quizzes from the command line.")]
-pub enum QuizOptions {
+pub enum Options {
     /// Take a quiz.
     #[structopt(name = "take")]
-    Take(QuizTakeOptions),
+    Take(TakeOptions),
     /// Count questions or tags.
     #[structopt(name = "count")]
-    Count(QuizCountOptions),
+    Count(CountOptions),
     /// Report results of previous attempts.
     #[structopt(name = "results")]
-    Results(QuizResultsOptions),
+    Results(ResultsOptions),
     /// Edit or create a quiz.
     #[structopt(name = "edit")]
-    Edit(QuizEditOptions),
+    Edit(EditOptions),
     /// Delete a quiz.
     #[structopt(name = "rm")]
-    Rm(QuizRmOptions),
+    Rm(RmOptions),
     /// Rename a quiz.
     #[structopt(name = "mv")]
-    Mv(QuizMvOptions),
+    Mv(MvOptions),
     /// List all available quizzes.
     #[structopt(name = "ls")]
-    Ls(QuizLsOptions),
+    Ls(LsOptions),
     /// Print file paths of quizzes.
     #[structopt(name = "path")]
-    Path(QuizPathOptions),
+    Path(PathOptions),
     /// Seach questions for a keyword.
     #[structopt(name = "search")]
-    Search(QuizSearchOptions),
+    Search(SearchOptions),
     /// Invoke git in the quiz folder.
     #[structopt(name = "git")]
     Git { args: Vec<String> },
 }
 
 #[derive(StructOpt)]
-pub struct QuizTakeOptions {
+pub struct TakeOptions {
     /// Name of the quiz to take.
     #[structopt(default_value = "main")]
     pub name: String,
@@ -154,11 +154,11 @@ pub struct QuizTakeOptions {
     #[structopt(long = "flip")]
     pub flip: bool,
     #[structopt(flatten)]
-    pub filter_opts: QuizFilterOptions,
+    pub filter_opts: FilterOptions,
 }
 
 #[derive(StructOpt)]
-pub struct QuizCountOptions {
+pub struct CountOptions {
     /// Name of the quiz to count.
     #[structopt(default_value = "main")]
     pub name: String,
@@ -166,12 +166,12 @@ pub struct QuizCountOptions {
     #[structopt(long = "list-tags")]
     pub list_tags: bool,
     #[structopt(flatten)]
-    pub filter_opts: QuizFilterOptions,
+    pub filter_opts: FilterOptions,
 }
 
 /// These filtering options are shared between the `take` and `count` subcommands.
 #[derive(StructOpt)]
-pub struct QuizFilterOptions {
+pub struct FilterOptions {
     /// Only include questions with the given tag.
     #[structopt(long = "tag")]
     pub tags: Vec<String>,
@@ -184,7 +184,7 @@ pub struct QuizFilterOptions {
 }
 
 #[derive(StructOpt)]
-pub struct QuizEditOptions {
+pub struct EditOptions {
     /// The name of the quiz to edit.
     #[structopt(default_value = "main")]
     pub name: String,
@@ -194,7 +194,7 @@ pub struct QuizEditOptions {
 }
 
 #[derive(StructOpt)]
-pub struct QuizRmOptions {
+pub struct RmOptions {
     /// The name of the quiz to delete.
     #[structopt(default_value = "main")]
     pub name: String,
@@ -204,7 +204,7 @@ pub struct QuizRmOptions {
 }
 
 #[derive(StructOpt)]
-pub struct QuizMvOptions {
+pub struct MvOptions {
     /// The old name of the quiz to rename.
     pub old_name: String,
     /// The new name.
@@ -212,7 +212,7 @@ pub struct QuizMvOptions {
 }
 
 #[derive(StructOpt)]
-pub struct QuizResultsOptions {
+pub struct ResultsOptions {
     /// The name of the quiz for which to fetch the results.
     #[structopt(default_value = "main")]
     pub name: String,
@@ -226,7 +226,7 @@ pub struct QuizResultsOptions {
 
 
 #[derive(StructOpt)]
-pub struct QuizLsOptions {
+pub struct LsOptions {
     /// List quizzes whose name begins with a period.
     #[structopt(short = "a", long = "all")]
     pub all: bool,
@@ -234,7 +234,7 @@ pub struct QuizLsOptions {
 
 
 #[derive(StructOpt)]
-pub struct QuizPathOptions {
+pub struct PathOptions {
     /// The name of the quiz.
     #[structopt(default_value = "main")]
     pub name: String,
@@ -248,7 +248,7 @@ pub struct QuizPathOptions {
 
 
 #[derive(StructOpt)]
-pub struct QuizSearchOptions {
+pub struct SearchOptions {
     /// The name of the quiz.
     pub name: String,
     /// The term to search for.
@@ -256,22 +256,22 @@ pub struct QuizSearchOptions {
 }
 
 
-impl QuizTakeOptions {
+impl TakeOptions {
     #[allow(dead_code)]
     pub fn new() -> Self {
-        QuizTakeOptions {
+        TakeOptions {
             name: String::new(), num_to_ask: None, best: None, worst: None, most: None,
             least: None, save: false, no_color: true, in_order: false, flip: false,
-            filter_opts: QuizFilterOptions::new()
+            filter_opts: FilterOptions::new()
         }
     }
 }
 
 
-impl QuizFilterOptions {
+impl FilterOptions {
     #[allow(dead_code)]
     pub fn new() -> Self {
-        QuizFilterOptions {
+        FilterOptions {
             tags: Vec::new(), exclude: Vec::new(), never: false,
         }
     }

@@ -12,7 +12,7 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Serialize, Deserialize};
 
-use super::common::{Location, QuizError, QuizFilterOptions, QuizTakeOptions};
+use super::common::{FilterOptions, Location, QuizError, TakeOptions};
 use super::iohelper::{prettyprint, prettyprint_colored, prompt};
 
 
@@ -105,7 +105,7 @@ pub struct QuizResult {
 
 impl Quiz {
     /// Take the quiz and return pairs of questions and results.
-    pub fn take(&mut self, options: &QuizTakeOptions) -> Result<QuizResult, QuizError> {
+    pub fn take(&mut self, options: &TakeOptions) -> Result<QuizResult, QuizError> {
         if options.flip {
             for q in self.questions.iter_mut() {
                 q.flip();
@@ -167,7 +167,7 @@ impl Quiz {
 
     /// Return the questions filtered by the given command-line options (e.g., `--tag`
     /// and `--exclude`).
-    pub fn filter_questions(&self, options: &QuizFilterOptions) -> Vec<&Question> {
+    pub fn filter_questions(&self, options: &FilterOptions) -> Vec<&Question> {
         let mut candidates = Vec::new();
         for question in self.questions.iter() {
             if filter_question(question, options) {
@@ -178,7 +178,7 @@ impl Quiz {
     }
 
     /// Choose a set of questions, filtered by the command-line options.
-    fn choose_questions(&self, options: &QuizTakeOptions) -> Vec<&Question> {
+    fn choose_questions(&self, options: &TakeOptions) -> Vec<&Question> {
         let mut candidates = self.filter_questions(&options.filter_opts);
 
         // --best and --worst can only be applied to questions with at least one
@@ -230,7 +230,7 @@ impl Quiz {
 
 
 /// Return `true` if `q` satisfies the constraints in `options`.
-fn filter_question(q: &Question, options: &QuizFilterOptions) -> bool {
+fn filter_question(q: &Question, options: &FilterOptions) -> bool {
     // Either no tags were specified, or `q` has all the specified tags.
     (options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag)))
         // `q` must not have any excluded tags.
@@ -616,7 +616,7 @@ mod tests {
         let mut q = Question::new("What is the capital of China", "Beijing");
         q.tags.push(s("geography"));
 
-        let mut options = QuizFilterOptions::new();
+        let mut options = FilterOptions::new();
         assert!(filter_question(&q, &options));
 
         options.tags.push(s("geography"));
@@ -631,7 +631,7 @@ mod tests {
         let mut q = Question::new("What is the capital of China", "Beijing");
         q.tags.push(s("geography"));
 
-        let mut options = QuizFilterOptions::new();
+        let mut options = FilterOptions::new();
         options.exclude.push(s("geography"));
         assert!(!filter_question(&q, &options));
     }
