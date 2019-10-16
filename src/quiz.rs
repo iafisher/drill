@@ -68,15 +68,11 @@ pub enum QuestionKind {
 }
 
 
-/// Represents an answer.
-#[derive(Debug, Clone)]
-pub struct Answer {
-    /// Each member of the `variants` vector should be an equivalent answer, e.g.
-    /// `vec!["Mount Everest", "Everest"]`, not different answers to the same question.
-    /// The first element of the vector is taken to be the canonical form of the answer
-    /// for display.
-    pub variants: Vec<String>,
-}
+/// Each member of the vector should be an equivalent answer, e.g.
+/// `vec!["Mount Everest", "Everest"]`, not different answers to the same question. The
+/// first element of the vector is taken to be the canonical form of the answer for
+/// display.
+pub type Answer = Vec<String>;
 
 
 /// Represents the result of answering a question on a particular occasion.
@@ -273,7 +269,7 @@ impl Question {
     /// Return a new short-answer question.
     #[allow(dead_code)]
     pub fn new(text: &str, answer: &str) -> Self {
-        let answers = vec![Answer { variants: vec![String::from(answer)] }];
+        let answers = vec![vec![String::from(answer)]];
         Question {
             kind: QuestionKind::ShortAnswer,
             id: String::from("1"),
@@ -327,7 +323,7 @@ impl Question {
             self.correct()?;
         } else {
             let guess_option = guess.as_ref().map(|s| s.as_str());
-            self.incorrect(Some(&self.answer_list[0].variants[0]), guess_option)?;
+            self.incorrect(Some(&self.answer_list[0][0]), guess_option)?;
         }
 
         let score = if result { 1.0 } else { 0.0 };
@@ -375,7 +371,7 @@ impl Question {
             my_println!("{}", "\nYou missed:".white())?;
             for (i, correct) in satisfied.iter().enumerate() {
                 if !correct {
-                    my_println!("  {}", self.answer_list[i].variants[0])?;
+                    my_println!("  {}", self.answer_list[i][0])?;
                 }
             }
             my_println!(
@@ -398,14 +394,14 @@ impl Question {
             if let Some(guess) = prompt("> ")? {
                 responses.push(guess.clone());
 
-                if answer.check(&guess) {
+                if check(answer, &guess) {
                     self.correct()?;
                     ncorrect += 1;
                 } else {
-                    self.incorrect(Some(&answer.variants[0]), Some(&guess))?;
+                    self.incorrect(Some(&answer[0]), Some(&guess))?;
                 }
             } else {
-                self.incorrect(Some(&answer.variants[0]), None)?;
+                self.incorrect(Some(&answer[0]), None)?;
                 break;
             }
         }
@@ -432,7 +428,7 @@ impl Question {
         candidates.shuffle(&mut rng);
         candidates.truncate(3);
 
-        let answer = self.answer_list[0].variants.choose(&mut rng).unwrap();
+        let answer = self.answer_list[0].choose(&mut rng).unwrap();
         candidates.push(answer.clone());
         // Shuffle again so that the position of the correct answer is random.
         candidates.shuffle(&mut rng);
@@ -536,7 +532,7 @@ impl Question {
     /// Return `true` if `guess` matches any of the answers in `self.answer_list`.
     fn check_any(&self, guess: &str) -> bool {
         for answer in self.answer_list.iter() {
-            if answer.check(guess) {
+            if check(answer, guess) {
                 return true;
             }
         }
@@ -547,7 +543,7 @@ impl Question {
     /// matches, or `self.answer_list.len()` if `guess` satisfies none.
     fn check_one(&self, guess: &str) -> usize {
         for (i, answer) in self.answer_list.iter().enumerate() {
-            if answer.check(guess) {
+            if check(answer, guess) {
                 return i;
             }
         }
@@ -561,25 +557,23 @@ impl Question {
             self.answer_list.shuffle(&mut rng);
 
             let side1 = self.text.remove(0);
-            let side2 = self.answer_list.remove(0).variants.remove(0);
+            let side2 = self.answer_list.remove(0).remove(0);
 
             self.text = vec![side2];
-            self.answer_list = vec![Answer { variants: vec![side1] } ];
+            self.answer_list = vec![vec![side1]];
         }
     }
 }
 
 
-impl Answer {
-    /// Return `true` if the given string is equivalent to the Answer object.
-    fn check(&self, guess: &str) -> bool {
-        for variant in self.variants.iter() {
-            if variant.to_lowercase() == guess.to_lowercase() {
-                return true;
-            }
+/// Return `true` if the given string is equivalent to the Answer object.
+fn check(ans: &Answer, guess: &str) -> bool {
+    for variant in ans.iter() {
+        if variant.to_lowercase() == guess.to_lowercase() {
+            return true;
         }
-        false
     }
+    false
 }
 
 
@@ -957,15 +951,13 @@ mod tests {
 
     #[test]
     fn checking_answers_works() {
-        let ans = Answer {
-            variants: vec![s("Barack Obama"), s("Obama")]
-        };
+        let ans = vec![s("Barack Obama"), s("Obama")];
 
-        assert!(ans.check("Barack Obama"));
-        assert!(ans.check("barack obama"));
-        assert!(ans.check("Obama"));
-        assert!(ans.check("obama"));
-        assert!(!ans.check("Mitt Romney"));
+        assert!(check(&ans, "Barack Obama"));
+        assert!(check(&ans, "barack obama"));
+        assert!(check(&ans, "Obama"));
+        assert!(check(&ans, "obama"));
+        assert!(!check(&ans, "Mitt Romney"));
     }
 
     fn s(mystr: &str) -> String {

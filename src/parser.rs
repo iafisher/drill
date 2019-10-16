@@ -11,7 +11,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::path::PathBuf;
 
-use super::quiz::{Answer, Question, QuestionKind, Quiz, QuizError};
+use super::quiz::{Question, QuestionKind, Quiz, QuizError};
 
 
 pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
@@ -47,7 +47,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 kind: QuestionKind::MultipleChoice,
                 id: entry.id.clone(),
                 text: vec![entry.text.clone()],
-                answer_list: vec![split_to_answer(&entry.following[0], "/")],
+                answer_list: vec![split(&entry.following[0], "/")],
                 candidates: split(&choices, "/"),
                 prior_results: Vec::new(),
                 tags,
@@ -59,7 +59,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 kind: QuestionKind::ShortAnswer,
                 id: entry.id.clone(),
                 text: vec![entry.text.clone()],
-                answer_list: vec![split_to_answer(&entry.following[0], "/")],
+                answer_list: vec![split(&entry.following[0], "/")],
                 candidates: Vec::new(),
                 prior_results: Vec::new(),
                 tags,
@@ -70,7 +70,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
     } else if entry.following.len() == 0 {
         if let Some(equal) = entry.text.find("=") {
             let top = entry.text[..equal].trim().to_string();
-            let bottom = split_to_answer(&entry.text[equal+1..], "/");
+            let bottom = split(&entry.text[equal+1..], "/");
             return Ok(Question {
                 kind: QuestionKind::Flashcard,
                 id: entry.id.clone(),
@@ -100,7 +100,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 kind: QuestionKind::OrderedListAnswer,
                 id: entry.id.clone(),
                 text: vec![entry.text.clone()],
-                answer_list: entry.following.iter().map(|l| split_to_answer(&l, "/")).collect(),
+                answer_list: entry.following.iter().map(|l| split(&l, "/")).collect(),
                 candidates: Vec::new(),
                 prior_results: Vec::new(),
                 tags,
@@ -112,7 +112,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 kind: QuestionKind::ListAnswer,
                 id: entry.id.clone(),
                 text: vec![entry.text.clone()],
-                answer_list: entry.following.iter().map(|l| split_to_answer(&l, "/")).collect(),
+                answer_list: entry.following.iter().map(|l| split(&l, "/")).collect(),
                 candidates: Vec::new(),
                 prior_results: Vec::new(),
                 tags,
@@ -200,11 +200,6 @@ fn read_line(reader: &mut LineBufReader) -> Result<Option<FileLine>, QuizError> 
 
 fn split(s: &str, splitter: &str) -> Vec<String> {
     s.split(splitter).map(|w| w.trim().to_string()).collect()
-}
-
-
-fn split_to_answer(s: &str, splitter: &str) -> Answer {
-    Answer { variants: split(s, splitter) }
 }
 
 
