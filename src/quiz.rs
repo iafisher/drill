@@ -333,7 +333,7 @@ impl Question {
                     self.incorrect(None, Some(&guess))?;
                     count += 1;
                 } else if satisfied[index] {
-                    my_println!("{}", "You already said that.".white())?;
+                    my_println!("You already said that.")?;
                 } else {
                     satisfied[index] = true;
                     self.correct()?;
@@ -348,18 +348,14 @@ impl Question {
         let ncorrect = satisfied.iter().filter(|x| **x).count();
         let score = (ncorrect as f64) / (self.answer_list.len() as f64);
         if ncorrect < self.answer_list.len() {
-            my_println!("{}", "\nYou missed:".white())?;
+            my_println!("\nYou missed:")?;
             for (i, correct) in satisfied.iter().enumerate() {
                 if !correct {
                     my_println!("  {}", self.answer_list[i][0])?;
                 }
             }
             my_println!(
-                "\n{}",
-                format!(
-                    "Score for this question: {}",
-                    format!("{:.1}%", score * 100.0).cyan()
-                ).white()
+                "\nScore for this question: {}", format!("{:.1}%", score * 100.0).cyan()
             )?;
         }
 
@@ -388,11 +384,7 @@ impl Question {
         let score = (ncorrect as f64) / (self.answer_list.len() as f64);
         if score < 1.0 {
             my_println!(
-                "\n{}",
-                format!(
-                    "Score for this question: {}",
-                    format!("{:.1}%", score * 100.0).cyan()
-                ).white()
+                "\nScore for this question: {}", format!("{:.1}%", score * 100.0).cyan()
             )?;
         }
 

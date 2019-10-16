@@ -93,21 +93,21 @@ fn output_results(results: &QuizResult) -> Result<(), QuizError> {
         let score_as_str = format!("{:.1}%", results.score);
 
         my_print!("\n\n")?;
-        my_print!("{}", "Score: ".white())?;
+        my_print!("Score: ")?;
         my_print!("{}", score_as_str.cyan())?;
-        my_print!("{}", " out of ".white())?;
+        my_print!(" out of ")?;
         my_print!("{}", format!("{}", results.total).cyan())?;
         if results.total == 1 {
-            my_println!("{}", " question".white())?;
+            my_println!(" question")?;
         } else {
-            my_println!("{}", " questions".white())?;
+            my_println!(" questions")?;
         }
         my_print!("  {}", format!("{}", results.total_correct).bright_green())?;
-        my_print!("{}\n", " correct".white())?;
+        my_print!(" correct\n")?;
         my_print!("  {}", format!("{}", results.total_partially_correct).green())?;
-        my_print!("{}\n", " partially correct".white())?;
+        my_print!(" partially correct\n")?;
         my_print!("  {}", format!("{}", results.total_incorrect).red())?;
-        my_print!("{}\n", " incorrect".white())?;
+        my_print!(" incorrect\n")?;
     }
     Ok(())
 }

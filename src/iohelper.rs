@@ -35,7 +35,7 @@ macro_rules! my_print {
 pub fn prompt(message: &str) -> Result<Option<String>, QuizError> {
     let mut rl = rustyline::Editor::<()>::new();
     loop {
-        let result = rl.readline(&format!("{}", message.white()));
+        let result = rl.readline(message);
         match result {
             Ok(response) => {
                 let response = response.trim();
