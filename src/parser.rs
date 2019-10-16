@@ -11,7 +11,8 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::path::PathBuf;
 
-use super::quiz::{Question, QuestionKind, Quiz, QuizError};
+use super::common::{Location, QuizError};
+use super::quiz::{Question, QuestionKind, Quiz};
 
 
 pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
@@ -216,12 +217,6 @@ struct FileEntry {
     following: Vec<String>,
     attributes: HashMap<String, String>,
     location: Location,
-}
-
-#[derive(Debug, Clone)]
-pub struct Location {
-    line: usize,
-    path: PathBuf,
 }
 
 

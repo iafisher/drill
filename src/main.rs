@@ -4,6 +4,7 @@
  * Author:  Ian Fisher (iafisher@protonmail.com)
  * Version: October 2019
  */
+mod common;
 #[macro_use]
 mod iohelper;
 mod parser;
@@ -13,6 +14,7 @@ mod quiz;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs;
+use std::io;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
@@ -20,48 +22,49 @@ use std::process::Command;
 use colored::*;
 use structopt::StructOpt;
 
+use common::QuizError;
 use iohelper::{confirm, prettyprint_colored};
-use quiz::{Quiz, QuizError, QuizResult};
+use quiz::{Quiz, QuizResult};
 
 
 fn main() {
     require_app_dir_path();
 
     let result = match parse_options() {
-        quiz::QuizOptions::Take(options) => {
+        common::QuizOptions::Take(options) => {
             main_take(options)
         },
-        quiz::QuizOptions::Count(options) => {
+        common::QuizOptions::Count(options) => {
             main_count(options)
         },
-        quiz::QuizOptions::Results(options) => {
+        common::QuizOptions::Results(options) => {
             main_results(options)
         },
-        quiz::QuizOptions::Edit(options) => {
+        common::QuizOptions::Edit(options) => {
             main_edit(options)
         },
-        quiz::QuizOptions::Rm(options) => {
+        common::QuizOptions::Rm(options) => {
             main_rm(options)
         },
-        quiz::QuizOptions::Mv(options) => {
+        common::QuizOptions::Mv(options) => {
             main_mv(options)
         },
-        quiz::QuizOptions::Ls(options) => {
+        common::QuizOptions::Ls(options) => {
             main_ls(options)
         },
-        quiz::QuizOptions::Path(options) => {
+        common::QuizOptions::Path(options) => {
             main_path(options)
         },
-        quiz::QuizOptions::Search(options) => {
+        common::QuizOptions::Search(options) => {
             main_search(options)
         },
-        quiz::QuizOptions::Git { args } => {
+        common::QuizOptions::Git { args } => {
             main_git(args)
         },
     };
 
     if let Err(e) = result {
-        if !quiz::is_broken_pipe(&e) {
+        if !is_broken_pipe(&e) {
             eprintln!("{}: {}", "Error".red(), e);
             ::std::process::exit(2);
         }
@@ -70,7 +73,7 @@ fn main() {
 
 
 /// The main function for the `take` subcommand.
-pub fn main_take(options: quiz::QuizTakeOptions) -> Result<(), QuizError> {
+pub fn main_take(options: common::QuizTakeOptions) -> Result<(), QuizError> {
     if options.no_color {
         colored::control::set_override(false);
     }
@@ -112,7 +115,7 @@ fn output_results(results: &QuizResult) -> Result<(), QuizError> {
 
 
 /// The main function for the `count` subcommand.
-pub fn main_count(options: quiz::QuizCountOptions) -> Result<(), QuizError> {
+pub fn main_count(options: common::QuizCountOptions) -> Result<(), QuizError> {
     let quiz = persistence::load_quiz(&options.name)?;
     if options.list_tags {
         list_tags(&quiz)?;
@@ -125,7 +128,7 @@ pub fn main_count(options: quiz::QuizCountOptions) -> Result<(), QuizError> {
 
 
 /// The main function for the `results` subcommand.
-pub fn main_results(options: quiz::QuizResultsOptions) -> Result<(), QuizError> {
+pub fn main_results(options: common::QuizResultsOptions) -> Result<(), QuizError> {
     let quiz = persistence::load_quiz(&options.name)?;
     let results = persistence::load_results(&options.name)?;
 
@@ -171,7 +174,7 @@ pub fn main_results(options: quiz::QuizResultsOptions) -> Result<(), QuizError> 
 }
 
 
-pub fn main_edit(options: quiz::QuizEditOptions) -> Result<(), QuizError> {
+pub fn main_edit(options: common::QuizEditOptions) -> Result<(), QuizError> {
     let path = if options.results {
         persistence::get_results_path(&options.name)
     } else {
@@ -222,7 +225,7 @@ pub fn launch_editor(path: &PathBuf, line: Option<usize>) -> Result<(), QuizErro
 }
 
 
-pub fn main_rm(options: quiz::QuizRmOptions) -> Result<(), QuizError> {
+pub fn main_rm(options: common::QuizRmOptions) -> Result<(), QuizError> {
     let path = persistence::get_quiz_path(&options.name);
     if path.exists() {
         let ask_prompt = "Are you sure you want to delete the quiz? ";
@@ -242,7 +245,7 @@ pub fn main_rm(options: quiz::QuizRmOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_mv(options: quiz::QuizMvOptions) -> Result<(), QuizError> {
+pub fn main_mv(options: common::QuizMvOptions) -> Result<(), QuizError> {
     let quiz_path = persistence::get_quiz_path(&options.old_name);
     let new_quiz_path = persistence::get_quiz_path(&options.new_name);
     fs::rename(&quiz_path, &new_quiz_path).map_err(QuizError::Io)?;
@@ -269,7 +272,7 @@ pub fn main_mv(options: quiz::QuizMvOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_ls(options: quiz::QuizLsOptions) -> Result<(), QuizError> {
+pub fn main_ls(options: common::QuizLsOptions) -> Result<(), QuizError> {
     let mut dirpath = persistence::get_app_dir_path();
     dirpath.push("quizzes");
 
@@ -310,7 +313,7 @@ pub fn main_ls(options: quiz::QuizLsOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_path(options: quiz::QuizPathOptions) -> Result<(), QuizError> {
+pub fn main_path(options: common::QuizPathOptions) -> Result<(), QuizError> {
     let path = if options.results {
         persistence::get_results_path(&options.name)
     } else {
@@ -326,7 +329,7 @@ pub fn main_path(options: quiz::QuizPathOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_search(options: quiz::QuizSearchOptions) -> Result<(), QuizError> {
+pub fn main_search(options: common::QuizSearchOptions) -> Result<(), QuizError> {
     let quiz = persistence::load_quiz(&options.name)?;
 
     for question in quiz.questions.iter() {
@@ -355,10 +358,10 @@ pub fn main_git(args: Vec<String>) -> Result<(), QuizError> {
 
 
 /// Parse command-line arguments.
-pub fn parse_options() -> quiz::QuizOptions {
-    let options = quiz::QuizOptions::from_args();
+pub fn parse_options() -> common::QuizOptions {
+    let options = common::QuizOptions::from_args();
 
-    if let quiz::QuizOptions::Results(options) = &options {
+    if let common::QuizOptions::Results(options) = &options {
         let s = &options.sort;
         if s != "most" && s != "least" && s != "best" && s != "worst" {
             eprintln!("{}: unknown value `{}` for --sort.", "Error".red(), s);
@@ -515,4 +518,14 @@ fn make_directory(path: &PathBuf) -> Result<(), std::io::Error> {
         fs::create_dir(path)?;
     }
     Ok(())
+}
+
+
+fn is_broken_pipe(e: &QuizError) -> bool {
+    if let QuizError::Io(e) = e {
+        if let io::ErrorKind::BrokenPipe = e.kind() {
+            return true;
+        }
+    }
+    false
 }

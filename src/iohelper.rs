@@ -9,7 +9,7 @@ use std::io::Write;
 
 use rustyline::error::ReadlineError;
 
-use super::quiz::QuizError;
+use super::common::QuizError;
 
 
 #[macro_export]

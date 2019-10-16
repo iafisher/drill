@@ -9,8 +9,9 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::PathBuf;
 
+use super::common::QuizError;
 use super::parser;
-use super::quiz::{QuestionResult, Quiz, QuizError, QuizResult};
+use super::quiz::{QuestionResult, Quiz, QuizResult};
 
 /// Load a `Quiz` object given its name.
 pub fn load_quiz(name: &str) -> Result<Quiz, QuizError> {
