@@ -104,7 +104,7 @@ pub struct QuestionResult {
 /// Represents the results of taking a quiz on a particular occasion.
 #[derive(Debug)]
 pub struct QuizResult {
-    pub time_taken: chrono::DateTime<chrono::Utc>,
+    pub time_finished: chrono::DateTime<chrono::Utc>,
     pub total: usize,
     pub total_correct: usize,
     pub total_partially_correct: usize,
@@ -166,7 +166,7 @@ impl Quiz {
         let total_incorrect = total - total_correct - total_partially_correct;
         let score = (aggregate_score / (total as f64)) * 100.0;
         Ok(QuizResult {
-            time_taken: chrono::Utc::now(),
+            time_finished: chrono::Utc::now(),
             total,
             total_correct,
             total_partially_correct,
