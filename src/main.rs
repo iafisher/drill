@@ -128,6 +128,7 @@ pub fn main_count(options: quiz::QuizCountOptions) -> Result<(), QuizError> {
 
 /// The main function for the `results` subcommand.
 pub fn main_results(options: quiz::QuizResultsOptions) -> Result<(), QuizError> {
+    let quiz = persistence::load_quiz(&options.name)?;
     let results = persistence::load_results(&options.name)?;
 
     if results.len() == 0 {
@@ -135,11 +136,14 @@ pub fn main_results(options: quiz::QuizResultsOptions) -> Result<(), QuizError> 
         return Ok(());
     }
 
-    let mut aggregated: Vec<(f64, usize, String)> = Vec::new();
+    let mut aggregated: Vec<(f64, usize, String, String)> = Vec::new();
     for (key, result) in results.iter() {
         // Only include questions that have scored results.
         if let Some(score) = quiz::aggregate_results(&result) {
-            aggregated.push((score, result.len(), key.clone()));
+            if let Some(pos) = quiz.questions.iter().position(|q| q.id == *key) {
+                let text = &quiz.questions[pos].text[0];
+                aggregated.push((score, result.len(), key.clone(), text.clone()));
+            }
         }
     }
 
@@ -158,9 +162,11 @@ pub fn main_results(options: quiz::QuizResultsOptions) -> Result<(), QuizError> 
         aggregated.truncate(n);
     }
 
-    for (score, attempts, question) in aggregated.iter() {
+    for (score, attempts, id, text) in aggregated.iter() {
         let first_prefix = format!("{:>5.1}%  of {:>2}   ", score, attempts);
-        iohelper::prettyprint_colored(&question, Some(&first_prefix), None, Some(Color::Cyan))?;
+        iohelper::prettyprint_colored(
+            &format!("[{}] {}", id, text), Some(&first_prefix), None, Some(Color::Cyan)
+        )?;
     }
 
     Ok(())
@@ -412,7 +418,7 @@ fn cmp_string_ignore_dot(a: &String, b: &String) -> Ordering {
 
 
 /// An alias for a commonly-used typed in comparison functions.
-type CmpQuestionResult = (f64, usize, String);
+type CmpQuestionResult = (f64, usize, String, String);
 
 
 /// Comparison function that sorts an array of question results such that the best
