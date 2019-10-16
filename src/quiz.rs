@@ -726,6 +726,9 @@ pub enum QuizOptions {
     /// Print file paths of quizzes.
     #[structopt(name = "path")]
     Path(QuizPathOptions),
+    /// Seach questions for a keyword.
+    #[structopt(name = "search")]
+    Search(QuizSearchOptions),
     /// Invoke git in the quiz folder.
     #[structopt(name = "git")]
     Git { args: Vec<String> },
@@ -854,6 +857,15 @@ pub struct QuizPathOptions {
     /// Display the path that would be used even if the quiz does not exist.
     #[structopt(short = "f", long = "force")]
     pub force: bool,
+}
+
+
+#[derive(StructOpt)]
+pub struct QuizSearchOptions {
+    /// The name of the quiz.
+    pub name: String,
+    /// The term to search for.
+    pub term: String,
 }
 
 

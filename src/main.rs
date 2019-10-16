@@ -20,7 +20,7 @@ use std::process::Command;
 use colored::*;
 use structopt::StructOpt;
 
-use iohelper::confirm;
+use iohelper::{confirm, prettyprint_colored};
 use quiz::{Quiz, QuizError, QuizResult};
 
 
@@ -57,9 +57,12 @@ fn main() {
         quiz::QuizOptions::Path(options) => {
             main_path(options)
         },
+        quiz::QuizOptions::Search(options) => {
+            main_search(options)
+        },
         quiz::QuizOptions::Git { args } => {
             main_git(args)
-        }
+        },
     };
 
     if let Err(e) = result {
@@ -164,7 +167,7 @@ pub fn main_results(options: quiz::QuizResultsOptions) -> Result<(), QuizError> 
 
     for (score, attempts, id, text) in aggregated.iter() {
         let first_prefix = format!("{:>5.1}%  of {:>2}   ", score, attempts);
-        iohelper::prettyprint_colored(
+        prettyprint_colored(
             &format!("[{}] {}", id, text), Some(&first_prefix), None, Some(Color::Cyan)
         )?;
     }
@@ -325,6 +328,25 @@ pub fn main_path(options: quiz::QuizPathOptions) -> Result<(), QuizError> {
     } else {
         Err(QuizError::QuizNotFound(options.name.to_string()))
     }
+}
+
+
+pub fn main_search(options: quiz::QuizSearchOptions) -> Result<(), QuizError> {
+    let quiz = persistence::load_quiz(&options.name)?;
+
+    for question in quiz.questions.iter() {
+        for text in question.text.iter() {
+            if text.contains(&options.term) {
+                prettyprint_colored(
+                    &text, Some(&format!("[{}] ", question.id)), None, Some(Color::Cyan)
+                )?;
+                my_println!("")?;
+                break;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 
