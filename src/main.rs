@@ -25,14 +25,9 @@ use quiz::{Quiz, QuizError, QuizResult};
 
 
 fn main() {
-    let options = parse_options();
+    require_app_dir_path();
 
-    if let Err(e) = persistence::require_app_dir_path() {
-        eprintln!("{}: {}", "Error".red(), e);
-        ::std::process::exit(2);
-    }
-
-    let result = match options {
+    let result = match parse_options() {
         quiz::QuizOptions::Take(options) => {
             main_take(options)
         },
@@ -480,4 +475,44 @@ fn cmp_results_most(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
 /// with the least attempts come first.
 fn cmp_results_least(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
     return cmp_results_most(a, b).reverse();
+}
+
+
+/// Create the application directory if it doesn't already exist, or exit with an error
+/// message if it does not exist and cannot be created.
+pub fn require_app_dir_path() {
+    if let Some(mut dirpath) = dirs::data_dir() {
+        dirpath.push("iafisher_popquiz");
+        if let Err(_) = make_directory(&dirpath) {
+            cannot_make_app_dir();
+        }
+
+        dirpath.push("results");
+        if let Err(_) = make_directory(&dirpath) {
+            cannot_make_app_dir();
+        }
+
+        dirpath.pop();
+        dirpath.push("quizzes");
+        if let Err(_) = make_directory(&dirpath) {
+            cannot_make_app_dir();
+        }
+    } else {
+        cannot_make_app_dir();
+    }
+}
+
+
+fn cannot_make_app_dir() {
+    let path = String::from(persistence::get_app_dir_path().to_string_lossy());
+    eprintln!("{}: unable to create application directory at {}", "Error".red(), path);
+    ::std::process::exit(2);
+}
+
+
+fn make_directory(path: &PathBuf) -> Result<(), std::io::Error> {
+    if !path.as_path().exists() {
+        fs::create_dir(path)?;
+    }
+    Ok(())
 }

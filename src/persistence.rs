@@ -93,24 +93,6 @@ pub fn save_results(name: &str, results: &QuizResult) -> Result<(), QuizError> {
 }
 
 
-/// Return the path to the application directory, creating it and all necessary
-/// subdirectories if they don't exist.
-pub fn require_app_dir_path() -> Result<PathBuf, QuizError> {
-    let mut dirpath = dirs::data_dir().unwrap();
-    dirpath.push("iafisher_popquiz");
-    make_directory(&dirpath).or(Err(QuizError::CannotMakeAppDir))?;
-
-    dirpath.push("results");
-    make_directory(&dirpath).or(Err(QuizError::CannotMakeAppDir))?;
-
-    dirpath.pop();
-    dirpath.push("quizzes");
-    make_directory(&dirpath).or(Err(QuizError::CannotMakeAppDir))?;
-
-    Ok(dirpath)
-}
-
-
 /// Return the path to the file where results are stored for the given quiz.
 pub fn get_results_path(quiz_name: &str) -> PathBuf {
     let mut dirpath = get_app_dir_path();
@@ -141,12 +123,4 @@ pub fn get_quiz_dir_path() -> PathBuf {
     let mut dirpath = get_app_dir_path();
     dirpath.push("quizzes");
     dirpath
-}
-
-
-fn make_directory(path: &PathBuf) -> Result<(), std::io::Error> {
-    if !path.as_path().exists() {
-        fs::create_dir(path)?;
-    }
-    Ok(())
 }

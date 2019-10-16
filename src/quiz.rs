@@ -19,8 +19,6 @@ use structopt::StructOpt;
 
 use super::iohelper::{prettyprint, prettyprint_colored, prompt};
 use super::parser;
-// TODO: Don't depend on persistence.
-use super::persistence;
 
 
 /// Represents an entire quiz.
@@ -616,8 +614,6 @@ fn cmp_questions_least(a: &&Question, b: &&Question) -> Ordering {
 
 #[derive(Debug)]
 pub enum QuizError {
-    /// For when the application directory cannot be created.
-    CannotMakeAppDir,
     /// For when the user requests a quiz that does not exist.
     QuizNotFound(String),
     /// For JSON errors.
@@ -636,12 +632,6 @@ pub enum QuizError {
 impl fmt::Display for QuizError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            QuizError::CannotMakeAppDir => {
-                // String::from is necessary here for Rust's borrow checker for some
-                // reason.
-                let path = String::from(persistence::get_app_dir_path().to_string_lossy());
-                write!(f, "unable to create application directory at {}", path)
-            },
             QuizError::QuizNotFound(ref name) => {
                 write!(f, "could not find quiz named '{}'", name)
             },
