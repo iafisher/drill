@@ -4,6 +4,8 @@
  * Author:  Ian Fisher (iafisher@protonmail.com)
  * Version: October 2019
  */
+#[macro_use]
+mod iohelper;
 mod parser;
 mod quiz;
 
@@ -156,7 +158,7 @@ pub fn main_results(options: quiz::QuizResultsOptions) -> Result<(), QuizError> 
 
     for (score, attempts, question) in aggregated.iter() {
         let first_prefix = format!("{:>5.1}%  of {:>2}   ", score, attempts);
-        quiz::prettyprint_colored(&question, Some(&first_prefix), None, Some(Color::Cyan))?;
+        iohelper::prettyprint_colored(&question, Some(&first_prefix), None, Some(Color::Cyan))?;
     }
 
     Ok(())
