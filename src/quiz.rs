@@ -243,25 +243,6 @@ fn filter_question(q: &Question, options: &QuizFilterOptions) -> bool {
         && options.exclude.iter().all(|tag| !q.tags.contains(tag))
         // If `--never` flag is present, question must not have been asked before.
         && (!options.never || q.prior_results.len() == 0)
-        && filter_question_by_keywords(q, &options.keywords)
-}
-
-/// Return `true` if the text of `q` contains all specified keywords.
-fn filter_question_by_keywords(q: &Question, keywords: &Vec<String>) -> bool {
-    for keyword in keywords.iter() {
-        let mut satisfied = false;
-        for text in q.text.iter() {
-            if text.to_lowercase().contains(keyword.to_lowercase().as_str()) {
-                satisfied = true;
-                break
-            }
-        }
-
-        if !satisfied {
-            return false;
-        }
-    }
-    true
 }
 
 
@@ -817,9 +798,6 @@ pub struct QuizFilterOptions {
     /// Only include questions that have never been asked before.
     #[structopt(long = "never")]
     pub never: bool,
-    /// Filter by keyword.
-    #[structopt(short = "k", long = "keyword")]
-    pub keywords: Vec<String>,
 }
 
 #[derive(StructOpt)]
@@ -902,7 +880,7 @@ impl QuizFilterOptions {
     #[allow(dead_code)]
     pub fn new() -> Self {
         QuizFilterOptions {
-            tags: Vec::new(), exclude: Vec::new(), never: false, keywords: Vec::new(),
+            tags: Vec::new(), exclude: Vec::new(), never: false,
         }
     }
 }
@@ -934,18 +912,6 @@ mod tests {
 
         let mut options = QuizFilterOptions::new();
         options.exclude.push(s("geography"));
-        assert!(!filter_question(&q, &options));
-    }
-
-    #[test]
-    fn can_filter_by_keyword() {
-        let q = Question::new("What is the capital of China", "Beijing");
-
-        let mut options = QuizFilterOptions::new();
-        options.keywords.push(s("china"));
-        assert!(filter_question(&q, &options));
-
-        options.keywords.push(s("river"));
         assert!(!filter_question(&q, &options));
     }
 
