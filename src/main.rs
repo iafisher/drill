@@ -102,9 +102,9 @@ fn output_results(results: &QuizResult) -> Result<(), QuizError> {
         } else {
             my_println!(" questions")?;
         }
-        my_print!("  {}", format!("{}", results.total_correct).bright_green())?;
+        my_print!("  {}", format!("{}", results.total_correct).green())?;
         my_print!(" correct\n")?;
-        my_print!("  {}", format!("{}", results.total_partially_correct).green())?;
+        my_print!("  {}", format!("{}", results.total_partially_correct).bright_green())?;
         my_print!(" partially correct\n")?;
         my_print!("  {}", format!("{}", results.total_incorrect).red())?;
         my_print!(" incorrect\n")?;
