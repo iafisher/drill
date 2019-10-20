@@ -50,6 +50,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 text: vec![entry.text.clone()],
                 answer_list: vec![split(&entry.following[0], "/")],
                 candidates: split(&choices, "/"),
+                no_credit: Vec::new(),
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
@@ -62,6 +63,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 text: vec![entry.text.clone()],
                 answer_list: vec![split(&entry.following[0], "/")],
                 candidates: Vec::new(),
+                no_credit: Vec::new(),
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
@@ -78,6 +80,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 text: vec![top],
                 answer_list: vec![bottom],
                 candidates: Vec::new(),
+                no_credit: Vec::new(),
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
@@ -96,6 +99,12 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
             false
         };
 
+        let no_credit = if let Some(_no_credit) = entry.attributes.get("nocredit") {
+            split(&_no_credit, "/")
+        } else {
+            Vec::new()
+        };
+
         if ordered {
             return Ok(Question {
                 kind: QuestionKind::OrderedListAnswer,
@@ -103,6 +112,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 text: vec![entry.text.clone()],
                 answer_list: entry.following.iter().map(|l| split(&l, "/")).collect(),
                 candidates: Vec::new(),
+                no_credit,
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),
@@ -115,6 +125,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 text: vec![entry.text.clone()],
                 answer_list: entry.following.iter().map(|l| split(&l, "/")).collect(),
                 candidates: Vec::new(),
+                no_credit,
                 prior_results: Vec::new(),
                 tags,
                 explanations: Vec::new(),

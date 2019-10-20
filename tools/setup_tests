@@ -31,12 +31,11 @@ for path in ./assets/test*; do
   newpath=$($quiz path -f "$name")
 
   if test -e "$newpath" && test -z "$force"; then
-    echo "Error: quiz '$name' already exists."
     echo
+    echo "Error: quiz '$name' already exists."
     echo "Re-run with -f to overwrite pre-existing quizzes."
-    exit 3
+  else
+    echo "Creating quiz '$name'"
+    ln -sf $(realpath "$path") "$newpath"
   fi
-
-  echo "Creating quiz '$name'"
-  cp "$path" "$newpath"
 done

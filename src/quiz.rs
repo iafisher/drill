@@ -40,6 +40,9 @@ pub struct Question {
     /// `MultipleChoice`, in which case the candidates are incorrect answers to the
     /// question.
     pub candidates: Vec<String>,
+    /// Answers which count as neither correct nor incorrect. This field is only used
+    /// when `kind` is set to `ListAnswer`.
+    pub no_credit: Vec<String>,
     /// Prior results of answering the question.
     pub prior_results: Vec<QuestionResult>,
     /// User-defined tags for the question.
@@ -179,6 +182,7 @@ impl Question {
             tags: Vec::new(),
             answer_list: answers,
             candidates: Vec::new(),
+            no_credit: Vec::new(),
             prior_results: Vec::new(),
             explanations: Vec::new(),
             location: None,
@@ -217,7 +221,7 @@ impl Question {
     /// `Flashcard`.
     fn ask_short_answer(&self) -> Result<QuestionResult, QuizError> {
         let guess = prompt("> ")?;
-        let result = guess.is_some() && self.check_any(guess.as_ref().unwrap());
+        let result = guess.is_some() && check_any(&self.answer_list, guess.as_ref().unwrap());
 
         if result {
             self.correct()?;
@@ -248,16 +252,21 @@ impl Question {
             if let Some(guess) = prompt("> ")? {
                 responses.push(guess.clone());
 
-                let index = self.check_one(&guess);
-                if index == self.answer_list.len() {
-                    self.incorrect(None, Some(&guess))?;
-                    count += 1;
-                } else if satisfied[index] {
-                    my_println!("You already said that.")?;
+                if let Some(index) = check_one(&self.answer_list, &guess) {
+                    if satisfied[index] {
+                        my_println!("You already said that.")?;
+                    } else {
+                        satisfied[index] = true;
+                        self.correct()?;
+                        count += 1;
+                    }
                 } else {
-                    satisfied[index] = true;
-                    self.correct()?;
-                    count += 1;
+                    if check(&self.no_credit, &guess) {
+                        my_println!("No credit.")?;
+                    } else {
+                        self.incorrect(None, Some(&guess))?;
+                        count += 1;
+                    }
                 }
             } else {
                 self.incorrect(None, None)?;
@@ -340,7 +349,7 @@ impl Question {
                 let index = guess.to_ascii_lowercase().as_bytes()[0];
                 if 97 <= index && index < 101 {
                     let guess = &candidates[(index - 97) as usize];
-                    if self.check_any(guess) {
+                    if check_any(&self.answer_list, guess) {
                         self.correct()?;
                         return Ok(self.result(Some(answer.clone()), 1.0));
                     } else {
@@ -423,27 +432,6 @@ impl Question {
         None
     }
 
-    /// Return `true` if `guess` matches any of the answers in `self.answer_list`.
-    fn check_any(&self, guess: &str) -> bool {
-        for answer in self.answer_list.iter() {
-            if check(answer, guess) {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Return the index of the first answer in `self.answer_list` that `guess`
-    /// matches, or `self.answer_list.len()` if `guess` satisfies none.
-    fn check_one(&self, guess: &str) -> usize {
-        for (i, answer) in self.answer_list.iter().enumerate() {
-            if check(answer, guess) {
-                return i;
-            }
-        }
-        self.answer_list.len()
-    }
-
     /// Flip flashcards. Does nothing if `self.kind` is not `Flashcard`.
     fn flip(&mut self) {
         if self.kind == QuestionKind::Flashcard {
@@ -457,6 +445,29 @@ impl Question {
             self.answer_list = vec![vec![side1]];
         }
     }
+}
+
+
+/// Return `true` if `guess` matches any of the answers in `answer_list`.
+fn check_any(answer_list: &Vec<Answer>, guess: &str) -> bool {
+    for answer in answer_list.iter() {
+        if check(answer, guess) {
+            return true;
+        }
+    }
+    false
+}
+
+
+/// Return the index of the first answer in `answer_list` that `guess` matches, or
+/// `None` if `guess` satisfies none.
+fn check_one(answer_list: &Vec<Answer>, guess: &str) -> Option<usize> {
+    for (i, answer) in answer_list.iter().enumerate() {
+        if check(answer, guess) {
+            return Some(i);
+        }
+    }
+    None
 }
 
 

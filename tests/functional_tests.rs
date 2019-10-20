@@ -76,23 +76,40 @@ fn can_take_flipped_flashcard_quiz() {
     );
 }
 
+#[test]
+fn no_credit_answers_work() {
+    let output = spawn_and_mock(
+        ".test_no_credit",
+        &["Riverside", "Ontario", "San Bernardino", "Corona", "Fontana", "no"],
+        &[],
+    );
+
+    assert_in_order(
+        &output,
+        &[
+            "Name the three largest cities of the Inland Empire.",
+            "Correct",
+            "No credit",
+            "Correct",
+            "No credit",
+            "Correct",
+            "100.0%",
+        ]
+    );
+}
+
 fn assert_in_order(mock_stdout: &str, data: &[&str]) {
     let mut last_pos = 0;
-    let mut in_order = true;
     for datum in data {
-        if let Some(pos) = mock_stdout.find(datum) {
-            if pos < last_pos {
-                in_order = false;
-                break;
-            } else {
-                last_pos = pos;
-            }
+        if let Some(pos) = mock_stdout[last_pos..].find(datum) {
+            // `pos` must be adjusted by an offset of `last_pos` because it is an index
+            // in the slice `mock_stdout[last_pos..]` but we want it to be relative to
+            // `mock_stdout`.
+            last_pos = (pos + last_pos) + datum.len();
         } else {
-            in_order = false;
-            break;
+            panic!("Missing: {:?}; Contents of stdout: {:?}", datum, mock_stdout);
         }
     }
-    assert!(in_order, "Contents of stdout: {:?}", mock_stdout);
 }
 
 fn spawn_and_mock(quiz: &str, input: &[&str], extra_args: &[&str]) -> String {

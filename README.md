@@ -75,6 +75,10 @@ consist of a key not containing whitespace, followed by a colon, followed by at 
 one non-whitespace character. The currently-recognized keys are
 
 - `choices`: Turns the question into a multiple choice question.
+- `nocredit`: Answers in this slash-separated list are counted as neither correct nor
+              incorrect, e.g. if the question is "Name the five largest countries by
+              area", you might not want to penalize naming the sixth largest country.
+              Only recognized for questions with multiple answers.
 - `ordered`: Answers must be supplied in the order given in the quiz file.
 - `tags`: Comma-separated list of tags.
 
