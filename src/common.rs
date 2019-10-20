@@ -127,20 +127,8 @@ pub struct TakeOptions {
     #[structopt(default_value = "main")]
     pub name: String,
     /// Limit the total number of questions.
-    #[structopt(short = "n")]
-    pub num_to_ask: Option<usize>,
-    /// Choose from the `n` questions with the highest previous scores.
-    #[structopt(long = "best")]
-    pub best: Option<usize>,
-    /// Choose from the `n` questions with the lowest previous scores.
-    #[structopt(long = "worst")]
-    pub worst: Option<usize>,
-    /// Choose from the `n` questions with the most previous attempts.
-    #[structopt(long = "most")]
-    pub most: Option<usize>,
-    /// Choose from the `n` questions with the least previous attempts.
-    #[structopt(long = "least")]
-    pub least: Option<usize>,
+    #[structopt(short = "n", default_value = "20")]
+    pub num_to_ask: usize,
     /// Save results without prompting.
     #[structopt(long = "save")]
     pub save: bool,
@@ -178,9 +166,6 @@ pub struct FilterOptions {
     /// Exclude questions with the given tag.
     #[structopt(long = "exclude")]
     pub exclude: Vec<String>,
-    /// Only include questions that have never been asked before.
-    #[structopt(long = "never")]
-    pub never: bool,
 }
 
 #[derive(StructOpt)]
@@ -260,9 +245,8 @@ impl TakeOptions {
     #[allow(dead_code)]
     pub fn new() -> Self {
         TakeOptions {
-            name: String::new(), num_to_ask: None, best: None, worst: None, most: None,
-            least: None, save: false, no_color: true, in_order: false, flip: false,
-            filter_opts: FilterOptions::new()
+            name: String::new(), num_to_ask: 20, save: false, no_color: true,
+            flip: false, in_order: false, filter_opts: FilterOptions::new()
         }
     }
 }
@@ -272,7 +256,7 @@ impl FilterOptions {
     #[allow(dead_code)]
     pub fn new() -> Self {
         FilterOptions {
-            tags: Vec::new(), exclude: Vec::new(), never: false,
+            tags: Vec::new(), exclude: Vec::new(),
         }
     }
 }

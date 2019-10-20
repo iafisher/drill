@@ -1,16 +1,35 @@
 /**
- * Choose the most optimal questions.
+ * Choose the most optimal questions to ask based on past results.
+ *
+ * Bucket 1: don't know at all, should ask immediately
+ * Bucket 2: just learned, should ask within a day
+ * Bucket 3: should ask within a week
+ * Bucket 4: ask once a month or so
+ *
+ * Each quiz will consist roughly of 50% questions from Bucket 1, 20% questions each
+ * from Bucket 2 and Bucket 3, and 10% questions from Bucket 4.
+ *
+ * TODO: Take time asked into account.
  *
  * Author:  Ian Fisher (iafisher@protonmail.com)
  * Version: October 2019
  */
-use std::cmp::Ordering;
+use std::cmp;
 
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 
 use super::common::{FilterOptions, TakeOptions};
 use super::quiz::{Question, QuestionResult};
+
+
+// The percentage of questions that come from each bucket, expressed as integer
+// fractions, e.g. 2 means 1/2, 5 means 1/5 etc.
+const BUCKET_ALLOCATION: [usize; 4] = [2, 5, 5, 10];
+// What percentage correct for a question to move up a bucket.
+const UP_THRESHOLD: f64 = 0.9;
+// What percentage correct for a question to move down a bucket.
+const DOWN_THRESHOLD: f64 = 0.4;
 
 
 /// Choose a set of questions, filtered by the command-line options.
@@ -22,50 +41,59 @@ pub fn choose_questions<'a>(questions: &'a Vec<Question>, options: &TakeOptions)
         }
     }
 
-    // --best and --worst can only be applied to questions with at least one
-    // scored response, so we remove questions with no scored responses here.
-    if options.best.is_some() || options.worst.is_some() {
-        let mut i = 0;
-        while i < candidates.len() {
-            if aggregate_results(&candidates[i].prior_results).is_none() {
-                candidates.remove(i);
-            } else {
-                i += 1;
-            }
+    let mut buckets = Vec::new();
+    for _ in 0..BUCKET_ALLOCATION.len() {
+        buckets.push(Vec::new());
+    }
+
+    for question in candidates.iter() {
+        buckets[get_bucket(question)].push(question);
+    }
+
+    let mut rng = thread_rng();
+    for bucket in buckets.iter_mut() {
+        bucket.shuffle(&mut rng);
+    }
+
+    let mut chosen = Vec::new();
+    let mut cumulative_allocation = 0;
+    for i in 0..BUCKET_ALLOCATION.len() {
+        let mut allocation = options.num_to_ask / BUCKET_ALLOCATION[i];
+        if i == BUCKET_ALLOCATION.len() - 1 {
+            allocation = options.num_to_ask - chosen.len();
+        } else {
+            // If previous buckets didn't have enough questions to fill their
+            // allocations, spill over the extra question allocation into this bucket.
+            allocation += cumulative_allocation - chosen.len();
+        }
+        allocation = cmp::min(allocation, buckets[i].len());
+        for j in 0..allocation {
+            chosen.push(*buckets[i][j]);
+        }
+        cumulative_allocation += allocation;
+    }
+
+    if options.in_order {
+        chosen.sort_by(cmp_questions_in_order);
+    } else {
+        chosen.shuffle(&mut rng);
+    }
+
+    chosen
+}
+
+
+fn get_bucket(question: &Question) -> usize {
+    let mut bucket = 0;
+    for result in question.prior_results.iter() {
+        // 90% and 40% are arbitrary thresholds that I may need to adjust.
+        if result.score >= UP_THRESHOLD && bucket < BUCKET_ALLOCATION.len() - 1 {
+            bucket += 1;
+        } else if result.score <= DOWN_THRESHOLD  && bucket > 0 {
+            bucket -= 1;
         }
     }
-
-    if let Some(best) = options.best {
-        candidates.sort_by(cmp_questions_best);
-        candidates.truncate(best);
-    } else if let Some(worst) = options.worst {
-        candidates.sort_by(cmp_questions_worst);
-        candidates.truncate(worst);
-    }
-
-    if let Some(most) = options.most {
-        candidates.sort_by(cmp_questions_most);
-        candidates.truncate(most);
-    } else if let Some(least) = options.least {
-        candidates.sort_by(cmp_questions_least);
-        candidates.truncate(least);
-    }
-
-    if !options.in_order {
-        let mut rng = thread_rng();
-        candidates.shuffle(&mut rng);
-    }
-
-    // Important that this operation comes after the --most and --least flags have
-    // been applied, e.g. if --most 50 -n 10 we want to choose 10 questions among
-    // the 50 most asked, not the most asked among 10 random questions.
-    //
-    // Also important that this occurs after shuffling.
-    if let Some(num_to_ask) = options.num_to_ask {
-        candidates.truncate(num_to_ask);
-    }
-
-    candidates
+    bucket
 }
 
 
@@ -75,8 +103,6 @@ pub fn filter_question(q: &Question, options: &FilterOptions) -> bool {
     (options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag)))
         // `q` must not have any excluded tags.
         && options.exclude.iter().all(|tag| !q.tags.contains(tag))
-        // If `--never` flag is present, question must not have been asked before.
-        && (!options.never || q.prior_results.len() == 0)
 }
 
 
@@ -98,48 +124,26 @@ pub fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
 }
 
 
-/// Comparison function that sorts an array of `Question` objects such that the
-/// questions with the highest previous scores come first.
-fn cmp_questions_best(a: &&Question, b: &&Question) -> Ordering {
-    let a_score = aggregate_results(&a.prior_results).unwrap_or(0.0);
-    let b_score = aggregate_results(&b.prior_results).unwrap_or(0.0);
-
-    if a_score > b_score {
-        Ordering::Less
-    } else if a_score < b_score {
-        Ordering::Greater
+/// Comparison function that sorts an array of `Question` objects in the order the
+/// questions appeared in the original quiz file based on the `location` field.
+fn cmp_questions_in_order(a: &&Question, b: &&Question) -> cmp::Ordering {
+    if let Some(a_location) = &a.location {
+        if let Some(b_location) = &b.location {
+            if a_location.line < b_location.line {
+                cmp::Ordering::Less
+            } else if a_location.line > b_location.line {
+                cmp::Ordering::Greater
+            } else {
+                // This case should never happen because two questions can't be defined
+                // on the same line.
+                cmp::Ordering::Equal
+            }
+        } else {
+            cmp::Ordering::Greater
+        }
     } else {
-        Ordering::Equal
+        cmp::Ordering::Less
     }
-}
-
-
-/// Comparison function that sorts an array of `Question` objects such that the
-/// questions with the lowest previous scores come first.
-fn cmp_questions_worst(a: &&Question, b: &&Question) -> Ordering {
-    return cmp_questions_best(a, b).reverse();
-}
-
-
-/// Comparison function that sorts an array of `Question` objects such that the
-/// questions with the most responses come first.
-fn cmp_questions_most(a: &&Question, b: &&Question) -> Ordering {
-    let a_results = a.prior_results.len();
-    let b_results = b.prior_results.len();
-
-    if a_results > b_results {
-        Ordering::Less
-    } else if a_results < b_results {
-        Ordering::Greater
-    } else {
-        Ordering::Equal
-    }
-}
-
-/// Comparison function that sorts an array of `Question` objects such that the
-/// questions with the least responses come first.
-fn cmp_questions_least(a: &&Question, b: &&Question) -> Ordering {
-    return cmp_questions_most(a, b).reverse();
 }
 
 
