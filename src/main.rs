@@ -10,6 +10,7 @@ mod iohelper;
 mod parser;
 mod persistence;
 mod quiz;
+mod repetition;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -120,8 +121,13 @@ pub fn main_count(options: common::CountOptions) -> Result<(), QuizError> {
     if options.list_tags {
         list_tags(&quiz)?;
     } else {
-        let filtered = quiz.filter_questions(&options.filter_opts);
-        my_println!("{}", filtered.len())?;
+        let mut count = 0;
+        for question in quiz.questions.iter() {
+            if !repetition::filter_question(&question, &options.filter_opts) {
+                count += 1;
+            }
+        }
+        my_println!("{}", count)?;
     }
     Ok(())
 }
@@ -140,7 +146,7 @@ pub fn main_results(options: common::ResultsOptions) -> Result<(), QuizError> {
     let mut aggregated: Vec<(f64, usize, String, String)> = Vec::new();
     for (key, result) in results.iter() {
         // Only include questions that have scored results.
-        if let Some(score) = quiz::aggregate_results(&result) {
+        if let Some(score) = repetition::aggregate_results(&result) {
             if let Some(pos) = quiz.questions.iter().position(|q| q.id == *key) {
                 let text = &quiz.questions[pos].text[0];
                 aggregated.push((score, result.len(), key.clone(), text.clone()));
