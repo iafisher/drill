@@ -58,11 +58,20 @@ pub fn prompt(message: &str) -> Result<Option<String>, QuizError> {
 
 /// Prompt the user with a yes-no question and return `true` if they enter yes.
 pub fn confirm(message: &str) -> bool {
-    match prompt(message) {
-        Ok(Some(response)) => {
-            response.trim_start().to_lowercase().starts_with("y")
-        },
-        _ => false
+    loop {
+        match prompt(message) {
+            Ok(Some(response)) => {
+                let norm = response.trim_start().to_lowercase();
+                if norm.starts_with("y") {
+                    return true;
+                } else if norm.starts_with("n") {
+                    return false;
+                }
+            },
+            _ => {
+                return false;
+            }
+        }
     }
 }
 
