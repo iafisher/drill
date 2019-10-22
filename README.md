@@ -13,7 +13,7 @@ $ cargo install --git https://github.com/iafisher/popquiz.git
 ```
 
 Make a directory for your quizzes and create a quiz for yourself following the format
-described in the section below.
+described in the section below. You can also look at the `sample_quiz` file.
 
 Now, run
 
