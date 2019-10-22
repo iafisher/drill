@@ -64,7 +64,7 @@ pub fn main_take(dir: &Path, options: common::TakeOptions) -> Result<(), QuizErr
     output_results(&results)?;
 
     if results.total > 0 && (options.save || confirm("\nSave results? ")) {
-        persistence::save_results(&options.name, &results)?;
+        persistence::save_results(dir, &options.name, &results)?;
     }
     Ok(())
 }

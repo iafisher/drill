@@ -21,7 +21,8 @@ Now, run
 $ popquiz -d path/to/quizzes take your-quiz-name
 ```
 
-to take your quiz!
+to take your quiz! The program will create a `results` directory alongside your quiz
+to keep track of your results over time.
 
 You can also try out these commands:
 ```shell

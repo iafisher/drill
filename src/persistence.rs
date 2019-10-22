@@ -51,10 +51,16 @@ pub fn load_results(dir: &Path, name: &str) -> Result<StoredResults, QuizError> 
 
 /// Save `results` to a file in the popquiz application's data directory, appending the
 /// results if previous results have been saved.
-pub fn save_results(name: &str, results: &QuizResult) -> Result<(), QuizError> {
+pub fn save_results(dir: &Path, name: &str, results: &QuizResult) -> Result<(), QuizError> {
+    let mut dir_mutable = dir.to_path_buf();
+    dir_mutable.push("results");
+    if !dir_mutable.as_path().exists() {
+        fs::create_dir(&dir_mutable).map_err(QuizError::Io)?;
+    }
+
     // Load old data, if it exists.
-    let path = get_results_path(name);
-    let data = fs::read_to_string(&path);
+    dir_mutable.push(format!("{}_results.json", name));
+    let data = fs::read_to_string(&dir_mutable);
     let mut hash: BTreeMap<String, Vec<QuestionResult>> = match data {
         Ok(ref data) => {
             serde_json::from_str(&data)
@@ -76,8 +82,8 @@ pub fn save_results(name: &str, results: &QuizResult) -> Result<(), QuizError> {
 
     let serialized_results = serde_json::to_string_pretty(&hash)
         .map_err(QuizError::Json)?;
-    fs::write(&path, serialized_results)
-        .or(Err(QuizError::CannotWriteToFile(path.clone())))?;
+    fs::write(&dir_mutable, serialized_results)
+        .or(Err(QuizError::CannotWriteToFile(dir_mutable.clone())))?;
     Ok(())
 }
 
