@@ -27,7 +27,6 @@ pub enum QuizError {
     Json(serde_json::Error),
     /// For when the user's system editor cannot be opened.
     CannotOpenEditor,
-    CannotRunGit,
     CannotWriteToFile(PathBuf),
     Io(io::Error),
     ReadlineInterrupted,
@@ -47,9 +46,6 @@ impl fmt::Display for QuizError {
             },
             QuizError::CannotOpenEditor => {
                 write!(f, "unable to open system editor")
-            },
-            QuizError::CannotRunGit => {
-                write!(f, "unable to run git (is it installed and on the PATH?)")
             },
             QuizError::CannotWriteToFile(ref path) => {
                 write!(f, "cannot write to file '{}'", path.to_string_lossy())
@@ -116,9 +112,6 @@ pub enum Options {
     /// Seach questions for a keyword.
     #[structopt(name = "search")]
     Search(SearchOptions),
-    /// Invoke git in the quiz folder.
-    #[structopt(name = "git")]
-    Git { args: Vec<String> },
 }
 
 #[derive(StructOpt)]

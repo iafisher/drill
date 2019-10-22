@@ -59,9 +59,6 @@ fn main() {
         common::Options::Search(options) => {
             main_search(options)
         },
-        common::Options::Git { args } => {
-            main_git(args)
-        },
     };
 
     if let Err(e) = result {
@@ -202,11 +199,6 @@ pub fn main_edit(options: common::EditOptions) -> Result<(), QuizError> {
         break;
     }
 
-    if !options.results && path.exists() && is_git_repo() {
-        git(&["add", &path.as_path().to_string_lossy()])?;
-        git(&["commit", "-m", &format!("Edit '{}'", options.name)])?;
-    }
-
     Ok(())
 }
 
@@ -239,11 +231,6 @@ pub fn main_rm(options: common::RmOptions) -> Result<(), QuizError> {
             fs::remove_file(&path).map_err(QuizError::Io)?;
         }
 
-        if is_git_repo() {
-            git(&["rm", &path.as_path().to_string_lossy()])?;
-            git(&["commit", "-m", &format!("Remove '{}'", options.name)])?;
-        }
-
         Ok(())
     } else {
         Err(QuizError::QuizNotFound(options.name.clone()))
@@ -260,18 +247,6 @@ pub fn main_mv(options: common::MvOptions) -> Result<(), QuizError> {
     let new_results_path = persistence::get_results_path(&options.new_name);
     if results_path.exists() {
         fs::rename(&results_path, &new_results_path).map_err(QuizError::Io)?;
-    }
-
-    if is_git_repo() {
-        git(&["rm", &quiz_path.as_path().to_string_lossy()])?;
-        git(&["add", &new_quiz_path.as_path().to_string_lossy()])?;
-        git(
-            &[
-                "commit",
-                "-m",
-                &format!("Rename '{}' to '{}'", options.old_name, options.new_name)
-            ]
-        )?;
     }
 
     Ok(())
@@ -354,15 +329,6 @@ pub fn main_search(options: common::SearchOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_git(args: Vec<String>) -> Result<(), QuizError> {
-    let mut args_as_str = Vec::new();
-    for arg in args.iter() {
-        args_as_str.push(arg.as_str());
-    }
-    git(&args_as_str[..])
-}
-
-
 /// Parse command-line arguments.
 pub fn parse_options() -> common::Options {
     let options = common::Options::from_args();
@@ -404,26 +370,6 @@ fn list_tags(quiz: &Quiz) -> Result<(), QuizError> {
             my_println!("  {} ({})", tag, count)?;
         }
     }
-    Ok(())
-}
-
-
-/// Return `true` if the quiz directory is a git repository.
-fn is_git_repo() -> bool {
-    let mut dirpath = persistence::get_quiz_dir_path();
-    dirpath.push(".git");
-    dirpath.exists()
-}
-
-
-fn git(args: &[&str]) -> Result<(), QuizError> {
-    let dir = persistence::get_quiz_dir_path();
-    let mut child = Command::new("git")
-        .args(args)
-        .current_dir(dir)
-        .spawn()
-        .or(Err(QuizError::CannotRunGit))?;
-    child.wait().map_err(QuizError::Io)?;
     Ok(())
 }
 
