@@ -89,7 +89,7 @@ pub struct QuestionResult {
     pub score: f64,
 
     // It would be convenient to include a reference to the `Question` object as a field
-    // of this struct, but Rust's lifetime makes it more difficult than it's worth.
+    // of this struct, but Rust's lifetimes make it more difficult than it's worth.
 }
 
 

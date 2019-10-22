@@ -126,21 +126,21 @@ pub struct TakeOptions {
     /// Name of the quiz to take.
     #[structopt(default_value = "main")]
     pub name: String,
-    /// Limit the total number of questions.
-    #[structopt(short = "n", default_value = "20")]
-    pub num_to_ask: usize,
-    /// Save results without prompting.
-    #[structopt(long = "save")]
-    pub save: bool,
-    /// Do not emit colorized output.
-    #[structopt(long = "no-color")]
-    pub no_color: bool,
-    /// Ask the questions in the order they appear in the quiz file.
-    #[structopt(long = "in-order")]
-    pub in_order: bool,
     /// Flip flashcards.
     #[structopt(long = "flip")]
     pub flip: bool,
+    /// Ask the questions in the order they appear in the quiz file.
+    #[structopt(long = "in-order")]
+    pub in_order: bool,
+    /// Limit the total number of questions.
+    #[structopt(short = "n", default_value = "20")]
+    pub num_to_ask: usize,
+    /// Do not emit colorized output.
+    #[structopt(long = "no-color")]
+    pub no_color: bool,
+    /// Save results without prompting.
+    #[structopt(long = "save")]
+    pub save: bool,
     #[structopt(flatten)]
     pub filter_opts: FilterOptions,
 }
@@ -160,12 +160,12 @@ pub struct CountOptions {
 /// These filtering options are shared between the `take` and `count` subcommands.
 #[derive(StructOpt)]
 pub struct FilterOptions {
-    /// Only include questions with the given tag.
-    #[structopt(long = "tag")]
-    pub tags: Vec<String>,
     /// Exclude questions with the given tag.
     #[structopt(long = "exclude")]
     pub exclude: Vec<String>,
+    /// Only include questions with the given tag.
+    #[structopt(long = "tag")]
+    pub tags: Vec<String>,
 }
 
 #[derive(StructOpt)]
@@ -201,12 +201,12 @@ pub struct ResultsOptions {
     /// The name of the quiz for which to fetch the results.
     #[structopt(default_value = "main")]
     pub name: String,
-    /// One of 'best', 'worst', 'most' or 'least'. Defaults to 'best'.
-    #[structopt(short = "s", long = "sort", default_value = "best")]
-    pub sort: String,
     /// Only show the first `n` results.
     #[structopt(short = "n")]
     pub num_to_show: Option<usize>,
+    /// One of 'best', 'worst', 'most' or 'least'. Defaults to 'best'.
+    #[structopt(short = "s", long = "sort", default_value = "best")]
+    pub sort: String,
 }
 
 
@@ -223,12 +223,12 @@ pub struct PathOptions {
     /// The name of the quiz.
     #[structopt(default_value = "main")]
     pub name: String,
-    /// Show the path to the results file instead of the quiz file.
-    #[structopt(short = "r", long = "results")]
-    pub results: bool,
     /// Display the path that would be used even if the quiz does not exist.
     #[structopt(short = "f", long = "force")]
     pub force: bool,
+    /// Show the path to the results file instead of the quiz file.
+    #[structopt(short = "r", long = "results")]
+    pub results: bool,
 }
 
 
