@@ -33,7 +33,7 @@ pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
             }
         }
     }
-    Ok(Quiz { default_kind: None, instructions: None, questions })
+    Ok(Quiz { instructions: None, questions })
 }
 
 fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {

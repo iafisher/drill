@@ -19,7 +19,6 @@ use super::repetition;
 /// Represents an entire quiz.
 #[derive(Debug)]
 pub struct Quiz {
-    pub default_kind: Option<String>,
     pub instructions: Option<String>,
     pub questions: Vec<Question>,
 }
