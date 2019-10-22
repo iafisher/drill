@@ -7,7 +7,7 @@
  */
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::common::QuizError;
 use super::parser;
@@ -85,37 +85,4 @@ pub fn save_results(dir: &Path, name: &str, results: &QuizResult) -> Result<(), 
     fs::write(&dir_mutable, serialized_results)
         .or(Err(QuizError::CannotWriteToFile(dir_mutable.clone())))?;
     Ok(())
-}
-
-
-/// Return the path to the file where results are stored for the given quiz.
-pub fn get_results_path(quiz_name: &str) -> PathBuf {
-    let mut dirpath = get_app_dir_path();
-    dirpath.push("results");
-    dirpath.push(format!("{}_results.json", quiz_name));
-    dirpath
-}
-
-
-/// Return the path to the file where the given quiz is stored.
-pub fn get_quiz_path(quiz_name: &str) -> PathBuf {
-    let mut dirpath = get_quiz_dir_path();
-    dirpath.push(quiz_name);
-    dirpath
-}
-
-
-/// Return the path to the application directory.
-pub fn get_app_dir_path() -> PathBuf {
-    let mut dirpath = dirs::data_dir().unwrap();
-    dirpath.push("iafisher_popquiz");
-    dirpath
-}
-
-
-/// Return the path to the quiz directory.
-pub fn get_quiz_dir_path() -> PathBuf {
-    let mut dirpath = get_app_dir_path();
-    dirpath.push("quizzes");
-    dirpath
 }
