@@ -25,8 +25,6 @@ pub enum QuizError {
     QuizNotFound(String),
     /// For JSON errors.
     Json(serde_json::Error),
-    /// For when the user's system editor cannot be opened.
-    CannotOpenEditor,
     CannotWriteToFile(PathBuf),
     Io(io::Error),
     ReadlineInterrupted,
@@ -43,9 +41,6 @@ impl fmt::Display for QuizError {
             },
             QuizError::Json(ref err) => {
                 write!(f, "could not parse JSON ({})", err)
-            },
-            QuizError::CannotOpenEditor => {
-                write!(f, "unable to open system editor")
             },
             QuizError::CannotWriteToFile(ref path) => {
                 write!(f, "cannot write to file '{}'", path.to_string_lossy())
@@ -84,7 +79,19 @@ impl error::Error for QuizError {
 /// Holds the command-line configuration for the application.
 #[derive(StructOpt)]
 #[structopt(name = "popquiz", about = "Take quizzes from the command line.")]
-pub enum Options {
+pub struct Options {
+    /// Look for quizzes in a particular directory.
+    #[structopt(short = "d", long = "directory")]
+    pub directory: Option<PathBuf>,
+    /// Do not emit colorized output.
+    #[structopt(long = "no-color")]
+    pub no_color: bool,
+    #[structopt(subcommand)]
+    pub cmd: Command,
+}
+
+#[derive(StructOpt)]
+pub enum Command {
     /// Take a quiz.
     #[structopt(name = "take")]
     Take(TakeOptions),
@@ -94,21 +101,6 @@ pub enum Options {
     /// Report results of previous attempts.
     #[structopt(name = "results")]
     Results(ResultsOptions),
-    /// Edit or create a quiz.
-    #[structopt(name = "edit")]
-    Edit(EditOptions),
-    /// Delete a quiz.
-    #[structopt(name = "rm")]
-    Rm(RmOptions),
-    /// Rename a quiz.
-    #[structopt(name = "mv")]
-    Mv(MvOptions),
-    /// List all available quizzes.
-    #[structopt(name = "ls")]
-    Ls(LsOptions),
-    /// Print file paths of quizzes.
-    #[structopt(name = "path")]
-    Path(PathOptions),
     /// Seach questions for a keyword.
     #[structopt(name = "search")]
     Search(SearchOptions),
@@ -128,9 +120,6 @@ pub struct TakeOptions {
     /// Limit the total number of questions.
     #[structopt(short = "n", default_value = "20")]
     pub num_to_ask: usize,
-    /// Do not emit colorized output.
-    #[structopt(long = "no-color")]
-    pub no_color: bool,
     /// Save results without prompting.
     #[structopt(long = "save")]
     pub save: bool,
@@ -162,34 +151,6 @@ pub struct FilterOptions {
 }
 
 #[derive(StructOpt)]
-pub struct EditOptions {
-    /// The name of the quiz to edit.
-    #[structopt(default_value = "main")]
-    pub name: String,
-    /// Edit the results file rather than the quiz itself.
-    #[structopt(short = "r", long = "results")]
-    pub results: bool,
-}
-
-#[derive(StructOpt)]
-pub struct RmOptions {
-    /// The name of the quiz to delete.
-    #[structopt(default_value = "main")]
-    pub name: String,
-    /// Delete without prompting for confirmation.
-    #[structopt(short = "f", long = "force")]
-    pub force: bool,
-}
-
-#[derive(StructOpt)]
-pub struct MvOptions {
-    /// The old name of the quiz to rename.
-    pub old_name: String,
-    /// The new name.
-    pub new_name: String,
-}
-
-#[derive(StructOpt)]
 pub struct ResultsOptions {
     /// The name of the quiz for which to fetch the results.
     #[structopt(default_value = "main")]
@@ -201,29 +162,6 @@ pub struct ResultsOptions {
     #[structopt(short = "s", long = "sort", default_value = "best")]
     pub sort: String,
 }
-
-
-#[derive(StructOpt)]
-pub struct LsOptions {
-    /// List quizzes whose name begins with a period.
-    #[structopt(short = "a", long = "all")]
-    pub all: bool,
-}
-
-
-#[derive(StructOpt)]
-pub struct PathOptions {
-    /// The name of the quiz.
-    #[structopt(default_value = "main")]
-    pub name: String,
-    /// Display the path that would be used even if the quiz does not exist.
-    #[structopt(short = "f", long = "force")]
-    pub force: bool,
-    /// Show the path to the results file instead of the quiz file.
-    #[structopt(short = "r", long = "results")]
-    pub results: bool,
-}
-
 
 #[derive(StructOpt)]
 pub struct SearchOptions {
@@ -238,8 +176,8 @@ impl TakeOptions {
     #[allow(dead_code)]
     pub fn new() -> Self {
         TakeOptions {
-            name: String::new(), num_to_ask: 20, save: false, no_color: true,
-            flip: false, in_order: false, filter_opts: FilterOptions::new()
+            name: String::new(), num_to_ask: 20, save: false, flip: false,
+            in_order: false, filter_opts: FilterOptions::new()
         }
     }
 }

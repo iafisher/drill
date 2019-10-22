@@ -14,50 +14,37 @@ mod repetition;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::fs;
 use std::io;
 use std::io::Write;
-use std::path::PathBuf;
-use std::process::Command;
+use std::path::{Path, PathBuf};
 
 use colored::*;
 use structopt::StructOpt;
 
-use common::QuizError;
+use common::{Command, QuizError, Options};
 use iohelper::{confirm, prettyprint_colored};
 use quiz::{Quiz, QuizResult};
 
 
 fn main() {
-    require_app_dir_path();
+    let options = parse_options();
+    if options.no_color {
+        colored::control::set_override(false);
+    }
+    let directory = options.directory.unwrap_or(PathBuf::from("."));
 
-    let result = match parse_options() {
-        common::Options::Take(options) => {
-            main_take(options)
+    let result = match options.cmd {
+        Command::Take(options) => {
+            main_take(&directory.as_path(), options)
         },
-        common::Options::Count(options) => {
-            main_count(options)
+        Command::Count(options) => {
+            main_count(&directory.as_path(), options)
         },
-        common::Options::Results(options) => {
-            main_results(options)
+        Command::Results(options) => {
+            main_results(&directory.as_path(), options)
         },
-        common::Options::Edit(options) => {
-            main_edit(options)
-        },
-        common::Options::Rm(options) => {
-            main_rm(options)
-        },
-        common::Options::Mv(options) => {
-            main_mv(options)
-        },
-        common::Options::Ls(options) => {
-            main_ls(options)
-        },
-        common::Options::Path(options) => {
-            main_path(options)
-        },
-        common::Options::Search(options) => {
-            main_search(options)
+        Command::Search(options) => {
+            main_search(&directory.as_path(), options)
         },
     };
 
@@ -71,12 +58,8 @@ fn main() {
 
 
 /// The main function for the `take` subcommand.
-pub fn main_take(options: common::TakeOptions) -> Result<(), QuizError> {
-    if options.no_color {
-        colored::control::set_override(false);
-    }
-
-    let mut quiz = persistence::load_quiz(&options.name)?;
+pub fn main_take(dir: &Path, options: common::TakeOptions) -> Result<(), QuizError> {
+    let mut quiz = persistence::load_quiz(dir, &options.name)?;
     let results = quiz.take(&options)?;
     output_results(&results)?;
 
@@ -113,8 +96,8 @@ fn output_results(results: &QuizResult) -> Result<(), QuizError> {
 
 
 /// The main function for the `count` subcommand.
-pub fn main_count(options: common::CountOptions) -> Result<(), QuizError> {
-    let quiz = persistence::load_quiz(&options.name)?;
+pub fn main_count(dir: &Path, options: common::CountOptions) -> Result<(), QuizError> {
+    let quiz = persistence::load_quiz(dir, &options.name)?;
     if options.list_tags {
         list_tags(&quiz)?;
     } else {
@@ -131,9 +114,9 @@ pub fn main_count(options: common::CountOptions) -> Result<(), QuizError> {
 
 
 /// The main function for the `results` subcommand.
-pub fn main_results(options: common::ResultsOptions) -> Result<(), QuizError> {
-    let quiz = persistence::load_quiz(&options.name)?;
-    let results = persistence::load_results(&options.name)?;
+pub fn main_results(dir: &Path, options: common::ResultsOptions) -> Result<(), QuizError> {
+    let quiz = persistence::load_quiz(dir, &options.name)?;
+    let results = persistence::load_results(dir, &options.name)?;
 
     if results.len() == 0 {
         my_println!("No results have been recorded for this quiz.")?;
@@ -177,141 +160,8 @@ pub fn main_results(options: common::ResultsOptions) -> Result<(), QuizError> {
 }
 
 
-pub fn main_edit(options: common::EditOptions) -> Result<(), QuizError> {
-    let path = if options.results {
-        persistence::get_results_path(&options.name)
-    } else {
-        persistence::get_quiz_path(&options.name)
-    };
-
-    loop {
-        launch_editor(&path, None)?;
-
-        if !options.results && path.exists() {
-            // Parse it again to make sure it's okay.
-            if let Err(e) = parser::parse(&path) {
-                eprintln!("{}: {}", "Error".red(), e);
-                if !confirm("Do you want to save anyway? ") {
-                    continue;
-                }
-            }
-        }
-        break;
-    }
-
-    Ok(())
-}
-
-
-/// Spawn an editor in a child process.
-pub fn launch_editor(path: &PathBuf, line: Option<usize>) -> Result<(), QuizError> {
-    let editor = ::std::env::var("EDITOR").unwrap_or(String::from("nano"));
-    let mut cmd = Command::new(&editor);
-    cmd.arg(&path);
-
-    if editor == "vim" {
-        if let Some(line) = line {
-            cmd.arg(format!("+{}", line));
-        } else {
-            cmd.arg("+");
-        }
-    }
-
-    let mut child = cmd.spawn().or(Err(QuizError::CannotOpenEditor))?;
-    child.wait().or(Err(QuizError::CannotOpenEditor))?;
-    Ok(())
-}
-
-
-pub fn main_rm(options: common::RmOptions) -> Result<(), QuizError> {
-    let path = persistence::get_quiz_path(&options.name);
-    if path.exists() {
-        let ask_prompt = "Are you sure you want to delete the quiz? ";
-        if options.force || confirm(ask_prompt) {
-            fs::remove_file(&path).map_err(QuizError::Io)?;
-        }
-
-        Ok(())
-    } else {
-        Err(QuizError::QuizNotFound(options.name.clone()))
-    }
-}
-
-
-pub fn main_mv(options: common::MvOptions) -> Result<(), QuizError> {
-    let quiz_path = persistence::get_quiz_path(&options.old_name);
-    let new_quiz_path = persistence::get_quiz_path(&options.new_name);
-    fs::rename(&quiz_path, &new_quiz_path).map_err(QuizError::Io)?;
-
-    let results_path = persistence::get_results_path(&options.old_name);
-    let new_results_path = persistence::get_results_path(&options.new_name);
-    if results_path.exists() {
-        fs::rename(&results_path, &new_results_path).map_err(QuizError::Io)?;
-    }
-
-    Ok(())
-}
-
-
-pub fn main_ls(options: common::LsOptions) -> Result<(), QuizError> {
-    let mut dirpath = persistence::get_app_dir_path();
-    dirpath.push("quizzes");
-
-    let mut quiz_names = Vec::new();
-    if let Ok(iter) = dirpath.read_dir() {
-        for entry in iter {
-            if let Ok(entry) = entry {
-                if let Ok(file_type) = entry.file_type() {
-                    // For example, a .git entry.
-                    if file_type.is_dir() {
-                        continue;
-                    }
-                }
-
-                if let Some(name) = entry.path().file_name() {
-                    if name == ".gitignore" {
-                        continue;
-                    }
-                    quiz_names.push(String::from(name.to_string_lossy()));
-                }
-            }
-        }
-    }
-
-    if quiz_names.len() > 0 {
-        quiz_names.sort_by(cmp_string_ignore_dot);
-        my_println!("Available quizzes:")?;
-        for name in quiz_names.iter() {
-            if !name.starts_with(".") || options.all {
-                my_println!("  {}", name)?;
-            }
-        }
-    } else {
-        my_println!("No quizzes found.")?;
-    }
-
-    Ok(())
-}
-
-
-pub fn main_path(options: common::PathOptions) -> Result<(), QuizError> {
-    let path = if options.results {
-        persistence::get_results_path(&options.name)
-    } else {
-        persistence::get_quiz_path(&options.name)
-    };
-
-    if path.exists() || options.force {
-        my_println!("{}", path.as_path().to_string_lossy())?;
-        Ok(())
-    } else {
-        Err(QuizError::QuizNotFound(options.name.to_string()))
-    }
-}
-
-
-pub fn main_search(options: common::SearchOptions) -> Result<(), QuizError> {
-    let quiz = persistence::load_quiz(&options.name)?;
+pub fn main_search(dir: &Path, options: common::SearchOptions) -> Result<(), QuizError> {
+    let quiz = persistence::load_quiz(dir, &options.name)?;
 
     for question in quiz.questions.iter() {
         for text in question.text.iter() {
@@ -331,9 +181,9 @@ pub fn main_search(options: common::SearchOptions) -> Result<(), QuizError> {
 
 /// Parse command-line arguments.
 pub fn parse_options() -> common::Options {
-    let options = common::Options::from_args();
+    let options = Options::from_args();
 
-    if let common::Options::Results(options) = &options {
+    if let Command::Results(options) = &options.cmd {
         let s = &options.sort;
         if s != "most" && s != "least" && s != "best" && s != "worst" {
             eprintln!("{}: unknown value `{}` for --sort.", "Error".red(), s);
@@ -371,21 +221,6 @@ fn list_tags(quiz: &Quiz) -> Result<(), QuizError> {
         }
     }
     Ok(())
-}
-
-
-fn cmp_string_ignore_dot(a: &String, b: &String) -> Ordering {
-    fn cmp_helper(a: &str, b: &str) -> Ordering {
-        if a.starts_with(".") {
-            cmp_helper(&a[1..], b)
-        } else if b.starts_with(".") {
-            cmp_helper(a, &b[1..])
-        } else {
-            a.cmp(b)
-        }
-    }
-
-    cmp_helper(a, b)
 }
 
 
@@ -430,46 +265,6 @@ fn cmp_results_most(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
 /// with the least attempts come first.
 fn cmp_results_least(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
     return cmp_results_most(a, b).reverse();
-}
-
-
-/// Create the application directory if it doesn't already exist, or exit with an error
-/// message if it does not exist and cannot be created.
-pub fn require_app_dir_path() {
-    if let Some(mut dirpath) = dirs::data_dir() {
-        dirpath.push("iafisher_popquiz");
-        if let Err(_) = make_directory(&dirpath) {
-            cannot_make_app_dir();
-        }
-
-        dirpath.push("results");
-        if let Err(_) = make_directory(&dirpath) {
-            cannot_make_app_dir();
-        }
-
-        dirpath.pop();
-        dirpath.push("quizzes");
-        if let Err(_) = make_directory(&dirpath) {
-            cannot_make_app_dir();
-        }
-    } else {
-        cannot_make_app_dir();
-    }
-}
-
-
-fn cannot_make_app_dir() {
-    let path = String::from(persistence::get_app_dir_path().to_string_lossy());
-    eprintln!("{}: unable to create application directory at {}", "Error".red(), path);
-    ::std::process::exit(2);
-}
-
-
-fn make_directory(path: &PathBuf) -> Result<(), std::io::Error> {
-    if !path.as_path().exists() {
-        fs::create_dir(path)?;
-    }
-    Ok(())
 }
 
 
