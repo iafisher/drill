@@ -50,9 +50,8 @@ pub fn choose_questions<'a>(questions: &'a Vec<Question>, options: &TakeOptions)
         buckets[get_bucket(question)].push(question);
     }
 
-    let mut rng = thread_rng();
     for bucket in buckets.iter_mut() {
-        bucket.shuffle(&mut rng);
+        bucket.sort_by(cmp_questions_oldest_first);
     }
 
     let mut chosen = Vec::new();
@@ -76,6 +75,7 @@ pub fn choose_questions<'a>(questions: &'a Vec<Question>, options: &TakeOptions)
     if options.in_order {
         chosen.sort_by(cmp_questions_in_order);
     } else {
+        let mut rng = thread_rng();
         chosen.shuffle(&mut rng);
     }
 
@@ -143,6 +143,30 @@ fn cmp_questions_in_order(a: &&Question, b: &&Question) -> cmp::Ordering {
         }
     } else {
         cmp::Ordering::Less
+    }
+}
+
+
+/// Comparison function that sorts an array of `Question` objects so that the questions
+/// that were least recently asked appear first. Questions that have never been asked
+/// will appear at the very front.
+fn cmp_questions_oldest_first(a: &&&Question, b: &&&Question) -> cmp::Ordering {
+    // NOTE: This method assumes that the `prior_results` field of `Question` objects
+    // is ordered chronologically, which should always be true.
+    if a.prior_results.len() > 0 {
+        if b.prior_results.len() > 0 {
+            let a_last = a.prior_results.last().unwrap().time_asked;
+            let b_last = b.prior_results.last().unwrap().time_asked;
+            a_last.partial_cmp(&b_last).unwrap_or(cmp::Ordering::Equal)
+        } else {
+            cmp::Ordering::Greater
+        }
+    } else {
+        if b.prior_results.len() > 0 {
+            cmp::Ordering::Less
+        } else {
+            cmp::Ordering::Equal
+        }
     }
 }
 
