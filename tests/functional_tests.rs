@@ -98,6 +98,24 @@ fn no_credit_answers_work() {
     );
 }
 
+#[test]
+fn quiz_instructions_are_displayed() {
+    let output = spawn_and_mock(
+        "test_instructions",
+        &["Lansing, MI", "no"],
+        &[],
+    );
+
+    assert_in_order(
+        &output,
+        &[
+            "Include the state's postal code.",
+            "Correct",
+            "100.0%",
+        ]
+    );
+}
+
 fn assert_in_order(mock_stdout: &str, data: &[&str]) {
     let mut last_pos = 0;
     for datum in data {

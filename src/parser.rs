@@ -6,18 +6,18 @@
  */
 use std::collections::HashMap;
 use std::fs::File;
-use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::path::PathBuf;
-
+use std::path::PathBuf; 
 use super::common::{Location, QuizError};
 use super::quiz::{Question, QuestionKind, Quiz};
 
 
 pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
     let file = File::open(path).map_err(QuizError::Io)?;
-    let mut reader = LineBufReader { reader: BufReader::new(file), line: 0 };
+    let mut reader = QuizReader::new(BufReader::new(file));
+    let quiz_settings = read_settings(&mut reader)?;
+
     let mut questions = Vec::new();
     loop {
         match read_entry(&path, &mut reader) {
@@ -33,7 +33,7 @@ pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
             }
         }
     }
-    Ok(Quiz { instructions: None, questions })
+    Ok(Quiz { instructions: quiz_settings.instructions, questions })
 }
 
 fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
@@ -135,13 +135,50 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
     }
 }
 
+struct TopLevelSettings {
+    instructions: Option<String>,
+}
+
+
+/// Read the initial settings from the file.
+fn read_settings(reader: &mut QuizReader) -> Result<TopLevelSettings, QuizError> {
+    let mut instructions = None;
+    let mut first_line = true;
+    loop {
+        match reader.read_line()? {
+            Some(FileLine::Pair(key, val)) => {
+                if key == "instructions" {
+                    instructions = Some(val);
+                }
+            },
+            Some(FileLine::Blank) | None => {
+                break;
+            },
+            Some(line) => {
+                // An unexpected line type is okay for the first line: it just means
+                // that the quiz doesn't have any settings. But it's not okay after,
+                // because the settings must be separated from the rest of the quiz by
+                // a blank line.
+                if first_line {
+                    reader.push(line);
+                    break;
+                } else {
+                    return Err(QuizError::Parse { line: reader.line, whole_entry: false });
+                }
+            },
+        }
+        first_line = false;
+    }
+    Ok(TopLevelSettings { instructions })
+}
+
 
 /// Read an entry from the file.
 ///
 /// `Ok(Some(entry))` is returned on a successful read. `Ok(None)` is returned when the
 /// end of file is reached. `Err(e)` is returned if a parse error occurs.
-fn read_entry(path: &PathBuf, reader: &mut LineBufReader) -> Result<Option<FileEntry>, QuizError> {
-    match read_line(reader)? {
+fn read_entry(path: &PathBuf, reader: &mut QuizReader) -> Result<Option<FileEntry>, QuizError> {
+    match reader.read_line()? {
         Some(FileLine::First(id, text)) => {
             let mut entry = FileEntry {
                 id,
@@ -151,7 +188,7 @@ fn read_entry(path: &PathBuf, reader: &mut LineBufReader) -> Result<Option<FileE
                 location: Location { line: reader.line, path: path.clone() },
             };
             loop {
-                match read_line(reader)? {
+                match reader.read_line()? {
                     Some(FileLine::Blank) | None => {
                         break;
                     },
@@ -179,36 +216,6 @@ fn read_entry(path: &PathBuf, reader: &mut LineBufReader) -> Result<Option<FileE
     }
 }
 
-fn read_line(reader: &mut LineBufReader) -> Result<Option<FileLine>, QuizError> {
-    let mut line = String::new();
-    let nread = reader.read_line(&mut line).map_err(QuizError::Io)?;
-    if nread == 0 {
-        return Ok(None);
-    }
-
-    let trimmed = line.trim();
-    if trimmed.starts_with("#") {
-        read_line(reader)
-    } else if trimmed.len() == 0 {
-        Ok(Some(FileLine::Blank))
-    } else if trimmed.starts_with("- ") {
-        if let Some(colon) = trimmed.find(":") {
-            let key = trimmed[2..colon].trim().to_string();
-            let value = trimmed[colon+1..].trim().to_string();
-            Ok(Some(FileLine::Pair(key, value)))
-        } else {
-            Err(QuizError::Parse { line: reader.line, whole_entry: false })
-        }
-    } else if trimmed.starts_with("[") && trimmed.find("]").is_some() {
-        let brace = trimmed.find("]").unwrap();
-        let id = &trimmed[1..brace];
-        let rest = &trimmed[brace+1..];
-        Ok(Some(FileLine::First(id.trim().to_string(), rest.trim().to_string())))
-    } else {
-        Ok(Some(FileLine::Following(trimmed.to_string())))
-    }
-}
-
 
 fn split(s: &str, splitter: &str) -> Vec<String> {
     s.split(splitter).map(|w| w.trim().to_string()).collect()
@@ -231,15 +238,66 @@ struct FileEntry {
 }
 
 
-struct LineBufReader {
+struct QuizReader {
     reader: BufReader<File>,
+    /// This field is for when a function reads one line too many and needs to "push" it
+    /// back so that the next call to `read_line` returns it instead of the next line
+    /// in the underlying file.
+    pushed: Option<FileLine>,
     line: usize,
 }
 
 
-impl LineBufReader {
-    pub fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
+impl QuizReader {
+    pub fn new(reader: BufReader<File>) -> Self {
+        Self { reader, pushed: None, line: 0 }
+    }
+
+    /// Push a line so that the next time `read_line` is called it returns `line`
+    /// instead of the next line from the file.
+    ///
+    /// Only one line can be buffered at a time; if you call `push` when a line is
+    /// already buffered, the old line will be replaced.
+    pub fn push(self: &mut QuizReader, line: FileLine) {
+        self.pushed.replace(line);
+    }
+
+    /// Read a line from the underlying file. Possible return values:
+    ///   - `Ok(Some(_))`: a line was successfully read
+    ///   - `Ok(None)`: end of file
+    ///   - `Err(_)`: the read did not succeed (e.g., I/O error, parse error)
+    pub fn read_line(self: &mut QuizReader) -> Result<Option<FileLine>, QuizError> {
+        if self.pushed.is_some() {
+            return Ok(self.pushed.take());
+        }
+
+        let mut line = String::new();
+        let nread = self.reader.read_line(&mut line).map_err(QuizError::Io)?;
+        if nread == 0 {
+            return Ok(None);
+        }
         self.line += 1;
-        self.reader.read_line(buf)
+
+        let trimmed = line.trim();
+        if trimmed.starts_with("#") {
+            self.read_line()
+        } else if trimmed.len() == 0 {
+            Ok(Some(FileLine::Blank))
+        } else if trimmed.starts_with("- ") {
+            if let Some(colon) = trimmed.find(":") {
+                let key = trimmed[2..colon].trim().to_string();
+                let value = trimmed[colon+1..].trim().to_string();
+                Ok(Some(FileLine::Pair(key, value)))
+            } else {
+                Err(QuizError::Parse { line: self.line, whole_entry: false })
+            }
+        } else if trimmed.starts_with("[") && trimmed.find("]").is_some() {
+            let brace = trimmed.find("]").unwrap();
+            let id = &trimmed[1..brace];
+            let rest = &trimmed[brace+1..];
+            Ok(Some(FileLine::First(id.trim().to_string(), rest.trim().to_string())))
+        } else {
+            Ok(Some(FileLine::Following(trimmed.to_string())))
+        }
     }
 }
