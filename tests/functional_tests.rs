@@ -43,6 +43,29 @@ fn can_take_simple_quiz2() {
 }
 
 #[test]
+fn can_take_quiz_with_list_question() {
+    let output = spawn_and_mock(
+        "test_list",
+        &["China", "PR China", "France", "Germany", "US", "United Kingdom", "no"],
+        &["--in-order"],
+    );
+
+    assert_in_order(
+        &output,
+        &[
+            "Name the five members of the UN Security Council.",
+            "Correct!\n",
+            "You already said that.\n",
+            "Correct!\n",
+            "Incorrect.\n",
+            "Correct!\n",
+            "You missed:\n  Russia\n\n",
+            "Score for this question: 80.0%",
+        ],
+    );
+}
+
+#[test]
 fn can_take_flashcard_quiz() {
     let output = spawn_and_mock(
         "test_flashcard", &["bread", "wine", "butter", "no"], &["--in-order"],
