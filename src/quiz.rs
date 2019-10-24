@@ -176,11 +176,16 @@ pub fn check_one(answer_list: &Vec<Answer>, guess: &str) -> Option<usize> {
 /// Return `true` if the given string is equivalent to the Answer object.
 pub fn check(ans: &Answer, guess: &str) -> bool {
     for variant in ans.iter() {
-        if variant.to_lowercase() == guess.to_lowercase() {
+        if normalize(&variant) == normalize(&guess) {
             return true;
         }
     }
     false
+}
+
+
+fn normalize(guess: &str) -> String {
+    String::from(guess.to_lowercase())
 }
 
 

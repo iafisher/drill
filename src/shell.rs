@@ -1,5 +1,5 @@
 /**
- * Implementation of the popquiz application.
+ * The command-line user interface for taking quizzes.
  *
  * Author:  Ian Fisher (iafisher@protonmail.com)
  * Version: October 2019
@@ -55,9 +55,14 @@ pub fn take(quiz: &mut Quiz, options: &TakeOptions) -> Result<QuizResult, QuizEr
         my_print!("\n")?;
     }
 
-    for (i, question) in questions.iter().enumerate() {
+    for (i, q) in questions.iter().enumerate() {
         my_print!("\n")?;
-        let result = ask(question, i+1);
+        let mut rng = thread_rng();
+        let text = q.text.choose(&mut rng).unwrap();
+        let prefix = format!("  ({}) ", i+1);
+        prettyprint_colored(&text, Some(&prefix), None, Some(Color::Cyan))?;
+        my_print!("\n")?;
+        let result = ask(q);
         if let Ok(result) = result {
             let score = result.score;
             results.push(result);
@@ -92,16 +97,7 @@ pub fn take(quiz: &mut Quiz, options: &TakeOptions) -> Result<QuizResult, QuizEr
 
 /// Ask the question, get an answer, and return a `QuestionResult` object. If Ctrl+C
 /// is pressed, return an error.
-///
-/// The `num` argument is the question number in the quiz, which is printed before
-/// the text of the question.
-pub fn ask(q: &Question, num: usize) -> Result<QuestionResult, QuizError> {
-    let mut rng = thread_rng();
-    let text = q.text.choose(&mut rng).unwrap();
-    let prefix = format!("  ({}) ", num);
-    prettyprint_colored(&text, Some(&prefix), None, Some(Color::Cyan))?;
-    my_print!("\n")?;
-
+pub fn ask(q: &Question) -> Result<QuestionResult, QuizError> {
     let now = time::Instant::now();
     match q.kind {
         QuestionKind::ShortAnswer | QuestionKind::Flashcard => {
