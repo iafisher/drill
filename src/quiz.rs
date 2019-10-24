@@ -5,6 +5,7 @@
  * Version: October 2019
  */
 use std::io::Write;
+use std::time;
 
 use colored::*;
 use rand::seq::SliceRandom;
@@ -46,9 +47,12 @@ pub struct Question {
     pub prior_results: Vec<QuestionResult>,
     /// User-defined tags for the question.
     pub tags: Vec<String>,
-    /// Incorrect answers may be given specific explanations for why they are not
-    /// right.
+    /// Incorrect answers may be given specific explanations for why they are wrong.
     pub explanations: Vec<(Vec<String>, String)>,
+    /// If specified, the number of seconds the user has to answer the question for full
+    /// credit. Once passed, the user can still get partial credit up if she answers
+    /// within `2*timeout` seconds.
+    pub timeout: Option<u64>,
 
     /// The location where the question is defined.
     pub location: Option<Location>,
@@ -133,9 +137,21 @@ impl Quiz {
             my_print!("\n\n")?;
         }
 
+        if questions.iter().any(|q| q.timeout.is_some()) {
+            prettyprint_colored(
+                "Warning: This quiz contains timed questions!",
+                Some("  "),
+                Some(Color::Red),
+                None,
+            )?;
+            my_print!("\n")?;
+        }
+
         for (i, question) in questions.iter().enumerate() {
             my_print!("\n")?;
+            let now = time::Instant::now();
             let result = question.ask(i+1);
+            let elapsed = now.elapsed();
             if let Ok(result) = result {
                 let score = result.score;
                 results.push(result);
@@ -185,6 +201,7 @@ impl Question {
             prior_results: Vec::new(),
             explanations: Vec::new(),
             location: None,
+            timeout: None,
         }
     }
 
@@ -433,6 +450,7 @@ impl Question {
 
     /// Flip flashcards. Does nothing if `self.kind` is not `Flashcard`.
     fn flip(&mut self) {
+        // TODO: Handle this in parser instead?
         if self.kind == QuestionKind::Flashcard {
             let mut rng = thread_rng();
             self.answer_list.shuffle(&mut rng);

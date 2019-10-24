@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::PathBuf; 
+use std::str::FromStr;
 use super::common::{Location, QuizError};
 use super::quiz::{Question, QuestionKind, Quiz};
 
@@ -33,6 +34,11 @@ pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
             }
         }
     }
+
+    for mut q in questions.iter_mut() {
+        apply_global_settings(&quiz_settings, &mut q);
+    }
+
     Ok(Quiz { instructions: quiz_settings.instructions, questions })
 }
 
@@ -40,6 +46,12 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
     let tags = entry.attributes.get("tags")
         .map(|v| split(v, ","))
         .unwrap_or(Vec::new());
+
+    let timeout = if let Some(_timeout) = entry.attributes.get("timeout") {
+        Some(parse_u64(_timeout, entry.location.line)?)
+    } else {
+        None
+    };
 
     // TODO: Handle multiple question texts.
     if entry.following.len() == 1 {
@@ -55,6 +67,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 tags,
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
+                timeout,
             });
         } else {
             return Ok(Question {
@@ -68,6 +81,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 tags,
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
+                timeout,
             });
         }
     } else if entry.following.len() == 0 {
@@ -85,6 +99,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 tags,
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
+                timeout,
             });
         } else {
             return Err(QuizError::Parse { line: entry.location.line, whole_entry: true });
@@ -117,6 +132,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 tags,
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
+                timeout,
             });
         } else {
             return Ok(Question {
@@ -130,25 +146,39 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 tags,
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
+                timeout,
             });
         }
     }
 }
 
-struct TopLevelSettings {
+#[derive(Debug)]
+struct GlobalSettings {
     instructions: Option<String>,
+    timeout: Option<u64>,
+}
+
+
+fn apply_global_settings(settings: &GlobalSettings, question: &mut Question) {
+    if let Some(timeout) = settings.timeout {
+        if question.timeout.is_none() {
+            question.timeout.replace(timeout);
+        }
+    }
 }
 
 
 /// Read the initial settings from the file.
-fn read_settings(reader: &mut QuizReader) -> Result<TopLevelSettings, QuizError> {
-    let mut instructions = None;
+fn read_settings(reader: &mut QuizReader) -> Result<GlobalSettings, QuizError> {
+    let mut settings = GlobalSettings { instructions: None, timeout: None };
     let mut first_line = true;
     loop {
         match reader.read_line()? {
             Some(FileLine::Pair(key, val)) => {
                 if key == "instructions" {
-                    instructions = Some(val);
+                    settings.instructions.replace(val);
+                } else if key == "timeout" {
+                    settings.timeout.replace(parse_u64(&val, reader.line)?);
                 }
             },
             Some(FileLine::Blank) | None => {
@@ -169,7 +199,7 @@ fn read_settings(reader: &mut QuizReader) -> Result<TopLevelSettings, QuizError>
         }
         first_line = false;
     }
-    Ok(TopLevelSettings { instructions })
+    Ok(settings)
 }
 
 
@@ -300,4 +330,9 @@ impl QuizReader {
             Ok(Some(FileLine::Following(trimmed.to_string())))
         }
     }
+}
+
+
+fn parse_u64(s: &str, line: usize) -> Result<u64, QuizError> {
+    u64::from_str(s).map_err(|_| QuizError::Parse { line, whole_entry: false })
 }

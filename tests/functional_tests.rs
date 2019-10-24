@@ -1,5 +1,7 @@
 use std::io::Write;
-use std::process::{Command, Stdio};
+use std::process::{Child, ChildStdin, Command, Stdio};
+use std::thread;
+use std::time;
 
 
 #[test]
@@ -116,6 +118,29 @@ fn quiz_instructions_are_displayed() {
     );
 }
 
+#[test]
+fn timeouts_work() {
+    // This test can't use `spawn_and_mock` because it needs to control how long the
+    // thread sleeps between answering questions.
+    let mut process = spawn("test_timeouts", &[]);
+    let stdin = process.stdin.as_mut().expect("Failed to open stdin");
+    stdin_write(stdin, "Chisinau");
+    sleep(1500);
+    stdin_write(stdin, "Kiev");
+
+    let result = process.wait_with_output().expect("Failed to read stdout");
+    let output = String::from_utf8_lossy(&result.stdout).to_string();
+
+    assert_in_order(
+        &output,
+        &[
+            "Warning: This quiz contains timed questions!",
+            "Correct!\n",
+            "Correct, but you exceeded the time limit",
+        ],
+    );
+}
+
 fn assert_in_order(mock_stdout: &str, data: &[&str]) {
     let mut last_pos = 0;
     for datum in data {
@@ -131,7 +156,21 @@ fn assert_in_order(mock_stdout: &str, data: &[&str]) {
 }
 
 fn spawn_and_mock(quiz: &str, input: &[&str], extra_args: &[&str]) -> String {
-    let mut child = Command::new("./target/debug/popquiz")
+    let mut child = spawn(quiz, extra_args);
+
+    {
+        let stdin = child.stdin.as_mut().expect("Failed to open stdin");
+        for line in input {
+            stdin_write(stdin, &line);
+        }
+    }
+
+    let result = child.wait_with_output().expect("Failed to read stdout");
+    String::from_utf8_lossy(&result.stdout).to_string()
+}
+
+fn spawn(quiz: &str, extra_args: &[&str]) -> Child {
+    Command::new("./target/debug/popquiz")
         .arg("--no-color")
         .arg("-d")
         .arg("./tests/quizzes")
@@ -141,16 +180,14 @@ fn spawn_and_mock(quiz: &str, input: &[&str], extra_args: &[&str]) -> String {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
-        .expect("Failed to spawn child process");
+        .expect("Failed to spawn child process")
+}
 
-    {
-        let stdin = child.stdin.as_mut().expect("Failed to open stdin");
-        for line in input {
-            stdin.write_all(line.as_bytes()).expect("Failed to write to stdin");
-            stdin.write_all("\n".as_bytes()).expect("Failed to write to stdin");
-        }
-    }
+fn stdin_write(stdin: &mut ChildStdin, line: &str) {
+    stdin.write_all(line.as_bytes()).expect("Failed to write to stdin");
+    stdin.write_all("\n".as_bytes()).expect("Failed to write to stdin");
+}
 
-    let result = child.wait_with_output().expect("Failed to read stdout");
-    String::from_utf8_lossy(&result.stdout).to_string()
+fn sleep(millis: u64) {
+    thread::sleep(time::Duration::from_millis(millis))
 }
