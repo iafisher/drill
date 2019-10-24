@@ -132,7 +132,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 tags,
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
-                timeout,
+                timeout: None,
             });
         } else {
             return Ok(Question {
@@ -146,7 +146,7 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 tags,
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
-                timeout,
+                timeout: None,
             });
         }
     }
@@ -161,7 +161,9 @@ struct GlobalSettings {
 
 fn apply_global_settings(settings: &GlobalSettings, question: &mut Question) {
     if let Some(timeout) = settings.timeout {
-        if question.timeout.is_none() {
+        if question.timeout.is_none()
+           && question.kind != QuestionKind::ListAnswer
+           && question.kind != QuestionKind::OrderedListAnswer {
             question.timeout.replace(timeout);
         }
     }

@@ -5,7 +5,7 @@ use std::time;
 
 
 #[test]
-fn can_take_test1_quiz() {
+fn can_take_simple_quiz1() {
     let output = spawn_and_mock("test1", &["Ulan Bator", "no"], &[]);
     assert_in_order(
         &output,
@@ -21,7 +21,7 @@ fn can_take_test1_quiz() {
 
 
 #[test]
-fn can_take_test2_quiz() {
+fn can_take_simple_quiz2() {
     let output = spawn_and_mock(
         "test2", &["a", "Wilhelm I", "Wilhelm II", "Wilhelm II"], &["--in-order"],
     );
@@ -122,11 +122,14 @@ fn quiz_instructions_are_displayed() {
 fn timeouts_work() {
     // This test can't use `spawn_and_mock` because it needs to control how long the
     // thread sleeps between answering questions.
-    let mut process = spawn("test_timeouts", &[]);
+    let mut process = spawn("test_timeouts", &["--in-order"]);
     let stdin = process.stdin.as_mut().expect("Failed to open stdin");
     stdin_write(stdin, "Chisinau");
-    sleep(1500);
+    sleep(1200);
     stdin_write(stdin, "Kiev");
+    sleep(1200);
+    stdin_write(stdin, "Sardinia");
+    stdin_write(stdin, "Sicily");
 
     let result = process.wait_with_output().expect("Failed to read stdout");
     let output = String::from_utf8_lossy(&result.stdout).to_string();
@@ -137,6 +140,11 @@ fn timeouts_work() {
             "Warning: This quiz contains timed questions!",
             "Correct!\n",
             "Correct, but you exceeded the time limit",
+            "Correct!\n",
+            "Correct!\n",
+            // Make sure we got full credit for the list question.
+            "2 correct",
+            "1 partially correct",
         ],
     );
 }

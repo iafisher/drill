@@ -11,6 +11,7 @@ mod parser;
 mod persistence;
 mod quiz;
 mod repetition;
+mod shell;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -60,7 +61,7 @@ fn main() {
 /// The main function for the `take` subcommand.
 pub fn main_take(dir: &Path, options: common::TakeOptions) -> Result<(), QuizError> {
     let mut quiz = persistence::load_quiz(dir, &options.name)?;
-    let results = quiz.take(&options)?;
+    let results = shell::take(&mut quiz, &options)?;
     output_results(&results)?;
 
     if results.total > 0 && (options.save || confirm("\nSave results? ")) {
