@@ -33,10 +33,10 @@ const DOWN_THRESHOLD: f64 = 0.4;
 
 
 /// Choose a set of questions, filtered by the command-line options.
-pub fn choose_questions<'a>(questions: &'a Vec<Question>, options: &TakeOptions) -> Vec<&'a Question> {
+pub fn choose_questions<'a>(questions: &'a Vec<Box<Question>>, options: &TakeOptions) -> Vec<&'a Box<Question>> {
     let mut candidates = Vec::new();
     for question in questions.iter() {
-        if filter_question(question, &options.filter_opts) {
+        if filter_tags(&question.get_common().tags, &options.filter_opts) {
             candidates.push(question);
         }
     }
@@ -47,7 +47,7 @@ pub fn choose_questions<'a>(questions: &'a Vec<Question>, options: &TakeOptions)
     }
 
     for question in candidates.iter() {
-        buckets[get_bucket(question)].push(question);
+        buckets[get_bucket(&question.get_common().prior_results)].push(question);
     }
 
     for bucket in buckets.iter_mut() {
@@ -83,9 +83,9 @@ pub fn choose_questions<'a>(questions: &'a Vec<Question>, options: &TakeOptions)
 }
 
 
-fn get_bucket(question: &Question) -> usize {
+fn get_bucket(results: &Vec<QuestionResult>) -> usize {
     let mut bucket = 0;
-    for result in question.prior_results.iter() {
+    for result in results.iter() {
         // 90% and 40% are arbitrary thresholds that I may need to adjust.
         if result.score >= UP_THRESHOLD && bucket < BUCKET_ALLOCATION.len() - 1 {
             bucket += 1;
@@ -97,12 +97,12 @@ fn get_bucket(question: &Question) -> usize {
 }
 
 
-/// Return `true` if `q` satisfies the constraints in `options`.
-pub fn filter_question(q: &Question, options: &FilterOptions) -> bool {
+/// Return `true` if `tags` satisfies the constraints in `options`.
+pub fn filter_tags(tags: &Vec<String>, options: &FilterOptions) -> bool {
     // Either no tags were specified, or `q` has all the specified tags.
-    (options.tags.len() == 0 || options.tags.iter().all(|tag| q.tags.contains(tag)))
+    (options.tags.len() == 0 || options.tags.iter().all(|tag| tags.contains(tag)))
         // `q` must not have any excluded tags.
-        && options.exclude.iter().all(|tag| !q.tags.contains(tag))
+        && options.exclude.iter().all(|tag| !tags.contains(tag))
 }
 
 
@@ -126,9 +126,11 @@ pub fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
 
 /// Comparison function that sorts an array of `Question` objects in the order the
 /// questions appeared in the original quiz file based on the `location` field.
-fn cmp_questions_in_order(a: &&Question, b: &&Question) -> cmp::Ordering {
-    if let Some(a_location) = &a.location {
-        if let Some(b_location) = &b.location {
+fn cmp_questions_in_order(a: &&Box<Question>, b: &&Box<Question>) -> cmp::Ordering {
+    let a_common = a.get_common();
+    let b_common = b.get_common();
+    if let Some(a_location) = &a_common.location {
+        if let Some(b_location) = &b_common.location {
             if a_location.line < b_location.line {
                 cmp::Ordering::Less
             } else if a_location.line > b_location.line {
@@ -150,57 +152,24 @@ fn cmp_questions_in_order(a: &&Question, b: &&Question) -> cmp::Ordering {
 /// Comparison function that sorts an array of `Question` objects so that the questions
 /// that were least recently asked appear first. Questions that have never been asked
 /// will appear at the very front.
-fn cmp_questions_oldest_first(a: &&&Question, b: &&&Question) -> cmp::Ordering {
+fn cmp_questions_oldest_first(a: &&&Box<Question>, b: &&&Box<Question>) -> cmp::Ordering {
     // NOTE: This method assumes that the `prior_results` field of `Question` objects
     // is ordered chronologically, which should always be true.
-    if a.prior_results.len() > 0 {
-        if b.prior_results.len() > 0 {
-            let a_last = a.prior_results.last().unwrap().time_asked;
-            let b_last = b.prior_results.last().unwrap().time_asked;
+    let a_common = a.get_common();
+    let b_common = b.get_common();
+    if a_common.prior_results.len() > 0 {
+        if b_common.prior_results.len() > 0 {
+            let a_last = a_common.prior_results.last().unwrap().time_asked;
+            let b_last = b_common.prior_results.last().unwrap().time_asked;
             a_last.partial_cmp(&b_last).unwrap_or(cmp::Ordering::Equal)
         } else {
             cmp::Ordering::Greater
         }
     } else {
-        if b.prior_results.len() > 0 {
+        if b_common.prior_results.len() > 0 {
             cmp::Ordering::Less
         } else {
             cmp::Ordering::Equal
         }
-    }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn can_filter_by_tag() {
-        let mut q = Question::new("What is the capital of China", "Beijing");
-        q.tags.push(s("geography"));
-
-        let mut options = FilterOptions::new();
-        assert!(filter_question(&q, &options));
-
-        options.tags.push(s("geography"));
-        assert!(filter_question(&q, &options));
-
-        options.tags.push(s("history"));
-        assert!(!filter_question(&q, &options));
-    }
-
-    #[test]
-    fn can_filter_by_excluding_tag() {
-        let mut q = Question::new("What is the capital of China", "Beijing");
-        q.tags.push(s("geography"));
-
-        let mut options = FilterOptions::new();
-        options.exclude.push(s("geography"));
-        assert!(!filter_question(&q, &options));
-    }
-
-    fn s(mystr: &str) -> String {
-        String::from(mystr)
     }
 }

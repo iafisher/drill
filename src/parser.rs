@@ -11,7 +11,9 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use std::str::FromStr;
 use super::common::{Location, QuizError};
-use super::quiz::{Question, QuestionKind, Quiz};
+use super::quiz::{
+    FlashcardQuestion, ListQuestion, MultipleChoiceQuestion, OrderedListQuestion,
+    Question, QuestionCommon, Quiz, ShortAnswerQuestion};
 
 
 pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
@@ -23,7 +25,7 @@ pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
     loop {
         match read_entry(&path, &mut reader) {
             Ok(Some(entry)) => {
-                let q = entry_to_question(&entry)?;
+                let q = entry_to_question(&entry, &quiz_settings)?;
                 questions.push(q);
             },
             Ok(None) => {
@@ -35,58 +37,39 @@ pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
         }
     }
 
-    for mut q in questions.iter_mut() {
-        apply_global_settings(&quiz_settings, &mut q);
-    }
-
     Ok(Quiz { instructions: quiz_settings.instructions, questions })
 }
 
-fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
+fn entry_to_question(
+    entry: &FileEntry, settings: &GlobalSettings) -> Result<Box<Question>, QuizError> {
+
     let tags = entry.attributes.get("tags")
         .map(|v| split(v, ","))
         .unwrap_or(Vec::new());
 
+    let common = QuestionCommon {
+        id: entry.id.clone(),
+        prior_results: Vec::new(),
+        tags,
+        location: Some(entry.location.clone()),
+    };
+
     let timeout = if let Some(_timeout) = entry.attributes.get("timeout") {
         Some(parse_u64(_timeout, entry.location.line)?)
     } else {
-        None
+        settings.timeout
     };
 
     // TODO: Handle multiple question texts.
+    let text = entry.text.clone();
     if entry.following.len() == 1 {
+        let answer = split(&entry.following[0], "/");
         if let Some(choices) = entry.attributes.get("choices") {
-            return Ok(Question {
-                kind: QuestionKind::MultipleChoice,
-                id: entry.id.clone(),
-                text: vec![entry.text.clone()],
-                answer_list: vec![split(&entry.following[0], "/")],
-                candidates: split(&choices, "/"),
-                no_credit: Vec::new(),
-                prior_results: Vec::new(),
-                tags,
-                explanations: Vec::new(),
-                location: Some(entry.location.clone()),
-                timeout,
-                front_context: None,
-                back_context: None,
-            });
+            return Ok(Box::new(MultipleChoiceQuestion {
+                text, answer, choices: split(&choices, "/"), timeout, common
+            }));
         } else {
-            return Ok(Question {
-                kind: QuestionKind::ShortAnswer,
-                id: entry.id.clone(),
-                text: vec![entry.text.clone()],
-                answer_list: vec![split(&entry.following[0], "/")],
-                candidates: Vec::new(),
-                no_credit: Vec::new(),
-                prior_results: Vec::new(),
-                tags,
-                explanations: Vec::new(),
-                location: Some(entry.location.clone()),
-                timeout,
-                front_context: None,
-                back_context: None,
-            });
+            return Ok(Box::new(ShortAnswerQuestion { text, answer, timeout, common }));
         }
     } else if entry.following.len() == 0 {
         if let Some(equal) = entry.text.find("=") {
@@ -94,22 +77,14 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
             let (front, front_context) = get_context(&frnt, entry.location.line)?;
             let bck = &entry.text[equal+1..];
             let (back, back_context) = get_context(&bck, entry.location.line)?;
-            let back_split = split(&back, "/");
-            return Ok(Question {
-                kind: QuestionKind::Flashcard,
-                id: entry.id.clone(),
-                text: vec![front],
-                answer_list: vec![back_split],
-                candidates: Vec::new(),
-                no_credit: Vec::new(),
-                prior_results: Vec::new(),
-                tags,
-                explanations: Vec::new(),
-                location: Some(entry.location.clone()),
-                timeout,
+            return Ok(Box::new(FlashcardQuestion {
+                front: split(&front, "/"),
+                back: split(&back, "/"),
                 front_context,
                 back_context,
-            });
+                timeout,
+                common,
+            }));
         } else {
             return Err(QuizError::Parse {
                 line: entry.location.line,
@@ -137,57 +112,21 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
             Vec::new()
         };
 
+        let answer_list = entry.following.iter().map(|l| split(&l, "/")).collect();
         if ordered {
-            return Ok(Question {
-                kind: QuestionKind::OrderedListAnswer,
-                id: entry.id.clone(),
-                text: vec![entry.text.clone()],
-                answer_list: entry.following.iter().map(|l| split(&l, "/")).collect(),
-                candidates: Vec::new(),
-                no_credit,
-                prior_results: Vec::new(),
-                tags,
-                explanations: Vec::new(),
-                location: Some(entry.location.clone()),
-                timeout: None,
-                front_context: None,
-                back_context: None,
-            });
+            return Ok(Box::new(ListQuestion { text, answer_list, no_credit, common }));
         } else {
-            return Ok(Question {
-                kind: QuestionKind::ListAnswer,
-                id: entry.id.clone(),
-                text: vec![entry.text.clone()],
-                answer_list: entry.following.iter().map(|l| split(&l, "/")).collect(),
-                candidates: Vec::new(),
-                no_credit,
-                prior_results: Vec::new(),
-                tags,
-                explanations: Vec::new(),
-                location: Some(entry.location.clone()),
-                timeout: None,
-                front_context: None,
-                back_context: None,
-            });
+            return Ok(Box::new(OrderedListQuestion { 
+                text, answer_list, no_credit, common,
+            }));
         }
-    }
+    };
 }
 
 #[derive(Debug)]
 struct GlobalSettings {
     instructions: Option<String>,
     timeout: Option<u64>,
-}
-
-
-fn apply_global_settings(settings: &GlobalSettings, question: &mut Question) {
-    if let Some(timeout) = settings.timeout {
-        if question.timeout.is_none()
-           && question.kind != QuestionKind::ListAnswer
-           && question.kind != QuestionKind::OrderedListAnswer {
-            question.timeout.replace(timeout);
-        }
-    }
 }
 
 
@@ -386,8 +325,8 @@ fn get_context(line: &str, lineno: usize) -> Result<(String, Option<String>), Qu
             let context = String::from(line[open+1..close].trim());
             Ok((new_line, Some(context)))
         } else {
-            Err(QuizError::Parse { 
-                line: lineno, 
+            Err(QuizError::Parse {
+                line: lineno,
                 whole_entry: false,
                 message: String::from("expected ]"),
             })

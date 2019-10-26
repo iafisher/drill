@@ -24,7 +24,8 @@ use structopt::StructOpt;
 
 use common::{Command, QuizError, Options};
 use iohelper::{confirm, prettyprint_colored};
-use quiz::{Quiz, QuizResult};
+use quiz::Quiz;
+use shell::CmdUI;
 
 
 fn main() {
@@ -61,36 +62,11 @@ fn main() {
 /// The main function for the `take` subcommand.
 pub fn main_take(dir: &Path, options: common::TakeOptions) -> Result<(), QuizError> {
     let mut quiz = persistence::load_quiz(dir, &options.name)?;
-    let results = shell::take(&mut quiz, &options)?;
-    output_results(&results)?;
+    let mut ui = CmdUI::new();
+    let results = quiz.take(&mut ui, &options)?;
 
     if results.total > 0 && (options.save || confirm("\nSave results? ")) {
         persistence::save_results(dir, &options.name, &results)?;
-    }
-    Ok(())
-}
-
-
-fn output_results(results: &QuizResult) -> Result<(), QuizError> {
-    if results.total > 0 {
-        let score_as_str = format!("{:.1}%", results.score);
-
-        my_print!("\n\n")?;
-        my_print!("Score: ")?;
-        my_print!("{}", score_as_str.cyan())?;
-        my_print!(" out of ")?;
-        my_print!("{}", format!("{}", results.total).cyan())?;
-        if results.total == 1 {
-            my_println!(" question")?;
-        } else {
-            my_println!(" questions")?;
-        }
-        my_print!("  {}", format!("{}", results.total_correct).green())?;
-        my_print!(" correct\n")?;
-        my_print!("  {}", format!("{}", results.total_partially_correct).bright_green())?;
-        my_print!(" partially correct\n")?;
-        my_print!("  {}", format!("{}", results.total_incorrect).red())?;
-        my_print!(" incorrect\n")?;
     }
     Ok(())
 }
@@ -104,7 +80,7 @@ pub fn main_count(dir: &Path, options: common::CountOptions) -> Result<(), QuizE
     } else {
         let mut count = 0;
         for question in quiz.questions.iter() {
-            if !repetition::filter_question(&question, &options.filter_opts) {
+            if !repetition::filter_tags(&question.get_common().tags, &options.filter_opts) {
                 count += 1;
             }
         }
@@ -128,8 +104,8 @@ pub fn main_results(dir: &Path, options: common::ResultsOptions) -> Result<(), Q
     for (key, result) in results.iter() {
         // Only include questions that have scored results.
         if let Some(score) = repetition::aggregate_results(&result) {
-            if let Some(pos) = quiz.questions.iter().position(|q| q.id == *key) {
-                let text = &quiz.questions[pos].text[0];
+            if let Some(pos) = quiz.questions.iter().position(|q| q.get_common().id == *key) {
+                let text = &quiz.questions[pos].get_text();
                 aggregated.push((score, result.len(), key.clone(), text.clone()));
             }
         }
@@ -165,14 +141,16 @@ pub fn main_search(dir: &Path, options: common::SearchOptions) -> Result<(), Qui
     let quiz = persistence::load_quiz(dir, &options.name)?;
 
     for question in quiz.questions.iter() {
-        for text in question.text.iter() {
-            if text.contains(&options.term) {
-                prettyprint_colored(
-                    &text, Some(&format!("[{}] ", question.id)), None, Some(Color::Cyan)
-                )?;
-                my_println!("")?;
-                break;
-            }
+        let text = question.get_text();
+        if text.contains(&options.term) {
+            prettyprint_colored(
+                &text,
+                Some(&format!("[{}] ", question.get_common().id)),
+                None,
+                Some(Color::Cyan),
+            )?;
+            my_println!("")?;
+            break;
         }
     }
 
@@ -201,7 +179,7 @@ fn list_tags(quiz: &Quiz) -> Result<(), QuizError> {
     // Count how many times each tag has been used.
     let mut tags = HashMap::<&str, u32>::new();
     for question in quiz.questions.iter() {
-        for tag in question.tags.iter() {
+        for tag in question.get_common().tags.iter() {
             if let Some(n) = tags.get(tag.as_str()) {
                 tags.insert(tag.as_str(), n+1);
             } else {

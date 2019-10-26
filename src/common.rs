@@ -33,6 +33,9 @@ pub enum QuizError {
 }
 
 
+pub type Result<T> = ::std::result::Result<T, QuizError>;
+
+
 impl fmt::Display for QuizError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
