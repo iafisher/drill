@@ -15,24 +15,15 @@ use super::quiz::{QuestionResult, Quiz, QuizResult};
 
 /// Load a `Quiz` object given its name.
 pub fn load_quiz(dir: &Path, name: &str) -> Result<Quiz, QuizError> {
+    let old_results = load_results(&dir, name)?;
+
     let mut dir_mutable = dir.to_path_buf();
     dir_mutable.push(name);
-    let mut quiz = parser::parse(&dir_mutable)?;
-
-    // Attach previous results to the `Question` objects.
-    // TODO: Move this to parser.rs so Question can be immutable.
-    let old_results = load_results(&dir, name)?;
-    for question in quiz.questions.iter_mut() {
-        if let Some(results) = old_results.get(&question.get_common().id) {
-            question.get_common().prior_results = results.clone();
-        }
-    }
-
-    Ok(quiz)
+    parser::parse(&dir_mutable, &old_results)
 }
 
 
-type StoredResults = HashMap<String, Vec<QuestionResult>>;
+pub type StoredResults = HashMap<String, Vec<QuestionResult>>;
 
 
 pub fn load_results(dir: &Path, name: &str) -> Result<StoredResults, QuizError> {

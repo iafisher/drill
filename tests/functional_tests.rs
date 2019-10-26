@@ -185,7 +185,8 @@ fn timeouts_work() {
         &[
             "Warning: This quiz contains timed questions!",
             "Correct!\n",
-            "Correct, but you exceeded the time limit",
+            "Correct!\n",
+            "exceeded time limit",
             "Correct!\n",
             "Correct!\n",
             // Make sure we got full credit for the list question.

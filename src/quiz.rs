@@ -108,13 +108,13 @@ pub struct QuestionCommon {
 
 #[derive(Debug, Clone)]
 pub struct ShortAnswerQuestion {
-    text: String,
-    answer: Answer,
+    pub text: String,
+    pub answer: Answer,
     /// If specified, the number of seconds the user has to answer the question for full
     /// credit. Once passed, the user can still get partial credit up if she answers
     /// within `2*timeout` seconds.
-    timeout: Option<u64>,
-    common: QuestionCommon,
+    pub timeout: Option<u64>,
+    pub common: QuestionCommon,
 }
 
 
@@ -148,12 +148,12 @@ impl Question for ShortAnswerQuestion {
 
 #[derive(Debug, Clone)]
 pub struct FlashcardQuestion {
-    front: Answer,
-    back: Answer,
-    front_context: Option<String>,
-    back_context: Option<String>,
-    timeout: Option<u64>,
-    common: QuestionCommon,
+    pub front: Answer,
+    pub back: Answer,
+    pub front_context: Option<String>,
+    pub back_context: Option<String>,
+    pub timeout: Option<u64>,
+    pub common: QuestionCommon,
 }
 
 
@@ -197,10 +197,10 @@ impl Question for FlashcardQuestion {
 
 #[derive(Debug, Clone)]
 pub struct ListQuestion {
-    text: String,
-    answer_list: Vec<Answer>,
-    no_credit: Vec<String>,
-    common: QuestionCommon,
+    pub text: String,
+    pub answer_list: Vec<Answer>,
+    pub no_credit: Vec<String>,
+    pub common: QuestionCommon,
 }
 
 
@@ -250,7 +250,7 @@ impl Question for ListQuestion {
         }
 
         if missed.len() > 0 {
-            ui.missed(&missed);
+            ui.missed(&missed)?;
         }
         let score = (n - missed.len()) as f64 / (n as f64);
         ui.score(score, false)?;
@@ -265,10 +265,10 @@ impl Question for ListQuestion {
 
 #[derive(Debug, Clone)]
 pub struct OrderedListQuestion {
-    text: String,
-    answer_list: Vec<Answer>,
-    no_credit: Vec<String>,
-    common: QuestionCommon,
+    pub text: String,
+    pub answer_list: Vec<Answer>,
+    pub no_credit: Vec<String>,
+    pub common: QuestionCommon,
 }
 
 
@@ -305,18 +305,19 @@ impl Question for OrderedListQuestion {
 
 #[derive(Debug, Clone)]
 pub struct MultipleChoiceQuestion {
-    text: String,
-    answer: Answer,
-    choices: Vec<String>,
-    timeout: Option<u64>,
-    common: QuestionCommon,
+    pub text: String,
+    pub answer: Answer,
+    pub choices: Vec<String>,
+    pub timeout: Option<u64>,
+    pub common: QuestionCommon,
 }
 
 
 impl Question for MultipleChoiceQuestion {
     fn ask(&self, ui: &mut CmdUI) -> Result<QuestionResult> {
-        let mut choices: Vec<&str> = self.choices.iter().map(|s| s.as_str()).collect();
+        ui.text(&self.text)?;
 
+        let mut choices: Vec<&str> = self.choices.iter().map(|s| s.as_str()).collect();
         let mut rng = thread_rng();
         // Shuffle once so that we don't always pick the first three candidates listed.
         choices.shuffle(&mut rng);

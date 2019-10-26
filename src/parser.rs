@@ -11,12 +11,13 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use std::str::FromStr;
 use super::common::{Location, QuizError};
+use super::persistence::StoredResults;
 use super::quiz::{
     FlashcardQuestion, ListQuestion, MultipleChoiceQuestion, OrderedListQuestion,
     Question, QuestionCommon, Quiz, ShortAnswerQuestion};
 
 
-pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
+pub fn parse(path: &PathBuf, old_results: &StoredResults) -> Result<Quiz, QuizError> {
     let file = File::open(path).map_err(QuizError::Io)?;
     let mut reader = QuizReader::new(BufReader::new(file));
     let quiz_settings = read_settings(&mut reader)?;
@@ -25,7 +26,7 @@ pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
     loop {
         match read_entry(&path, &mut reader) {
             Ok(Some(entry)) => {
-                let q = entry_to_question(&entry, &quiz_settings)?;
+                let q = entry_to_question(&entry, &quiz_settings, old_results)?;
                 questions.push(q);
             },
             Ok(None) => {
@@ -41,15 +42,21 @@ pub fn parse(path: &PathBuf) -> Result<Quiz, QuizError> {
 }
 
 fn entry_to_question(
-    entry: &FileEntry, settings: &GlobalSettings) -> Result<Box<Question>, QuizError> {
+    entry: &FileEntry,
+    settings: &GlobalSettings,
+    old_results: &StoredResults) -> Result<Box<Question>, QuizError> {
 
     let tags = entry.attributes.get("tags")
         .map(|v| split(v, ","))
         .unwrap_or(Vec::new());
 
+    let prior_results = old_results.get(&entry.id)
+        .map(|v| v.clone())
+        .unwrap_or(Vec::new());
+
     let common = QuestionCommon {
         id: entry.id.clone(),
-        prior_results: Vec::new(),
+        prior_results,
         tags,
         location: Some(entry.location.clone()),
     };
@@ -114,9 +121,11 @@ fn entry_to_question(
 
         let answer_list = entry.following.iter().map(|l| split(&l, "/")).collect();
         if ordered {
-            return Ok(Box::new(ListQuestion { text, answer_list, no_credit, common }));
-        } else {
             return Ok(Box::new(OrderedListQuestion { 
+                text, answer_list, no_credit, common
+            }));
+        } else {
+            return Ok(Box::new(ListQuestion { 
                 text, answer_list, no_credit, common,
             }));
         }
