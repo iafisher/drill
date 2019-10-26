@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::path::PathBuf; 
+use std::path::PathBuf;
 use std::str::FromStr;
 use super::common::{Location, QuizError};
 use super::quiz::{Question, QuestionKind, Quiz};
@@ -111,12 +111,20 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 back_context,
             });
         } else {
-            return Err(QuizError::Parse { line: entry.location.line, whole_entry: true });
+            return Err(QuizError::Parse {
+                line: entry.location.line,
+                whole_entry: true,
+                message: String::from("question has no answer"),
+            });
         }
     } else {
         let ordered = if let Some(_ordered) = entry.attributes.get("ordered") {
             if _ordered != "true" && _ordered != "false" {
-                return Err(QuizError::Parse { line: entry.location.line, whole_entry: true });
+                return Err(QuizError::Parse {
+                    line: entry.location.line,
+                    whole_entry: true,
+                    message: String::from("ordered field must be either 'true' or 'false'"),
+                });
             }
             _ordered == "true"
         } else {
@@ -208,7 +216,11 @@ fn read_settings(reader: &mut QuizReader) -> Result<GlobalSettings, QuizError> {
                     reader.push(line);
                     break;
                 } else {
-                    return Err(QuizError::Parse { line: reader.line, whole_entry: false });
+                    return Err(QuizError::Parse {
+                        line: reader.line,
+                        whole_entry: false,
+                        message: String::from("no blank line after quiz settings"),
+                    });
                 }
             },
         }
@@ -244,16 +256,22 @@ fn read_entry(path: &PathBuf, reader: &mut QuizReader) -> Result<Option<FileEntr
                         entry.attributes.insert(key, value);
                     },
                     Some(FileLine::First(..)) => {
-                        return Err(
-                            QuizError::Parse { line: reader.line, whole_entry: false }
-                        );
+                        return Err(QuizError::Parse {
+                            line: reader.line,
+                            whole_entry: false,
+                            message: String::from("no blank line between questions"),
+                        });
                     }
                 }
             }
             Ok(Some(entry))
         },
         Some(_) => {
-            Err(QuizError::Parse { line: reader.line, whole_entry: false })
+            Err(QuizError::Parse {
+                line: reader.line,
+                whole_entry: false,
+                message: String::from("expected first line of question"),
+            })
         },
         None => {
             Ok(None)
@@ -334,7 +352,11 @@ impl QuizReader {
                 let value = trimmed[colon+1..].trim().to_string();
                 Ok(Some(FileLine::Pair(key, value)))
             } else {
-                Err(QuizError::Parse { line: self.line, whole_entry: false })
+                Err(QuizError::Parse {
+                    line: self.line,
+                    whole_entry: false,
+                    message: String::from("expected colon"),
+                })
             }
         } else if trimmed.starts_with("[") && trimmed.find("]").is_some() {
             let brace = trimmed.find("]").unwrap();
@@ -349,7 +371,10 @@ impl QuizReader {
 
 
 fn parse_u64(s: &str, line: usize) -> Result<u64, QuizError> {
-    u64::from_str(s).map_err(|_| QuizError::Parse { line, whole_entry: true })
+    u64::from_str(s)
+        .map_err(|_| QuizError::Parse {
+            line, whole_entry: true, message: String::from("could not parse integer"),
+        })
 }
 
 
@@ -361,7 +386,11 @@ fn get_context(line: &str, lineno: usize) -> Result<(String, Option<String>), Qu
             let context = String::from(line[open+1..close].trim());
             Ok((new_line, Some(context)))
         } else {
-            Err(QuizError::Parse { line: lineno, whole_entry: false })
+            Err(QuizError::Parse { 
+                line: lineno, 
+                whole_entry: false,
+                message: String::from("expected ]"),
+            })
         }
     } else {
         Ok((String::from(line), None))

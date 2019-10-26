@@ -197,45 +197,49 @@ fn timeouts_work() {
 
 #[test]
 fn parse_error_no_blank_line_between_questions() {
-    assert_parse_error("test_no_blank_line", "", 2, false);
+    assert_parse_error("test_no_blank_line", "no blank line between questions", 2, false);
 }
 
 #[test]
 fn parse_error_no_blank_line_after_settings() {
-    assert_parse_error("test_no_blank_line_after_settings", "", 2, false);
+    assert_parse_error(
+        "test_no_blank_line_after_settings", "no blank line after quiz settings", 2, false,
+    );
 }
 
 #[test]
 fn parse_error_wrong_ordered_value() {
-    assert_parse_error("test_wrong_ordered_value", "", 1, true);
+    assert_parse_error(
+        "test_wrong_ordered_value", "ordered field must be either 'true' or 'false'", 1, true,
+    );
 }
 
 #[test]
 fn parse_error_no_first_line() {
-    assert_parse_error("test_no_first_line", "", 1, false);
+    assert_parse_error("test_no_first_line", "expected first line of question", 1, false);
 }
 
 #[test]
 fn parse_error_bad_attribute() {
-    assert_parse_error("test_bad_attribute", "", 3, false);
+    assert_parse_error("test_bad_attribute", "expected colon", 3, false);
 }
 
 #[test]
 fn parse_error_bad_timeout_value() {
-    assert_parse_error("test_bad_timeout_value", "", 1, true);
+    assert_parse_error("test_bad_timeout_value", "could not parse integer", 1, true);
 }
 
 #[test]
 fn parse_error_bad_flashcard_context() {
-    assert_parse_error("test_bad_flashcard_context", "", 1, false);
+    assert_parse_error("test_bad_flashcard_context", "expected ]", 1, false);
 }
 
 fn assert_parse_error(path: &str, message: &str, lineno: usize, whole_entry: bool) {
     let (_, stderr) = spawn_and_mock(&format!("parse/{}", path), &[], &[]);
     let expected = if whole_entry {
-        format!("Error: parse error in entry beginning on line {}\n", lineno)
+        format!("Error: {} in entry beginning on line {}\n", message, lineno)
     } else {
-        format!("Error: parse error on line {}\n", lineno)
+        format!("Error: {} on line {}\n", message, lineno)
     };
     assert!(stderr == expected, format!("Contents of stderr: {:?}", stderr));
 }

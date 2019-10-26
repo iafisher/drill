@@ -29,7 +29,7 @@ pub enum QuizError {
     Io(io::Error),
     ReadlineInterrupted,
     EmptyQuiz,
-    Parse { line: usize, whole_entry: bool },
+    Parse { line: usize, whole_entry: bool, message: String },
 }
 
 
@@ -54,12 +54,14 @@ impl fmt::Display for QuizError {
             QuizError::ReadlineInterrupted => {
                 Ok(())
             },
-            QuizError::Parse { line, whole_entry } => {
-                if !whole_entry {
-                    write!(f, "parse error on line {}", line)
+            QuizError::Parse { line, whole_entry, ref message } => {
+                let location = if !whole_entry {
+                    format!("on line {}", line)
                 } else {
-                    write!(f, "parse error in entry beginning on line {}", line)
-                }
+                    format!("in entry beginning on line {}", line)
+                };
+
+                write!(f, "{} {}", message, location)
             },
         }
     }
