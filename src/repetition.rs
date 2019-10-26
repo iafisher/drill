@@ -9,8 +9,6 @@
  * Each quiz will consist roughly of 50% questions from Bucket 1, 20% questions each
  * from Bucket 2 and Bucket 3, and 10% questions from Bucket 4.
  *
- * TODO: Take time asked into account.
- *
  * Author:  Ian Fisher (iafisher@protonmail.com)
  * Version: October 2019
  */

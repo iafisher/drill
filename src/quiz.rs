@@ -13,7 +13,7 @@ use serde::{Serialize, Deserialize};
 
 use super::common::{Location, Result, QuizError, TakeOptions};
 use super::repetition;
-use super::shell::CmdUI;
+use super::ui::CmdUI;
 
 
 /// Represents an entire quiz.
@@ -209,11 +209,7 @@ pub struct ListQuestion {
 impl Question for ListQuestion {
     fn ask(&self, ui: &mut CmdUI) -> Result<QuestionResult> {
         let n = self.answer_list.len();
-        // TODO: Replace with array?
-        let mut satisfied = Vec::<bool>::with_capacity(n);
-        for _ in 0..n {
-            satisfied.push(false);
-        }
+        let mut satisfied = vec![false; n];
 
         ui.text(&self.text)?;
         let mut count = 0;
@@ -408,17 +404,6 @@ pub struct QuizResult {
     pub total_incorrect: usize,
     pub score: f64,
     pub per_question: Vec<QuestionResult>,
-}
-
-
-/// Return `true` if `guess` matches any of the answers in `answer_list`.
-pub fn check_any(answer_list: &Vec<Answer>, guess: &str) -> bool {
-    for answer in answer_list.iter() {
-        if check(answer, guess) {
-            return true;
-        }
-    }
-    false
 }
 
 

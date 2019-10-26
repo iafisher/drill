@@ -7,11 +7,10 @@
 mod common;
 #[macro_use]
 mod iohelper;
-mod parser;
 mod persistence;
 mod quiz;
 mod repetition;
-mod shell;
+mod ui;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -22,10 +21,10 @@ use std::path::{Path, PathBuf};
 use colored::*;
 use structopt::StructOpt;
 
-use common::{Command, QuizError, Options};
+use common::{Command, QuizError, Options, Result};
 use iohelper::{confirm, prettyprint_colored};
 use quiz::Quiz;
-use shell::CmdUI;
+use ui::CmdUI;
 
 
 fn main() {
@@ -60,7 +59,7 @@ fn main() {
 
 
 /// The main function for the `take` subcommand.
-pub fn main_take(dir: &Path, options: common::TakeOptions) -> Result<(), QuizError> {
+pub fn main_take(dir: &Path, options: common::TakeOptions) -> Result<()> {
     let mut quiz = persistence::load_quiz(dir, &options.name)?;
     let mut ui = CmdUI::new();
     let results = quiz.take(&mut ui, &options)?;
@@ -73,7 +72,7 @@ pub fn main_take(dir: &Path, options: common::TakeOptions) -> Result<(), QuizErr
 
 
 /// The main function for the `count` subcommand.
-pub fn main_count(dir: &Path, options: common::CountOptions) -> Result<(), QuizError> {
+pub fn main_count(dir: &Path, options: common::CountOptions) -> Result<()> {
     let quiz = persistence::load_quiz(dir, &options.name)?;
     if options.list_tags {
         list_tags(&quiz)?;
@@ -93,7 +92,7 @@ pub fn main_count(dir: &Path, options: common::CountOptions) -> Result<(), QuizE
 
 /// The main function for the `results` subcommand.
 pub fn main_results(
-    dir: &Path, options: common::ResultsOptions) -> Result<(), QuizError> {
+    dir: &Path, options: common::ResultsOptions) -> Result<()> {
 
     let quiz = persistence::load_quiz(dir, &options.name)?;
     let results = persistence::load_results(dir, &options.name)?;
@@ -144,9 +143,7 @@ pub fn main_results(
 }
 
 
-pub fn main_search(
-    dir: &Path, options: common::SearchOptions) -> Result<(), QuizError> {
-
+pub fn main_search(dir: &Path, options: common::SearchOptions) -> Result<()> {
     let quiz = persistence::load_quiz(dir, &options.name)?;
 
     for question in quiz.questions.iter() {
@@ -184,7 +181,7 @@ pub fn parse_options() -> common::Options {
 
 
 /// Print a list of tags.
-fn list_tags(quiz: &Quiz) -> Result<(), QuizError> {
+fn list_tags(quiz: &Quiz) -> Result<()> {
     // Count how many times each tag has been used.
     let mut tags = HashMap::<&str, u32>::new();
     for question in quiz.questions.iter() {
