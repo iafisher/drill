@@ -6,9 +6,9 @@ use std::time;
 
 #[test]
 fn can_take_simple_quiz1() {
-    let output = spawn_and_mock("test1", &["Ulan Bator", "no"], &[]);
+    let (stdout, _) = spawn_and_mock("test1", &["Ulan Bator", "no"], &[]);
     assert_in_order(
-        &output,
+        &stdout,
         &[
             "What is the capital of Mongolia?",
             "100.0%",
@@ -22,12 +22,12 @@ fn can_take_simple_quiz1() {
 
 #[test]
 fn can_take_simple_quiz2() {
-    let output = spawn_and_mock(
+    let (stdout, _) = spawn_and_mock(
         "test2", &["a", "Wilhelm I", "Wilhelm II", "Wilhelm II"], &["--in-order"],
     );
 
     assert_in_order(
-        &output,
+        &stdout,
         &[
             "Who was President of the United States during the Korean War?",
             "List the modern Emperors of Germany in chronological order.",
@@ -39,19 +39,19 @@ fn can_take_simple_quiz2() {
 
     // Since the order of multiple-choice answers is random, we don't know whether
     // guessing 'a' was right or not.
-    assert!(output.contains("1 incorrect") || output.contains("1 correct"));
+    assert!(stdout.contains("1 incorrect") || stdout.contains("1 correct"));
 }
 
 #[test]
 fn can_take_quiz_with_list_question() {
-    let output = spawn_and_mock(
+    let (stdout, _) = spawn_and_mock(
         "test_list",
         &["China", "PR China", "France", "Germany", "US", "United Kingdom", "no"],
         &["--in-order"],
     );
 
     assert_in_order(
-        &output,
+        &stdout,
         &[
             "Name the five members of the UN Security Council.",
             "Correct!\n",
@@ -67,12 +67,12 @@ fn can_take_quiz_with_list_question() {
 
 #[test]
 fn can_take_flashcard_quiz() {
-    let output = spawn_and_mock(
+    let (stdout, _) = spawn_and_mock(
         "test_flashcard", &["bread", "wine", "butter", "no"], &["--in-order"],
     );
 
     assert_in_order(
-        &output,
+        &stdout,
         &[
             "el pan",
             "el vino",
@@ -84,14 +84,14 @@ fn can_take_flashcard_quiz() {
 
 #[test]
 fn can_take_flipped_flashcard_quiz() {
-    let output = spawn_and_mock(
+    let (stdout, _) = spawn_and_mock(
         "test_flashcard",
         &["el pan", "el vino", "la mantequilla", "no"],
         &["--in-order", "--flip"],
     );
 
     assert_in_order(
-        &output,
+        &stdout,
         &[
             "bread",
             "wine",
@@ -103,14 +103,14 @@ fn can_take_flipped_flashcard_quiz() {
 
 #[test]
 fn no_credit_answers_work() {
-    let output = spawn_and_mock(
+    let (stdout, _) = spawn_and_mock(
         "test_no_credit",
         &["Riverside", "Ontario", "San Bernardino", "Corona", "Fontana", "no"],
         &[],
     );
 
     assert_in_order(
-        &output,
+        &stdout,
         &[
             "Name the three largest cities of the Inland Empire.",
             "Correct",
@@ -125,10 +125,10 @@ fn no_credit_answers_work() {
 
 #[test]
 fn quiz_instructions_are_displayed() {
-    let output = spawn_and_mock("test_instructions", &["Lansing, MI", "no"], &[]);
+    let (stdout, _) = spawn_and_mock("test_instructions", &["Lansing, MI", "no"], &[]);
 
     assert_in_order(
-        &output,
+        &stdout,
         &[
             "Include the state's postal code.",
             "Correct",
@@ -139,10 +139,10 @@ fn quiz_instructions_are_displayed() {
 
 #[test]
 fn flashcards_context() {
-    let output = spawn_and_mock("test_flashcard_context", &["прочитать", "no"], &[]);
+    let (stdout, _) = spawn_and_mock("test_flashcard_context", &["прочитать", "no"], &[]);
 
     assert_in_order(
-        &output,
+        &stdout,
         &[
             "to read [perf]",
             "Correct",
@@ -150,12 +150,12 @@ fn flashcards_context() {
         ]
     );
 
-    let output = spawn_and_mock(
+    let (stdout, _) = spawn_and_mock(
         "test_flashcard_context", &["to read", "no"], &["--flip"]
     );
 
     assert_in_order(
-        &output,
+        &stdout,
         &[
             "прочитать [bleh]",
             "Correct",
@@ -178,10 +178,10 @@ fn timeouts_work() {
     stdin_write(stdin, "Sicily");
 
     let result = process.wait_with_output().expect("Failed to read stdout");
-    let output = String::from_utf8_lossy(&result.stdout).to_string();
+    let stdout = String::from_utf8_lossy(&result.stdout).to_string();
 
     assert_in_order(
-        &output,
+        &stdout,
         &[
             "Warning: This quiz contains timed questions!",
             "Correct!\n",
@@ -193,6 +193,51 @@ fn timeouts_work() {
             "1 partially correct",
         ],
     );
+}
+
+#[test]
+fn parse_error_no_blank_line_between_questions() {
+    assert_parse_error("test_no_blank_line", "", 2, false);
+}
+
+#[test]
+fn parse_error_no_blank_line_after_settings() {
+    assert_parse_error("test_no_blank_line_after_settings", "", 2, false);
+}
+
+#[test]
+fn parse_error_wrong_ordered_value() {
+    assert_parse_error("test_wrong_ordered_value", "", 1, true);
+}
+
+#[test]
+fn parse_error_no_first_line() {
+    assert_parse_error("test_no_first_line", "", 1, false);
+}
+
+#[test]
+fn parse_error_bad_attribute() {
+    assert_parse_error("test_bad_attribute", "", 3, false);
+}
+
+#[test]
+fn parse_error_bad_timeout_value() {
+    assert_parse_error("test_bad_timeout_value", "", 1, true);
+}
+
+#[test]
+fn parse_error_bad_flashcard_context() {
+    assert_parse_error("test_bad_flashcard_context", "", 1, false);
+}
+
+fn assert_parse_error(path: &str, message: &str, lineno: usize, whole_entry: bool) {
+    let (_, stderr) = spawn_and_mock(&format!("parse/{}", path), &[], &[]);
+    let expected = if whole_entry {
+        format!("Error: parse error in entry beginning on line {}\n", lineno)
+    } else {
+        format!("Error: parse error on line {}\n", lineno)
+    };
+    assert!(stderr == expected, format!("Contents of stderr: {:?}", stderr));
 }
 
 fn assert_in_order(mock_stdout: &str, data: &[&str]) {
@@ -209,7 +254,7 @@ fn assert_in_order(mock_stdout: &str, data: &[&str]) {
     }
 }
 
-fn spawn_and_mock(quiz: &str, input: &[&str], extra_args: &[&str]) -> String {
+fn spawn_and_mock(quiz: &str, input: &[&str], extra_args: &[&str]) -> (String, String) {
     let mut child = spawn(quiz, extra_args);
 
     {
@@ -220,7 +265,9 @@ fn spawn_and_mock(quiz: &str, input: &[&str], extra_args: &[&str]) -> String {
     }
 
     let result = child.wait_with_output().expect("Failed to read stdout");
-    String::from_utf8_lossy(&result.stdout).to_string()
+    let stdout = String::from_utf8_lossy(&result.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&result.stderr).to_string();
+    (stdout, stderr)
 }
 
 fn spawn(quiz: &str, extra_args: &[&str]) -> Child {
@@ -233,6 +280,7 @@ fn spawn(quiz: &str, extra_args: &[&str]) -> Child {
         .arg(&quiz)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .expect("Failed to spawn child process")
 }

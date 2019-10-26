@@ -349,7 +349,7 @@ impl QuizReader {
 
 
 fn parse_u64(s: &str, line: usize) -> Result<u64, QuizError> {
-    u64::from_str(s).map_err(|_| QuizError::Parse { line, whole_entry: false })
+    u64::from_str(s).map_err(|_| QuizError::Parse { line, whole_entry: true })
 }
 
 
