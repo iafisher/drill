@@ -4,6 +4,8 @@
  * Author:  Ian Fisher (iafisher@protonmail.com)
  * Version: October 2019
  */
+use std::mem;
+
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Serialize, Deserialize};
@@ -47,6 +49,9 @@ pub struct Question {
     /// credit. Once passed, the user can still get partial credit up if she answers
     /// within `2*timeout` seconds.
     pub timeout: Option<u64>,
+    /// Context for flashcards.
+    pub front_context: Option<String>,
+    pub back_context: Option<String>,
 
     /// The location where the question is defined.
     pub location: Option<Location>,
@@ -120,6 +125,8 @@ impl Question {
             explanations: Vec::new(),
             location: None,
             timeout: None,
+            front_context: None,
+            back_context: None,
         }
     }
 
@@ -145,6 +152,7 @@ impl Question {
 
             self.text = vec![side2];
             self.answer_list = vec![vec![side1]];
+            mem::swap(&mut self.front_context, &mut self.back_context);
         }
     }
 }

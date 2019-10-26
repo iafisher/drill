@@ -125,16 +125,39 @@ fn no_credit_answers_work() {
 
 #[test]
 fn quiz_instructions_are_displayed() {
-    let output = spawn_and_mock(
-        "test_instructions",
-        &["Lansing, MI", "no"],
-        &[],
-    );
+    let output = spawn_and_mock("test_instructions", &["Lansing, MI", "no"], &[]);
 
     assert_in_order(
         &output,
         &[
             "Include the state's postal code.",
+            "Correct",
+            "100.0%",
+        ]
+    );
+}
+
+#[test]
+fn flashcards_context() {
+    let output = spawn_and_mock("test_flashcard_context", &["прочитать", "no"], &[]);
+
+    assert_in_order(
+        &output,
+        &[
+            "to read [perf]",
+            "Correct",
+            "100.0%",
+        ]
+    );
+
+    let output = spawn_and_mock(
+        "test_flashcard_context", &["to read", "no"], &["--flip"]
+    );
+
+    assert_in_order(
+        &output,
+        &[
+            "прочитать [bleh]",
             "Correct",
             "100.0%",
         ]

@@ -60,7 +60,7 @@ impl fmt::Display for QuizError {
                 } else {
                     write!(f, "parse error in entry beginning on line {}", line)
                 }
-            }
+            },
         }
     }
 }

@@ -68,6 +68,8 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
                 timeout,
+                front_context: None,
+                back_context: None,
             });
         } else {
             return Ok(Question {
@@ -82,17 +84,22 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
                 timeout,
+                front_context: None,
+                back_context: None,
             });
         }
     } else if entry.following.len() == 0 {
         if let Some(equal) = entry.text.find("=") {
-            let top = entry.text[..equal].trim().to_string();
-            let bottom = split(&entry.text[equal+1..], "/");
+            let frnt = entry.text[..equal].trim().to_string();
+            let (front, front_context) = get_context(&frnt, entry.location.line)?;
+            let bck = &entry.text[equal+1..];
+            let (back, back_context) = get_context(&bck, entry.location.line)?;
+            let back_split = split(&back, "/");
             return Ok(Question {
                 kind: QuestionKind::Flashcard,
                 id: entry.id.clone(),
-                text: vec![top],
-                answer_list: vec![bottom],
+                text: vec![front],
+                answer_list: vec![back_split],
                 candidates: Vec::new(),
                 no_credit: Vec::new(),
                 prior_results: Vec::new(),
@@ -100,6 +107,8 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
                 timeout,
+                front_context,
+                back_context,
             });
         } else {
             return Err(QuizError::Parse { line: entry.location.line, whole_entry: true });
@@ -133,6 +142,8 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
                 timeout: None,
+                front_context: None,
+                back_context: None,
             });
         } else {
             return Ok(Question {
@@ -147,6 +158,8 @@ fn entry_to_question(entry: &FileEntry) -> Result<Question, QuizError> {
                 explanations: Vec::new(),
                 location: Some(entry.location.clone()),
                 timeout: None,
+                front_context: None,
+                back_context: None,
             });
         }
     }
@@ -337,4 +350,20 @@ impl QuizReader {
 
 fn parse_u64(s: &str, line: usize) -> Result<u64, QuizError> {
     u64::from_str(s).map_err(|_| QuizError::Parse { line, whole_entry: false })
+}
+
+
+fn get_context(line: &str, lineno: usize) -> Result<(String, Option<String>), QuizError> {
+    if let Some(open) = line.find('[') {
+        if let Some(_close) = line[open..].find(']') {
+            let close = _close + open;
+            let new_line = String::from(line[..open].trim());
+            let context = String::from(line[open+1..close].trim());
+            Ok((new_line, Some(context)))
+        } else {
+            Err(QuizError::Parse { line: lineno, whole_entry: false })
+        }
+    } else {
+        Ok((String::from(line), None))
+    }
 }

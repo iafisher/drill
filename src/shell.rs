@@ -58,7 +58,12 @@ pub fn take(quiz: &mut Quiz, options: &TakeOptions) -> Result<QuizResult, QuizEr
     for (i, q) in questions.iter().enumerate() {
         my_print!("\n")?;
         let mut rng = thread_rng();
-        let text = q.text.choose(&mut rng).unwrap();
+        let basetext = q.text.choose(&mut rng).unwrap().clone();
+        let text = if let Some(context) = q.front_context.as_ref() {
+            format!("{} [{}]", basetext, context)
+        } else {
+            basetext
+        };
         let prefix = format!("  ({}) ", i+1);
         prettyprint_colored(&text, Some(&prefix), None, Some(Color::Cyan))?;
         my_print!("\n")?;
