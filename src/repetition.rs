@@ -33,7 +33,10 @@ const DOWN_THRESHOLD: f64 = 0.4;
 
 
 /// Choose a set of questions, filtered by the command-line options.
-pub fn choose_questions<'a>(questions: &'a Vec<Box<Question>>, options: &TakeOptions) -> Vec<&'a Box<Question>> {
+pub fn choose_questions<'a>(
+    questions: &'a Vec<Box<Question>>, 
+    options: &TakeOptions) -> Vec<&'a Box<Question>> {
+
     let mut candidates = Vec::new();
     for question in questions.iter() {
         if filter_tags(&question.get_common().tags, &options.filter_opts) {
@@ -152,7 +155,9 @@ fn cmp_questions_in_order(a: &&Box<Question>, b: &&Box<Question>) -> cmp::Orderi
 /// Comparison function that sorts an array of `Question` objects so that the questions
 /// that were least recently asked appear first. Questions that have never been asked
 /// will appear at the very front.
-fn cmp_questions_oldest_first(a: &&&Box<Question>, b: &&&Box<Question>) -> cmp::Ordering {
+fn cmp_questions_oldest_first(
+    a: &&&Box<Question>, b: &&&Box<Question>) -> cmp::Ordering {
+
     // NOTE: This method assumes that the `prior_results` field of `Question` objects
     // is ordered chronologically, which should always be true.
     let a_common = a.get_common();

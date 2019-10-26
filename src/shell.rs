@@ -51,7 +51,10 @@ impl CmdUI {
     pub fn incorrect(&mut self, correction: Option<&str>) -> Result<()> {
         if let Some(correction) = correction {
             let message = format!(
-                "{} The correct answer was {}.", "Incorrect.".red(), correction.green());
+                "{} The correct answer was {}.",
+                "Incorrect.".red(), 
+                correction.green(),
+            );
             prettyprint(&message, None)
         } else {
             prettyprint(&"Incorrect.".red(), None)
@@ -128,7 +131,8 @@ impl CmdUI {
             }
             my_print!("  {}", format!("{}", results.total_correct).green())?;
             my_print!(" correct\n")?;
-            my_print!("  {}", format!("{}", results.total_partially_correct).bright_green())?;
+            my_print!(
+                "  {}", format!("{}", results.total_partially_correct).bright_green())?;
             my_print!(" partially correct\n")?;
             my_print!("  {}", format!("{}", results.total_incorrect).red())?;
             my_print!(" incorrect\n")?;

@@ -102,10 +102,12 @@ fn entry_to_question(
     } else {
         let ordered = if let Some(_ordered) = entry.attributes.get("ordered") {
             if _ordered != "true" && _ordered != "false" {
+                let message = String::from(
+                    "ordered field must be either 'true' or 'false'");
                 return Err(QuizError::Parse {
                     line: entry.location.line,
                     whole_entry: true,
-                    message: String::from("ordered field must be either 'true' or 'false'"),
+                    message,
                 });
             }
             _ordered == "true"
@@ -121,11 +123,11 @@ fn entry_to_question(
 
         let answer_list = entry.following.iter().map(|l| split(&l, "/")).collect();
         if ordered {
-            return Ok(Box::new(OrderedListQuestion { 
+            return Ok(Box::new(OrderedListQuestion {
                 text, answer_list, no_credit, common
             }));
         } else {
-            return Ok(Box::new(ListQuestion { 
+            return Ok(Box::new(ListQuestion {
                 text, answer_list, no_credit, common,
             }));
         }
@@ -182,7 +184,9 @@ fn read_settings(reader: &mut QuizReader) -> Result<GlobalSettings, QuizError> {
 ///
 /// `Ok(Some(entry))` is returned on a successful read. `Ok(None)` is returned when the
 /// end of file is reached. `Err(e)` is returned if a parse error occurs.
-fn read_entry(path: &PathBuf, reader: &mut QuizReader) -> Result<Option<FileEntry>, QuizError> {
+fn read_entry(
+    path: &PathBuf, reader: &mut QuizReader) -> Result<Option<FileEntry>, QuizError> {
+
     match reader.read_line()? {
         Some(FileLine::First(id, text)) => {
             let mut entry = FileEntry {
@@ -326,7 +330,9 @@ fn parse_u64(s: &str, line: usize) -> Result<u64, QuizError> {
 }
 
 
-fn get_context(line: &str, lineno: usize) -> Result<(String, Option<String>), QuizError> {
+fn get_context(
+    line: &str, lineno: usize) -> Result<(String, Option<String>), QuizError> {
+
     if let Some(open) = line.find('[') {
         if let Some(_close) = line[open..].find(']') {
             let close = _close + open;

@@ -23,8 +23,7 @@ fn can_take_simple_quiz1() {
 #[test]
 fn can_take_simple_quiz2() {
     let (stdout, _) = spawn_and_mock(
-        "test2", &["a", "Wilhelm I", "Wilhelm II", "Wilhelm II"], &["--in-order"],
-    );
+        "test2", &["a", "Wilhelm I", "Wilhelm II", "Wilhelm II"], &["--in-order"]);
 
     assert_in_order(
         &stdout,
@@ -68,8 +67,7 @@ fn can_take_quiz_with_list_question() {
 #[test]
 fn can_take_flashcard_quiz() {
     let (stdout, _) = spawn_and_mock(
-        "test_flashcard", &["bread", "wine", "butter", "no"], &["--in-order"],
-    );
+        "test_flashcard", &["bread", "wine", "butter", "no"], &["--in-order"]);
 
     assert_in_order(
         &stdout,
@@ -139,7 +137,8 @@ fn quiz_instructions_are_displayed() {
 
 #[test]
 fn flashcards_context() {
-    let (stdout, _) = spawn_and_mock("test_flashcard_context", &["прочитать", "no"], &[]);
+    let (stdout, _) = spawn_and_mock(
+        "test_flashcard_context", &["прочитать", "no"], &[]);
 
     assert_in_order(
         &stdout,
@@ -151,8 +150,7 @@ fn flashcards_context() {
     );
 
     let (stdout, _) = spawn_and_mock(
-        "test_flashcard_context", &["to read", "no"], &["--flip"]
-    );
+        "test_flashcard_context", &["to read", "no"], &["--flip"]);
 
     assert_in_order(
         &stdout,
@@ -198,26 +196,34 @@ fn timeouts_work() {
 
 #[test]
 fn parse_error_no_blank_line_between_questions() {
-    assert_parse_error("test_no_blank_line", "no blank line between questions", 2, false);
+    assert_parse_error(
+        "test_no_blank_line", "no blank line between questions", 2, false);
 }
 
 #[test]
 fn parse_error_no_blank_line_after_settings() {
     assert_parse_error(
-        "test_no_blank_line_after_settings", "no blank line after quiz settings", 2, false,
+        "test_no_blank_line_after_settings",
+        "no blank line after quiz settings",
+        2,
+        false,
     );
 }
 
 #[test]
 fn parse_error_wrong_ordered_value() {
     assert_parse_error(
-        "test_wrong_ordered_value", "ordered field must be either 'true' or 'false'", 1, true,
+        "test_wrong_ordered_value",
+        "ordered field must be either 'true' or 'false'",
+        1,
+        true,
     );
 }
 
 #[test]
 fn parse_error_no_first_line() {
-    assert_parse_error("test_no_first_line", "expected first line of question", 1, false);
+    assert_parse_error(
+        "test_no_first_line", "expected first line of question", 1, false);
 }
 
 #[test]

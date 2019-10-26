@@ -25,7 +25,9 @@ pub struct Quiz {
 
 
 impl Quiz {
-    pub fn take(&mut self, ui: &mut CmdUI, options: &TakeOptions) -> Result<QuizResult> {
+    pub fn take(
+        &mut self, ui: &mut CmdUI, options: &TakeOptions) -> Result<QuizResult> {
+
         if options.flip {
             for q in self.questions.iter_mut() {
                 q.flip();

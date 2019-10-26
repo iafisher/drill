@@ -85,9 +85,11 @@ pub fn prettyprint(message: &str, prefix: Option<&str>) -> Result<(), QuizError>
 
 
 pub fn prettyprint_colored(
-    message: &str, prefix: Option<&str>, message_color: Option<Color>,
-    prefix_color: Option<Color>
-) -> Result<(), QuizError> {
+    message: &str,
+    prefix: Option<&str>,
+    message_color: Option<Color>,
+    prefix_color: Option<Color>) -> Result<(), QuizError> {
+
     let prefix = prefix.unwrap_or("");
     let width = textwrap::termwidth() - prefix.len();
     let mut lines = textwrap::wrap_iter(message, width);

@@ -43,7 +43,9 @@ pub fn load_results(dir: &Path, name: &str) -> Result<StoredResults, QuizError> 
 
 /// Save `results` to a file in the popquiz application's data directory, appending the
 /// results if previous results have been saved.
-pub fn save_results(dir: &Path, name: &str, results: &QuizResult) -> Result<(), QuizError> {
+pub fn save_results(
+    dir: &Path, name: &str, results: &QuizResult) -> Result<(), QuizError> {
+
     let mut dir_mutable = dir.to_path_buf();
     dir_mutable.push("results");
     if !dir_mutable.as_path().exists() {

@@ -80,7 +80,8 @@ pub fn main_count(dir: &Path, options: common::CountOptions) -> Result<(), QuizE
     } else {
         let mut count = 0;
         for question in quiz.questions.iter() {
-            if !repetition::filter_tags(&question.get_common().tags, &options.filter_opts) {
+            let tags = &question.get_common().tags;
+            if !repetition::filter_tags(tags, &options.filter_opts) {
                 count += 1;
             }
         }
@@ -91,7 +92,9 @@ pub fn main_count(dir: &Path, options: common::CountOptions) -> Result<(), QuizE
 
 
 /// The main function for the `results` subcommand.
-pub fn main_results(dir: &Path, options: common::ResultsOptions) -> Result<(), QuizError> {
+pub fn main_results(
+    dir: &Path, options: common::ResultsOptions) -> Result<(), QuizError> {
+
     let quiz = persistence::load_quiz(dir, &options.name)?;
     let results = persistence::load_results(dir, &options.name)?;
 
@@ -104,7 +107,8 @@ pub fn main_results(dir: &Path, options: common::ResultsOptions) -> Result<(), Q
     for (key, result) in results.iter() {
         // Only include questions that have scored results.
         if let Some(score) = repetition::aggregate_results(&result) {
-            if let Some(pos) = quiz.questions.iter().position(|q| q.get_common().id == *key) {
+            let pos = quiz.questions.iter().position(|q| q.get_common().id == *key);
+            if let Some(pos) = pos {
                 let text = &quiz.questions[pos].get_text();
                 aggregated.push((score, result.len(), key.clone(), text.clone()));
             }
@@ -129,7 +133,10 @@ pub fn main_results(dir: &Path, options: common::ResultsOptions) -> Result<(), Q
     for (score, attempts, id, text) in aggregated.iter() {
         let first_prefix = format!("{:>5.1}%  of {:>2}   ", score, attempts);
         prettyprint_colored(
-            &format!("[{}] {}", id, text), Some(&first_prefix), None, Some(Color::Cyan)
+            &format!("[{}] {}", id, text),
+            Some(&first_prefix),
+            None,
+            Some(Color::Cyan)
         )?;
     }
 
@@ -137,7 +144,9 @@ pub fn main_results(dir: &Path, options: common::ResultsOptions) -> Result<(), Q
 }
 
 
-pub fn main_search(dir: &Path, options: common::SearchOptions) -> Result<(), QuizError> {
+pub fn main_search(
+    dir: &Path, options: common::SearchOptions) -> Result<(), QuizError> {
+
     let quiz = persistence::load_quiz(dir, &options.name)?;
 
     for question in quiz.questions.iter() {
