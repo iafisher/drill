@@ -195,6 +195,34 @@ fn timeouts_work() {
 }
 
 #[test]
+fn can_correct_questions_in_quiz() {
+    let (stdout, _) = spawn_and_mock(
+        "test_correction",
+        &["San Jose", "!!", "Eugene", "foo", "!!", "foo", "bar", "no"],
+        &["--in-order"],
+    );
+
+    assert_in_order(
+        &stdout,
+        &[
+            "What is the largest city in Northern California?",
+            "Incorrect. The correct answer was San Francisco.",
+            "What is the largest city in Oregon?",
+            "Previous answer marked correct.",
+            "What is the largest city in Oregon?",
+            "Incorrect. The correct answer was Portland.",
+            "Name two things.",
+            "Correct!",
+            "Previous answer marked correct.",
+            "Name two things.",
+            "Correct!",
+            "3 correct",
+            "0 incorrect",
+        ]
+    );
+}
+
+#[test]
 fn parse_error_no_blank_line_between_questions() {
     assert_parse_error(
         "test_no_blank_line", "no blank line between questions", 2, false);

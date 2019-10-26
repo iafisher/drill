@@ -34,12 +34,6 @@ impl Quiz {
             }
         }
 
-        let mut results = Vec::new();
-        let mut total_correct = 0;
-        let mut total_partially_correct = 0;
-        let mut total = 0;
-        let mut aggregate_score = 0.0;
-
         let questions = repetition::choose_questions(&self.questions, &options);
         if questions.len() == 0 {
             return Err(QuizError::EmptyQuiz);
@@ -53,26 +47,48 @@ impl Quiz {
             ui.warning("This quiz contains timed questions!")?;
         }
 
-        for q in questions.iter() {
-            let result = q.ask(ui);
-            if let Ok(result) = result {
-                let score = result.score;
-                results.push(result);
-
-                total += 1;
-                aggregate_score += score;
-                if score == 1.0 {
-                    total_correct += 1;
-                } else if score > 0.0 {
-                    total_partially_correct += 1;
-                }
-            } else if let Err(QuizError::ReadlineInterrupted) = result {
-                break;
-            } else if let Err(e) = result {
-                return Err(e);
+        let mut results = Vec::new();
+        let mut index = 0;
+        ui.next();
+        while index < questions.len() {
+            let result = questions[index].ask(ui);
+            match result {
+                Ok(result) => {
+                    results.push(result);
+                },
+                Err(QuizError::ReadlineInterrupted) => {
+                    break;
+                },
+                Err(QuizError::SignalMarkCorrect) => {
+                    if results.len() > 0 {
+                        let last = results.len() - 1;
+                        if results[last].score < 1.0 {
+                            results[last].score = 1.0;
+                            ui.status("Previous answer marked correct.")?;
+                        } else {
+                            ui.status("Previous answer was already correct.")?;
+                        }
+                    } else {
+                        ui.status("No previous question to mark correct.")?;
+                    }
+                    // Don't increment the index, so that the user stays on the same
+                    // question.
+                    continue;
+                },
+                Err(e) => {
+                    return Err(e);
+                },
             }
+            index += 1;
+            ui.next();
         }
 
+        let total = results.len();
+        let aggregate_score: f64 = results.iter().map(|r| r.score).sum();
+        let total_correct = results.iter().filter(|r| r.score == 1.0).count();
+        let total_partially_correct = results.iter()
+            .filter(|r| r.score < 1.0 && r.score > 0.0)
+            .count();
         let total_incorrect = total - total_correct - total_partially_correct;
         let score = (aggregate_score / (total as f64)) * 100.0;
         let ret = QuizResult {

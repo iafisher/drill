@@ -31,13 +31,16 @@ impl CmdUI {
         }
     }
 
+    pub fn next(&mut self) {
+        self.time_started = time::Instant::now();
+        self.number += 1;
+    }
+
     pub fn text(&mut self, text: &str) -> Result<()> {
         if !self.finished_prologue {
             my_print!("\n")?;
             self.finished_prologue = true;
         }
-        self.time_started = time::Instant::now();
-        self.number += 1;
 
         let prefix = format!("  ({}) ", self.number);
         prettyprint_colored(&text, Some(&prefix), None, Some(Color::Cyan))?;
@@ -45,7 +48,13 @@ impl CmdUI {
     }
 
     pub fn prompt(&mut self) -> Result<Option<String>> {
-        prompt("> ")
+        let response = prompt("> ")?;
+        if let Some(response) = response.as_ref() {
+            if response == "!!" {
+                return Err(QuizError::SignalMarkCorrect);
+            }
+        }
+        Ok(response)
     }
 
     pub fn incorrect(&mut self, correction: Option<&str>) -> Result<()> {
@@ -71,6 +80,10 @@ impl CmdUI {
 
     pub fn no_credit(&mut self) -> Result<()> {
         my_println!("No credit.")
+    }
+
+    pub fn status(&mut self, text: &str) -> Result<()> {
+        my_println!("{}", text)
     }
 
     pub fn score(&mut self, score: f64, timed_out: bool) -> Result<()> {

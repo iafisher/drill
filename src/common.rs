@@ -30,6 +30,9 @@ pub enum QuizError {
     ReadlineInterrupted,
     EmptyQuiz,
     Parse { line: usize, whole_entry: bool, message: String },
+    /// Not really an error, but a signal sent when the user wants to mark their
+    /// previous answer as correct.
+    SignalMarkCorrect,
 }
 
 
@@ -65,6 +68,9 @@ impl fmt::Display for QuizError {
                 };
 
                 write!(f, "{} {}", message, location)
+            },
+            QuizError::SignalMarkCorrect => {
+                write!(f, "internal error ('correct previous')")
             },
         }
     }
