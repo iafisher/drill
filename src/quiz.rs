@@ -164,14 +164,14 @@ impl Question for ShortAnswerQuestion {
                 if timed_out {
                     ui.score(score, timed_out)?;
                 }
-                Ok(mkresult(&self.get_common().id, Some(guess), score))
+                Ok(mkresult(&self.get_common().id, &self.text, Some(guess), score))
             } else {
                 ui.incorrect(Some(&self.answer[0]))?;
-                Ok(mkresult(&self.get_common().id, Some(guess), 0.0))
+                Ok(mkresult(&self.get_common().id, &self.text, Some(guess), 0.0))
             }
         } else {
             ui.incorrect(Some(&self.answer[0]))?;
-            Ok(mkresult(&self.get_common().id, None, 0.0))
+            Ok(mkresult(&self.get_common().id, &self.text, None, 0.0))
         }
     }
 
@@ -194,11 +194,12 @@ pub struct FlashcardQuestion {
 
 impl Question for FlashcardQuestion {
     fn ask(&self, ui: &mut CmdUI) -> Result<QuestionResult> {
-        if let Some(context) = &self.front_context {
-            ui.text(&format!("{} [{}]", self.front[0], context))?;
+        let text = if let Some(context) = &self.front_context {
+            format!("{} [{}]", self.front[0], context)
         } else {
-            ui.text(&self.front[0])?;
-        }
+            self.front[0].clone()
+        };
+        ui.text(&text)?;
 
         if let Some(guess) = ui.prompt()? {
             if check(&self.back, &guess) {
@@ -208,14 +209,14 @@ impl Question for FlashcardQuestion {
                 if timed_out {
                     ui.score(score, timed_out)?;
                 }
-                Ok(mkresult(&self.get_common().id, Some(guess), score))
+                Ok(mkresult(&self.get_common().id, &text, Some(guess), score))
             } else {
                 ui.incorrect(Some(&self.back[0]))?;
-                Ok(mkresult(&self.get_common().id, Some(guess), 0.0))
+                Ok(mkresult(&self.get_common().id, &text, Some(guess), 0.0))
             }
         } else {
             ui.incorrect(Some(&self.back[0]))?;
-            Ok(mkresult(&self.get_common().id, None, 0.0))
+            Ok(mkresult(&self.get_common().id, &text, None, 0.0))
         }
     }
 
@@ -286,7 +287,7 @@ impl Question for ListQuestion {
         let score = (n - missed.len()) as f64 / (n as f64);
         ui.score(score, false)?;
 
-        Ok(mkresultlist(&self.get_common().id, responses, score))
+        Ok(mkresultlist(&self.get_common().id, &self.text, responses, score))
     }
 
     fn get_common(&self) -> &QuestionCommon { &self.common }
@@ -326,7 +327,7 @@ impl Question for OrderedListQuestion {
         }
         let score = (ncorrect as f64) / (self.answer_list.len() as f64);
         ui.score(score, false)?;
-        Ok(mkresultlist(&self.get_common().id, responses, score))
+        Ok(mkresultlist(&self.get_common().id, &self.text, responses, score))
     }
 
     fn get_common(&self) -> &QuestionCommon { &self.common }
@@ -391,7 +392,7 @@ impl Question for MultipleChoiceQuestion {
         let (score, timed_out) = calculate_score(
             if correct { 1.0 } else { 0.0 }, self.timeout, ui.get_elapsed());
         ui.score(score, timed_out)?;
-        Ok(mkresult(&self.get_common().id, response, score))
+        Ok(mkresult(&self.get_common().id, &self.text, response, score))
     }
 
     fn get_common(&self) -> &QuestionCommon { &self.common }
@@ -413,6 +414,10 @@ pub type Answer = Vec<String>;
 pub struct QuestionResult {
     #[serde(skip)]
     pub id: String,
+    /// The text of the question exactly as it was asked. Optional for backwards
+    /// compatibility.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
     pub time_asked: chrono::DateTime<chrono::Utc>,
     /// If the question asked was a short answer question, then the user's response goes
     /// in this field.
@@ -492,9 +497,12 @@ fn calculate_score(
 
 
 /// Construct a `QuestionResult` object.
-fn mkresult(id: &str, response: Option<String>, score: f64) -> QuestionResult {
+fn mkresult(
+    id: &str, text: &str, response: Option<String>, score: f64) -> QuestionResult {
+
     QuestionResult {
         id: String::from(id),
+        text: Some(String::from(text)),
         time_asked: chrono::Utc::now(),
         score,
         response,
@@ -504,9 +512,12 @@ fn mkresult(id: &str, response: Option<String>, score: f64) -> QuestionResult {
 
 
 /// Construct a `QuestionResult` object with a list of responses.
-fn mkresultlist(id: &str, responses: Vec<String>, score: f64) -> QuestionResult {
+fn mkresultlist(
+    id: &str, text: &str, responses: Vec<String>, score: f64) -> QuestionResult {
+
     QuestionResult {
         id: String::from(id),
+        text: Some(String::from(text)),
         time_asked: chrono::Utc::now(),
         score,
         response: None,
