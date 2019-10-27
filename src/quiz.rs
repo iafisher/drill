@@ -144,16 +144,16 @@ impl Question for ShortAnswerQuestion {
                 ui.correct()?;
                 let elapsed = ui.get_elapsed();
                 let (score, timed_out) = calculate_score(1.0, self.timeout, elapsed);
-                ui.score(score, timed_out)?;
+                if timed_out {
+                    ui.score(score, timed_out)?;
+                }
                 Ok(mkresult(&self.get_common().id, Some(guess), score))
             } else {
                 ui.incorrect(Some(&self.answer[0]))?;
-                ui.score(0.0, false)?;
                 Ok(mkresult(&self.get_common().id, Some(guess), 0.0))
             }
         } else {
             ui.incorrect(Some(&self.answer[0]))?;
-            ui.score(0.0, false)?;
             Ok(mkresult(&self.get_common().id, None, 0.0))
         }
     }
@@ -188,16 +188,16 @@ impl Question for FlashcardQuestion {
                 ui.correct()?;
                 let elapsed = ui.get_elapsed();
                 let (score, timed_out) = calculate_score(1.0, self.timeout, elapsed);
-                ui.score(score, timed_out)?;
+                if timed_out {
+                    ui.score(score, timed_out)?;
+                }
                 Ok(mkresult(&self.get_common().id, Some(guess), score))
             } else {
                 ui.incorrect(Some(&self.back[0]))?;
-                ui.score(0.0, false)?;
                 Ok(mkresult(&self.get_common().id, Some(guess), 0.0))
             }
         } else {
             ui.incorrect(Some(&self.back[0]))?;
-            ui.score(0.0, false)?;
             Ok(mkresult(&self.get_common().id, None, 0.0))
         }
     }
