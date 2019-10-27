@@ -34,6 +34,8 @@ fn can_take_simple_quiz2() {
             r"RE: \(b\) (Harry S\. Truman|Franklin D\. Roosevelt|John F\. Kennedy|Lyndon Johnson)",
             r"RE: \(c\) (Harry S\. Truman|Franklin D\. Roosevelt|John F\. Kennedy|Lyndon Johnson)",
             r"RE: \(d\) (Harry S\. Truman|Franklin D\. Roosevelt|John F\. Kennedy|Lyndon Johnson)",
+            r"> Harry Truman",
+            "Please enter a letter.",
             r"> a",
             // Since the order of the choices is random, guessing 'a' may or may not
             // have been correct.

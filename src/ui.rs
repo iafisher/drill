@@ -43,6 +43,7 @@ impl CmdUI {
             self.finished_prologue = true;
         }
 
+        my_print!("\n")?;
         let prefix = format!("  ({}) ", self.number);
         prettyprint_colored(&text, Some(&prefix), None, Some(Color::Cyan))?;
         my_print!("\n")
@@ -74,15 +75,7 @@ impl CmdUI {
     }
 
     pub fn correct(&mut self) -> Result<()> {
-        prettyprint(&"Correct!".green(), None)
-    }
-
-    pub fn repeat(&mut self) -> Result<()> {
-        my_println!("You already said that.")
-    }
-
-    pub fn no_credit(&mut self) -> Result<()> {
-        my_println!("No credit.")
+        prettyprint(&format!("{}", "Correct!".green()), None)
     }
 
     pub fn status(&mut self, text: &str) -> Result<()> {

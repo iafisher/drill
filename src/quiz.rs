@@ -252,7 +252,7 @@ impl Question for ListQuestion {
 
                 if let Some(index) = check_one(&self.answer_list, &guess) {
                     if satisfied[index] {
-                        ui.repeat()?;
+                        ui.status("You already said that.")?;
                     } else {
                         satisfied[index] = true;
                         ui.correct()?;
@@ -260,7 +260,7 @@ impl Question for ListQuestion {
                     }
                 } else {
                     if check(&self.no_credit, &guess) {
-                        ui.no_credit()?;
+                        ui.status("No credit.")?;
                     } else {
                         ui.incorrect(None)?;
                         count += 1;
@@ -364,6 +364,7 @@ impl Question for MultipleChoiceQuestion {
         loop {
             if let Some(guess) = ui.prompt()? {
                 if guess.len() != 1 {
+                    ui.status("Please enter a letter.")?;
                     continue;
                 }
 
@@ -379,6 +380,7 @@ impl Question for MultipleChoiceQuestion {
                     }
                     break;
                 } else {
+                    ui.status("Please enter a letter.")?;
                     continue;
                 }
             } else {
