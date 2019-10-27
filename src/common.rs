@@ -25,7 +25,7 @@ pub struct Location {
 #[derive(Debug)]
 pub enum QuizError {
     /// For when the user requests a quiz that does not exist.
-    QuizNotFound(String),
+    QuizNotFound(PathBuf),
     /// For JSON errors.
     Json(serde_json::Error),
     CannotWriteToFile(PathBuf),
@@ -45,8 +45,8 @@ pub enum QuizError {
 impl fmt::Display for QuizError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            QuizError::QuizNotFound(ref name) => {
-                write!(f, "could not find quiz named '{}'", name)
+            QuizError::QuizNotFound(ref path) => {
+                write!(f, "could not find quiz named '{}'", path.to_str().unwrap())
             },
             QuizError::Json(ref err) => {
                 write!(f, "could not parse JSON ({})", err)
@@ -100,9 +100,6 @@ impl error::Error for QuizError {
 #[derive(StructOpt)]
 #[structopt(name = "popquiz", about = "Take quizzes from the command line.")]
 pub struct Options {
-    /// Look for quizzes in a particular directory.
-    #[structopt(short = "d", long = "directory")]
-    pub directory: Option<PathBuf>,
     /// Do not emit colorized output.
     #[structopt(long = "no-color")]
     pub no_color: bool,
@@ -130,7 +127,7 @@ pub enum Command {
 pub struct TakeOptions {
     /// Name of the quiz to take.
     #[structopt(default_value = "main")]
-    pub name: String,
+    pub name: PathBuf,
     /// Flip flashcards.
     #[structopt(long = "flip")]
     pub flip: bool,
@@ -151,7 +148,7 @@ pub struct TakeOptions {
 pub struct CountOptions {
     /// Name of the quiz to count.
     #[structopt(default_value = "main")]
-    pub name: String,
+    pub name: PathBuf,
     /// List tags instead of counting questions.
     #[structopt(long = "list-tags")]
     pub list_tags: bool,
@@ -174,7 +171,7 @@ pub struct FilterOptions {
 pub struct ResultsOptions {
     /// The name of the quiz for which to fetch the results.
     #[structopt(default_value = "main")]
-    pub name: String,
+    pub name: PathBuf,
     /// Only show the first `n` results.
     #[structopt(short = "n")]
     pub num_to_show: Option<usize>,
@@ -186,7 +183,7 @@ pub struct ResultsOptions {
 #[derive(StructOpt)]
 pub struct SearchOptions {
     /// The name of the quiz.
-    pub name: String,
+    pub name: PathBuf,
     /// The term to search for.
     pub term: String,
 }
@@ -196,7 +193,7 @@ impl TakeOptions {
     #[allow(dead_code)]
     pub fn new() -> Self {
         TakeOptions {
-            name: String::new(), num_to_ask: 20, save: false, flip: false,
+            name: PathBuf::new(), num_to_ask: 20, save: false, flip: false,
             in_order: false, filter_opts: FilterOptions::new()
         }
     }

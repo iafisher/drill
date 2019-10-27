@@ -16,7 +16,6 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io;
 use std::io::Write;
-use std::path::{Path, PathBuf};
 
 use colored::*;
 use structopt::StructOpt;
@@ -32,20 +31,19 @@ fn main() {
     if options.no_color {
         colored::control::set_override(false);
     }
-    let directory = options.directory.unwrap_or(PathBuf::from("."));
 
     let result = match options.cmd {
         Command::Take(options) => {
-            main_take(&directory.as_path(), options)
+            main_take(options)
         },
         Command::Count(options) => {
-            main_count(&directory.as_path(), options)
+            main_count(options)
         },
         Command::Results(options) => {
-            main_results(&directory.as_path(), options)
+            main_results(options)
         },
         Command::Search(options) => {
-            main_search(&directory.as_path(), options)
+            main_search(options)
         },
     };
 
@@ -59,33 +57,21 @@ fn main() {
 
 
 /// The main function for the `take` subcommand.
-pub fn main_take(dir: &Path, options: common::TakeOptions) -> Result<()> {
-    // If `options.name` is a path, extract the last component as the quiz's name and
-    // add the rest to `dir`.
-    let quiz_path = Path::new(&options.name);
-    let name = quiz_path.file_name()
-        .ok_or(QuizError::QuizNotFound(options.name.clone()))?;
-    let name = name.to_str().unwrap();
-    let dir = if let Some(parent) = quiz_path.parent() {
-        dir.join(parent)
-    } else {
-        dir.to_path_buf()
-    };
-
-    let mut quiz = persistence::load_quiz(&dir, &name)?;
+pub fn main_take(options: common::TakeOptions) -> Result<()> {
+    let mut quiz = persistence::load_quiz(&options.name)?;
     let mut ui = CmdUI::new();
     let results = quiz.take(&mut ui, &options)?;
 
     if results.total > 0 && (options.save || confirm("\nSave results? ")) {
-        persistence::save_results(&dir, &name, &results)?;
+        persistence::save_results(&options.name, &results)?;
     }
     Ok(())
 }
 
 
 /// The main function for the `count` subcommand.
-pub fn main_count(dir: &Path, options: common::CountOptions) -> Result<()> {
-    let quiz = persistence::load_quiz(dir, &options.name)?;
+pub fn main_count(options: common::CountOptions) -> Result<()> {
+    let quiz = persistence::load_quiz(&options.name)?;
     if options.list_tags {
         list_tags(&quiz)?;
     } else {
@@ -103,11 +89,9 @@ pub fn main_count(dir: &Path, options: common::CountOptions) -> Result<()> {
 
 
 /// The main function for the `results` subcommand.
-pub fn main_results(
-    dir: &Path, options: common::ResultsOptions) -> Result<()> {
-
-    let quiz = persistence::load_quiz(dir, &options.name)?;
-    let results = persistence::load_results(dir, &options.name)?;
+pub fn main_results(options: common::ResultsOptions) -> Result<()> {
+    let quiz = persistence::load_quiz(&options.name)?;
+    let results = persistence::load_results(&options.name)?;
 
     if results.len() == 0 {
         my_println!("No results have been recorded for this quiz.")?;
@@ -155,8 +139,8 @@ pub fn main_results(
 }
 
 
-pub fn main_search(dir: &Path, options: common::SearchOptions) -> Result<()> {
-    let quiz = persistence::load_quiz(dir, &options.name)?;
+pub fn main_search(options: common::SearchOptions) -> Result<()> {
+    let quiz = persistence::load_quiz(&options.name)?;
 
     for question in quiz.questions.iter() {
         let text = question.get_text();

@@ -20,23 +20,18 @@ use super::quiz::{
 
 
 /// Load a `Quiz` object given its name.
-pub fn load_quiz(dir: &Path, name: &str) -> Result<Quiz> {
-    let old_results = load_results(&dir, name)?;
-
-    let mut dir_mutable = dir.to_path_buf();
-    dir_mutable.push(name);
-    parse(&dir_mutable, &old_results)
+pub fn load_quiz(fullname: &Path) -> Result<Quiz> {
+    let old_results = load_results(fullname)?;
+    parse(fullname, &old_results)
 }
 
 
 type StoredResults = HashMap<String, Vec<QuestionResult>>;
 
 
-pub fn load_results(dir: &Path, name: &str) -> Result<StoredResults> {
-    let mut dir_mutable = dir.to_path_buf();
-    dir_mutable.push("results");
-    dir_mutable.push(format!("{}_results.json", name));
-    match fs::read_to_string(dir_mutable) {
+pub fn load_results(fullname: &Path) -> Result<StoredResults> {
+    let results_path = get_results_path(fullname)?;
+    match fs::read_to_string(results_path) {
         Ok(data) => {
             serde_json::from_str(&data).map_err(QuizError::Json)
         },
@@ -49,16 +44,15 @@ pub fn load_results(dir: &Path, name: &str) -> Result<StoredResults> {
 
 /// Save `results` to a file in the popquiz application's data directory, appending the
 /// results if previous results have been saved.
-pub fn save_results(dir: &Path, name: &str, results: &QuizResult) -> Result<()> {
-    let mut dir_mutable = dir.to_path_buf();
-    dir_mutable.push("results");
-    if !dir_mutable.as_path().exists() {
-        fs::create_dir(&dir_mutable).map_err(QuizError::Io)?;
+pub fn save_results(fullname: &Path, results: &QuizResult) -> Result<()> {
+    let results_dir = get_results_dir_path(fullname)?;
+    if !results_dir.as_path().exists() {
+        fs::create_dir(&results_dir).map_err(QuizError::Io)?;
     }
 
     // Load old data, if it exists.
-    dir_mutable.push(format!("{}_results.json", name));
-    let data = fs::read_to_string(&dir_mutable);
+    let results_path = get_results_path(fullname)?;
+    let data = fs::read_to_string(&results_path);
     let mut hash: BTreeMap<String, Vec<QuestionResult>> = match data {
         Ok(ref data) => {
             serde_json::from_str(&data)
@@ -80,20 +74,43 @@ pub fn save_results(dir: &Path, name: &str, results: &QuizResult) -> Result<()> 
 
     let serialized_results = serde_json::to_string_pretty(&hash)
         .map_err(QuizError::Json)?;
-    fs::write(&dir_mutable, serialized_results)
-        .or(Err(QuizError::CannotWriteToFile(dir_mutable.clone())))?;
+    fs::write(&results_path, serialized_results)
+        .or(Err(QuizError::CannotWriteToFile(results_path.clone())))?;
     Ok(())
 }
 
 
-fn parse(path: &PathBuf, old_results: &StoredResults) -> Result<Quiz> {
+fn get_results_dir_path(fullname: &Path) -> Result<PathBuf> {
+    let mut builder = if let Some(parent) = fullname.parent() {
+        parent.to_path_buf()
+    } else {
+        PathBuf::new()
+    };
+    builder.push("results");
+    Ok(builder)
+}
+
+
+fn get_results_path(fullname: &Path) -> Result<PathBuf> {
+    let shortname = fullname.file_name()
+        .ok_or(QuizError::QuizNotFound(fullname.to_path_buf()))?;
+    let shortname = shortname.to_str()
+        .ok_or(QuizError::QuizNotFound(fullname.to_path_buf()))?;
+
+    let mut builder = get_results_dir_path(fullname)?;
+    builder.push(format!("{}_results.json", shortname));
+    Ok(builder)
+}
+
+
+fn parse(path: &Path, old_results: &StoredResults) -> Result<Quiz> {
     let file = File::open(path).map_err(QuizError::Io)?;
     let mut reader = QuizReader::new(BufReader::new(file));
     let quiz_settings = read_settings(&mut reader)?;
 
     let mut questions = Vec::new();
     loop {
-        match read_entry(&path, &mut reader) {
+        match read_entry(path, &mut reader) {
             Ok(Some(entry)) => {
                 let q = entry_to_question(&entry, &quiz_settings, old_results)?;
                 questions.push(q);
@@ -266,7 +283,7 @@ fn read_settings(reader: &mut QuizReader) -> Result<GlobalSettings> {
 ///
 /// `Ok(Some(entry))` is returned on a successful read. `Ok(None)` is returned when the
 /// end of file is reached. `Err(e)` is returned if a parse error occurs.
-fn read_entry(path: &PathBuf, reader: &mut QuizReader) -> Result<Option<FileEntry>> {
+fn read_entry(path: &Path, reader: &mut QuizReader) -> Result<Option<FileEntry>> {
     match reader.read_line()? {
         Some(FileLine::First(id, text)) => {
             let mut entry = FileEntry {
@@ -274,7 +291,7 @@ fn read_entry(path: &PathBuf, reader: &mut QuizReader) -> Result<Option<FileEntr
                 text,
                 following: Vec::new(),
                 attributes: HashMap::new(),
-                location: Location { line: reader.line, path: path.clone() },
+                location: Location { line: reader.line, path: path.to_path_buf() },
             };
             loop {
                 match reader.read_line()? {
