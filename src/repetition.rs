@@ -128,24 +128,16 @@ pub fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
 /// Comparison function that sorts an array of `Question` objects in the order the
 /// questions appeared in the original quiz file based on the `location` field.
 fn cmp_questions_in_order(a: &&Box<Question>, b: &&Box<Question>) -> cmp::Ordering {
-    let a_common = a.get_common();
-    let b_common = b.get_common();
-    if let Some(a_location) = &a_common.location {
-        if let Some(b_location) = &b_common.location {
-            if a_location.line < b_location.line {
-                cmp::Ordering::Less
-            } else if a_location.line > b_location.line {
-                cmp::Ordering::Greater
-            } else {
-                // This case should never happen because two questions can't be defined
-                // on the same line.
-                cmp::Ordering::Equal
-            }
-        } else {
-            cmp::Ordering::Greater
-        }
-    } else {
+    let a_location = &a.get_common().location;
+    let b_location = &b.get_common().location;
+    if a_location.line < b_location.line {
         cmp::Ordering::Less
+    } else if a_location.line > b_location.line {
+        cmp::Ordering::Greater
+    } else {
+        // This case should never happen because two questions can't be defined
+        // on the same line.
+        cmp::Ordering::Equal
     }
 }
 

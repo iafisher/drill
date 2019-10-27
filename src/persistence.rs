@@ -145,7 +145,7 @@ fn entry_to_question(
         id: entry.id.clone(),
         prior_results,
         tags,
-        location: Some(entry.location.clone()),
+        location: entry.location.clone(),
     };
 
     let timeout = if let Some(_timeout) = entry.attributes.get("timeout") {

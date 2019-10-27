@@ -78,13 +78,9 @@ impl Quiz {
                 Err(QuizError::SignalEdit) => {
                     if index > 0 {
                         let prev = &questions[index-1];
-                        if let Some(location) = &prev.get_common().location {
-                            ui.launch_editor(&location)?;
-                            ui.status(
-                                "Edited previous question. Enter !! to mark your answer correct.")?;
-                        } else {
-                            ui.status("No location recorded for previous question.")?;
-                        }
+                        ui.launch_editor(&prev.get_common().location)?;
+                        ui.status(
+                            "Edited previous question. Enter !! to mark your answer correct.")?;
                     } else {
                         ui.status("No previous question to edit.")?;
                     }
@@ -136,8 +132,7 @@ pub struct QuestionCommon {
     pub id: String,
     pub prior_results: Vec<QuestionResult>,
     pub tags: Vec<String>,
-    // TODO: Make this non-optional.
-    pub location: Option<Location>,
+    pub location: Location,
 }
 
 
