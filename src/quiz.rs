@@ -10,6 +10,7 @@ use std::time;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Serialize, Deserialize};
+use unicode_normalization::UnicodeNormalization;
 
 use super::common::{Location, Result, QuizError, TakeOptions};
 use super::repetition;
@@ -465,7 +466,7 @@ pub fn check(ans: &Answer, guess: &str) -> bool {
 
 
 fn normalize(guess: &str) -> String {
-    String::from(guess.to_lowercase())
+    String::from(guess.to_lowercase()).nfc().collect::<String>()
 }
 
 

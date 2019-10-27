@@ -268,6 +268,22 @@ fn can_correct_questions_in_quiz() {
 }
 
 #[test]
+fn unicode_normalization_works() {
+    play_quiz(
+        "test_unicode_normalization",
+        &[],
+        &[
+            "(1) traffic",
+            "> el tra\u{0301}fico",
+            "Correct!",
+            "Score: 100.0% out of 1 question",
+            "1 correct",
+            "0 incorrect",
+        ],
+    );
+}
+
+#[test]
 fn parse_error_no_blank_line_between_questions() {
     assert_parse_error(
         "test_no_blank_line", "no blank line between questions", 2, false);
