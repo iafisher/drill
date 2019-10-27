@@ -60,12 +60,24 @@ fn main() {
 
 /// The main function for the `take` subcommand.
 pub fn main_take(dir: &Path, options: common::TakeOptions) -> Result<()> {
-    let mut quiz = persistence::load_quiz(dir, &options.name)?;
+    // If `options.name` is a path, extract the last component as the quiz's name and
+    // add the rest to `dir`.
+    let quiz_path = Path::new(&options.name);
+    let name = quiz_path.file_name()
+        .ok_or(QuizError::QuizNotFound(options.name.clone()))?;
+    let name = name.to_str().unwrap();
+    let dir = if let Some(parent) = quiz_path.parent() {
+        dir.join(parent)
+    } else {
+        dir.to_path_buf()
+    };
+
+    let mut quiz = persistence::load_quiz(&dir, &name)?;
     let mut ui = CmdUI::new();
     let results = quiz.take(&mut ui, &options)?;
 
     if results.total > 0 && (options.save || confirm("\nSave results? ")) {
-        persistence::save_results(dir, &options.name, &results)?;
+        persistence::save_results(&dir, &name, &results)?;
     }
     Ok(())
 }
