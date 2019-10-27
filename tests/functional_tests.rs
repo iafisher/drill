@@ -3,169 +3,224 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::thread;
 use std::time;
 
+use regex::Regex;
+
 
 #[test]
 fn can_take_simple_quiz1() {
-    let (stdout, _) = spawn_and_mock("test1", &["Ulan Bator", "no"], &[]);
-    assert_in_order(
-        &stdout,
+    play_quiz(
+        "test1",
+        &[],
         &[
-            "What is the capital of Mongolia?",
-            "100.0%",
+            "(1) What is the capital of Mongolia?",
+            "> Ulan Bator",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "Score: 100.0% out of 1 question",
             "1 correct",
             "0 partially correct",
             "0 incorrect",
-        ]
+        ],
     );
 }
 
 
 #[test]
 fn can_take_simple_quiz2() {
-    let (stdout, _) = spawn_and_mock(
-        "test2", &["a", "Wilhelm I", "Wilhelm II", "Wilhelm II"], &["--in-order"]);
-
-    assert_in_order(
-        &stdout,
+    play_quiz(
+        "test2",
+        &["--in-order"],
         &[
-            "Who was President of the United States during the Korean War?",
-            "List the modern Emperors of Germany in chronological order.",
+            "(1) Who was President of the United States during the Korean War?",
+            r"RE: \(a\) (Harry S\. Truman|Franklin D\. Roosevelt|John F\. Kennedy|Lyndon Johnson)",
+            r"RE: \(b\) (Harry S\. Truman|Franklin D\. Roosevelt|John F\. Kennedy|Lyndon Johnson)",
+            r"RE: \(c\) (Harry S\. Truman|Franklin D\. Roosevelt|John F\. Kennedy|Lyndon Johnson)",
+            r"RE: \(d\) (Harry S\. Truman|Franklin D\. Roosevelt|John F\. Kennedy|Lyndon Johnson)",
+            r"> a",
+            // Since the order of the choices is random, guessing 'a' may or may not
+            // have been correct.
+            r"RE: (Correct!|Incorrect\. The correct answer was Harry S\. Truman\.)",
+            r"RE: Score for this question: (0|100)\.0%",
+            "(2) List the modern Emperors of Germany in chronological order.",
+            "> Wilhelm I",
+            "Correct!",
+            "> Wilhelm II",
             "Incorrect. The correct answer was Frederick III.",
+            "> Wilhelm II",
+            "Correct!",
             "Score for this question: 66.7%",
+            r"RE: Score: (33\.3|83\.3)% out of 2 questions",
+            r"RE: (0|1) correct",
             "1 partially correct",
-        ]
+            r"RE: (0|1) incorrect",
+        ],
     );
-
-    // Since the order of multiple-choice answers is random, we don't know whether
-    // guessing 'a' was right or not.
-    assert!(stdout.contains("1 incorrect") || stdout.contains("1 correct"));
 }
 
 #[test]
 fn can_take_quiz_with_list_question() {
-    let (stdout, _) = spawn_and_mock(
+    play_quiz(
         "test_list",
-        &["China", "PR China", "France", "Germany", "US", "United Kingdom", "no"],
         &["--in-order"],
-    );
-
-    assert_in_order(
-        &stdout,
         &[
-            "Name the five members of the UN Security Council.",
-            "Correct!\n",
-            "You already said that.\n",
-            "Correct!\n",
-            "Incorrect.\n",
-            "Correct!\n",
-            "You missed:\n  Russia\n\n",
+            "(1) Name the five members of the UN Security Council.",
+            "> China",
+            "Correct!",
+            "> PR China",
+            "You already said that.",
+            "> France",
+            "Correct!",
+            "> Germany",
+            "Incorrect.",
+            "> US",
+            "Correct!",
+            "> United Kingdom",
+            "Correct!",
+            "You missed:",
+            "Russia",
             "Score for this question: 80.0%",
+            "Score: 80.0% out of 1 question",
+            "0 correct",
+            "1 partially correct",
+            "0 incorrect",
         ],
     );
 }
 
 #[test]
 fn can_take_flashcard_quiz() {
-    let (stdout, _) = spawn_and_mock(
-        "test_flashcard", &["bread", "wine", "butter", "no"], &["--in-order"]);
-
-    assert_in_order(
-        &stdout,
+    play_quiz(
+        "test_flashcard",
+        &["--in-order"],
         &[
-            "el pan",
-            "el vino",
-            "la mantequilla",
-            "100.0%",
-        ]
+            "(1) el pan",
+            "> bread",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "(2) el vino",
+            "> wine",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "(3) la mantequilla",
+            "> butter",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "Score: 100.0% out of 3 questions",
+            "3 correct",
+            "0 partially correct",
+            "0 incorrect",
+        ],
     );
 }
 
 #[test]
 fn can_take_flipped_flashcard_quiz() {
-    let (stdout, _) = spawn_and_mock(
+    play_quiz(
         "test_flashcard",
-        &["el pan", "el vino", "la mantequilla", "no"],
         &["--in-order", "--flip"],
-    );
-
-    assert_in_order(
-        &stdout,
         &[
-            "bread",
-            "wine",
-            "butter",
-            "100.0%",
-        ]
+            "(1) bread",
+            "> el pan",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "(2) wine",
+            "> el vino",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "(3) butter",
+            "> la mantequilla",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "Score: 100.0% out of 3 questions",
+            "3 correct",
+            "0 partially correct",
+            "0 incorrect",
+        ],
     );
 }
 
 #[test]
 fn no_credit_answers_work() {
-    let (stdout, _) = spawn_and_mock(
+    play_quiz(
         "test_no_credit",
-        &["Riverside", "Ontario", "San Bernardino", "Corona", "Fontana", "no"],
         &[],
-    );
-
-    assert_in_order(
-        &stdout,
         &[
-            "Name the three largest cities of the Inland Empire.",
-            "Correct",
-            "No credit",
-            "Correct",
-            "No credit",
-            "Correct",
-            "100.0%",
-        ]
+            "(1) Name the three largest cities of the Inland Empire.",
+            "> Riverside",
+            "Correct!",
+            "> Ontario",
+            "No credit.",
+            "> San Bernardino",
+            "Correct!",
+            "> Corona",
+            "No credit.",
+            "> Fontana",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "Score: 100.0% out of 1 question",
+            "1 correct",
+            "0 partially correct",
+            "0 incorrect",
+        ],
     );
 }
 
 #[test]
 fn quiz_instructions_are_displayed() {
-    let (stdout, _) = spawn_and_mock("test_instructions", &["Lansing, MI", "no"], &[]);
-
-    assert_in_order(
-        &stdout,
+    play_quiz(
+        "test_instructions",
+        &[],
         &[
             "Include the state's postal code.",
-            "Correct",
-            "100.0%",
-        ]
+            "(1) What is the capital of Michigan?",
+            "> Lansing, MI",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "Score: 100.0% out of 1 question",
+            "1 correct",
+            "0 partially correct",
+            "0 incorrect",
+        ],
     );
 }
 
 #[test]
 fn flashcards_context() {
-    let (stdout, _) = spawn_and_mock(
-        "test_flashcard_context", &["прочитать", "no"], &[]);
-
-    assert_in_order(
-        &stdout,
+    play_quiz(
+        "test_flashcard_context",
+        &[],
         &[
-            "to read [perf]",
-            "Correct",
-            "100.0%",
-        ]
+            "(1) to read [perf]",
+            "> прочитать",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "Score: 100.0% out of 1 question",
+            "1 correct",
+            "0 partially correct",
+            "0 incorrect",
+        ],
     );
 
-    let (stdout, _) = spawn_and_mock(
-        "test_flashcard_context", &["to read", "no"], &["--flip"]);
-
-    assert_in_order(
-        &stdout,
+    play_quiz(
+        "test_flashcard_context",
+        &["--flip"],
         &[
-            "прочитать [bleh]",
-            "Correct",
-            "100.0%",
-        ]
+            "(1) прочитать [bleh]",
+            "> to read",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "Score: 100.0% out of 1 question",
+            "1 correct",
+            "0 partially correct",
+            "0 incorrect",
+        ],
     );
 }
 
 #[test]
 fn timeouts_work() {
-    // This test can't use `spawn_and_mock` because it needs to control how long the
-    // thread sleeps between answering questions.
+    // This test can't use `play_quiz` because it needs to control how long the thread
+    // sleeps between answering questions.
     let mut process = spawn("test_timeouts", &["--in-order"]);
     let stdin = process.stdin.as_mut().expect("Failed to open stdin");
     stdin_write(stdin, "Chisinau");
@@ -196,29 +251,37 @@ fn timeouts_work() {
 
 #[test]
 fn can_correct_questions_in_quiz() {
-    let (stdout, _) = spawn_and_mock(
+    play_quiz(
         "test_correction",
-        &["San Jose", "!!", "Eugene", "foo", "!!", "foo", "bar", "no"],
         &["--in-order"],
-    );
-
-    assert_in_order(
-        &stdout,
         &[
-            "What is the largest city in Northern California?",
+            "(1) What is the largest city in Northern California?",
+            "> San Jose",
             "Incorrect. The correct answer was San Francisco.",
-            "What is the largest city in Oregon?",
+            "Score for this question: 0.0%",
+            "(2) What is the largest city in Oregon?",
+            "> !!",
             "Previous answer marked correct.",
-            "What is the largest city in Oregon?",
+            "(2) What is the largest city in Oregon?",
+            "> Eugene",
             "Incorrect. The correct answer was Portland.",
-            "Name two things.",
+            "Score for this question: 0.0%",
+            "(3) Name two things.",
+            "> foo",
             "Correct!",
+            "> !!",
             "Previous answer marked correct.",
-            "Name two things.",
+            "(3) Name two things.",
+            "> foo",
             "Correct!",
+            "> bar",
+            "Correct!",
+            "Score for this question: 100.0%",
+            "Score: 100.0% out of 3 questions",
             "3 correct",
+            "0 partially correct",
             "0 incorrect",
-        ]
+        ],
     );
 }
 
@@ -277,6 +340,58 @@ fn assert_parse_error(path: &str, message: &str, lineno: usize, whole_entry: boo
         format!("Error: {} on line {}\n", message, lineno)
     };
     assert!(stderr == expected, format!("Contents of stderr: {:?}", stderr));
+}
+
+fn play_quiz(name: &str, extra_args: &[&str], in_out: &[&str]) {
+    let mut child = spawn(name, extra_args);
+    {
+        let stdin = child.stdin.as_mut().expect("Failed to open stdin");
+        for line in in_out {
+            if line.starts_with("> ") {
+                stdin_write(stdin, &line[1..]);
+            }
+        }
+    }
+
+    let result = child.wait_with_output().expect("Failed to read stdout");
+    let stdout = String::from_utf8_lossy(&result.stdout).to_string();
+
+    let mut lines_iter = stdout.lines();
+    for expected in in_out {
+        if !expected.starts_with("> ") {
+            let mut got = lines_iter.next().expect("Premature end of output");
+            loop {
+                if got.trim().len() == 0 {
+                    got = lines_iter.next().expect("Premature end of output");
+                } else {
+                    break;
+                }
+            }
+
+            if expected.starts_with("RE:") {
+                let re = Regex::new(&expected[3..].trim()).unwrap();
+                assert!(
+                    re.is_match(&got.trim()),
+                    format!(
+                        "Failed to match {:?} against pattern {:?}",
+                        got.trim(),
+                        &expected[3..],
+                    )
+                );
+            } else {
+                assert!(
+                    expected.trim() == got.trim(),
+                    format!("Expected {:?}, got {:?}", expected.trim(), got.trim()),
+                );
+            }
+        }
+    }
+
+    while let Some(line) = lines_iter.next() {
+        if line.trim().len() > 0 {
+            panic!("Extra output: {:?}", line.trim());
+        }
+    }
 }
 
 fn assert_in_order(mock_stdout: &str, data: &[&str]) {
