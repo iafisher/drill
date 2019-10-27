@@ -314,6 +314,23 @@ fn parse_error_bad_flashcard_context() {
     assert_parse_error("test_bad_flashcard_context", "expected ]", 1, false);
 }
 
+#[test]
+fn parse_error_unknown_field() {
+    assert_parse_error("test_unknown_field", "unexpected field 'whatever'", 1, true);
+}
+
+#[test]
+fn parse_error_unknown_global_field() {
+    assert_parse_error(
+        "test_unknown_global_field", "unexpected field 'whatever'", 1, false);
+}
+
+#[test]
+fn parse_error_field_on_wrong_question() {
+    assert_parse_error(
+        "test_field_on_wrong_question", "unexpected field 'nocredit'", 1, true);
+}
+
 fn assert_parse_error(path: &str, message: &str, lineno: usize, whole_entry: bool) {
     let (_, stderr) = spawn_and_mock(&format!("parse/{}", path), &[], &[]);
     let expected = if whole_entry {
@@ -399,6 +416,7 @@ fn spawn_and_mock(quiz: &str, input: &[&str], extra_args: &[&str]) -> (String, S
             stdin_write(stdin, &line);
         }
     }
+
 
     let result = child.wait_with_output().expect("Failed to read stdout");
     let stdout = String::from_utf8_lossy(&result.stdout).to_string();

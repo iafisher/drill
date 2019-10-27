@@ -115,6 +115,7 @@ fn entry_to_question(
     settings: &GlobalSettings,
     old_results: &StoredResults) -> Result<Box<Question>> {
 
+    let lineno = entry.location.line;
     let tags = entry.attributes.get("tags")
         .map(|v| split(v, ","))
         .unwrap_or(Vec::new());
@@ -131,7 +132,7 @@ fn entry_to_question(
     };
 
     let timeout = if let Some(_timeout) = entry.attributes.get("timeout") {
-        Some(parse_u64(_timeout, entry.location.line)?)
+        Some(parse_u64(_timeout, lineno)?)
     } else {
         settings.timeout
     };
@@ -139,6 +140,8 @@ fn entry_to_question(
     // TODO: Handle multiple question texts.
     let text = entry.text.clone();
     if entry.following.len() == 1 {
+        check_fields(&entry.attributes, &["choices", "tags", "timeout"], lineno)?;
+
         let answer = split(&entry.following[0], "/");
         if let Some(choices) = entry.attributes.get("choices") {
             return Ok(Box::new(MultipleChoiceQuestion {
@@ -149,10 +152,12 @@ fn entry_to_question(
         }
     } else if entry.following.len() == 0 {
         if let Some(equal) = entry.text.find("=") {
+            check_fields(&entry.attributes, &["tags", "timeout"], lineno)?;
+
             let frnt = entry.text[..equal].trim().to_string();
-            let (front, front_context) = get_context(&frnt, entry.location.line)?;
+            let (front, front_context) = get_context(&frnt, lineno)?;
             let bck = &entry.text[equal+1..];
-            let (back, back_context) = get_context(&bck, entry.location.line)?;
+            let (back, back_context) = get_context(&bck, lineno)?;
             return Ok(Box::new(FlashcardQuestion {
                 front: split(&front, "/"),
                 back: split(&back, "/"),
@@ -163,18 +168,20 @@ fn entry_to_question(
             }));
         } else {
             return Err(QuizError::Parse {
-                line: entry.location.line,
+                line: lineno,
                 whole_entry: true,
                 message: String::from("question has no answer"),
             });
         }
     } else {
+        check_fields(&entry.attributes, &["nocredit", "ordered", "tags"], lineno)?;
+
         let ordered = if let Some(_ordered) = entry.attributes.get("ordered") {
             if _ordered != "true" && _ordered != "false" {
                 let message = String::from(
                     "ordered field must be either 'true' or 'false'");
                 return Err(QuizError::Parse {
-                    line: entry.location.line,
+                    line: lineno,
                     whole_entry: true,
                     message,
                 });
@@ -221,6 +228,12 @@ fn read_settings(reader: &mut QuizReader) -> Result<GlobalSettings> {
                     settings.instructions.replace(val);
                 } else if key == "timeout" {
                     settings.timeout.replace(parse_u64(&val, reader.line)?);
+                } else {
+                    return Err(QuizError::Parse {
+                        line: reader.line,
+                        whole_entry: false,
+                        message: format!("unexpected field '{}'", key),
+                    });
                 }
             },
             Some(FileLine::Blank) | None => {
@@ -389,10 +402,12 @@ impl QuizReader {
 }
 
 
-fn parse_u64(s: &str, line: usize) -> Result<u64> {
+fn parse_u64(s: &str, lineno: usize) -> Result<u64> {
     u64::from_str(s)
         .map_err(|_| QuizError::Parse {
-            line, whole_entry: true, message: String::from("could not parse integer"),
+            line: lineno,
+            whole_entry: true,
+            message: String::from("could not parse integer"),
         })
 }
 
@@ -414,4 +429,20 @@ fn get_context(line: &str, lineno: usize) -> Result<(String, Option<String>)> {
     } else {
         Ok((String::from(line), None))
     }
+}
+
+
+fn check_fields(
+    attrib: &HashMap<String, String>, allowed: &[&str], lineno: usize) -> Result<()> {
+
+    for key in attrib.keys() {
+        if !allowed.contains(&key.as_str()) {
+            return Err(QuizError::Parse {
+                line: lineno,
+                whole_entry: true,
+                message: format!("unexpected field '{}'", key),
+            });
+        }
+    }
+    Ok(())
 }

@@ -13,6 +13,9 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 
+pub type Result<T> = ::std::result::Result<T, QuizError>;
+
+
 #[derive(Debug, Clone)]
 pub struct Location {
     pub line: usize,
@@ -37,9 +40,6 @@ pub enum QuizError {
     /// A signal sent when the user wants to edit the previous question.
     SignalEdit,
 }
-
-
-pub type Result<T> = ::std::result::Result<T, QuizError>;
 
 
 impl fmt::Display for QuizError {
