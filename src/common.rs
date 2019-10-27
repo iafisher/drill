@@ -30,9 +30,12 @@ pub enum QuizError {
     ReadlineInterrupted,
     EmptyQuiz,
     Parse { line: usize, whole_entry: bool, message: String },
+    CannotOpenEditor,
     /// Not really an error, but a signal sent when the user wants to mark their
     /// previous answer as correct.
     SignalMarkCorrect,
+    /// A signal sent when the user wants to edit the previous question.
+    SignalEdit,
 }
 
 
@@ -69,8 +72,14 @@ impl fmt::Display for QuizError {
 
                 write!(f, "{} {}", message, location)
             },
+            QuizError::CannotOpenEditor => {
+                write!(f, "unable to open text editor")
+            },
             QuizError::SignalMarkCorrect => {
-                write!(f, "internal error ('correct previous')")
+                write!(f, "internal error ('SignalMarkCorrect')")
+            },
+            QuizError::SignalEdit => {
+                write!(f, "internal error ('SignalEdit')")
             },
         }
     }

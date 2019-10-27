@@ -5,11 +5,12 @@
  * Version: October 2019
  */
 use std::io::Write;
+use std::process::Command;
 use std::time;
 
 use colored::*;
 
-use super::common::{QuizError, Result};
+use super::common::{Location, QuizError, Result};
 use super::iohelper::{prettyprint, prettyprint_colored, prompt};
 use super::quiz::QuizResult;
 
@@ -52,6 +53,8 @@ impl CmdUI {
         if let Some(response) = response.as_ref() {
             if response == "!!" {
                 return Err(QuizError::SignalMarkCorrect);
+            } else if "!edit".starts_with(response) {
+                return Err(QuizError::SignalEdit);
             }
         }
         Ok(response)
@@ -154,6 +157,20 @@ impl CmdUI {
             my_print!("  {}", format!("{}", results.total_incorrect).red())?;
             my_print!(" incorrect\n")?;
         }
+        Ok(())
+    }
+
+    pub fn launch_editor(&mut self, location: &Location) -> Result<()> {
+        let editor = ::std::env::var("EDITOR").unwrap_or(String::from("nano"));
+        let mut cmd = Command::new(&editor);
+        cmd.arg(&location.path);
+
+        if editor == "vim" {
+            cmd.arg(format!("+{}", location.line));
+        }
+
+        let mut child = cmd.spawn().or(Err(QuizError::CannotOpenEditor))?;
+        child.wait().or(Err(QuizError::CannotOpenEditor))?;
         Ok(())
     }
 }
