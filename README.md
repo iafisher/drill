@@ -18,7 +18,7 @@ described in the section below. You can also look at the `sample_quiz` file.
 Now, run
 
 ```shell
-$ popquiz -d path/to/quizzes take your-quiz-name
+$ popquiz take path/to/quiz
 ```
 
 to take your quiz! The program will create a `results` directory alongside your quiz
