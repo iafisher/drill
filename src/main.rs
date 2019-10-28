@@ -67,7 +67,7 @@ pub fn main_count(options: &common::CountOptions) -> Result<()> {
         let mut count = 0;
         for question in quiz.questions.iter() {
             let tags = &question.get_common().tags;
-            if !repetition::filter_tags(tags, &options.filter_opts) {
+            if repetition::filter_tags(tags, &options.filter_opts) {
                 count += 1;
             }
         }
