@@ -46,13 +46,13 @@ impl fmt::Display for QuizError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             QuizError::QuizNotFound(ref path) => {
-                write!(f, "could not find quiz named '{}'", path.to_str().unwrap())
+                write!(f, "could not find quiz named '{}'", path.to_string_lossy())
             },
             QuizError::Json(ref err) => {
                 write!(f, "could not parse JSON ({})", err)
             },
             QuizError::CannotWriteToFile(ref path) => {
-                write!(f, "cannot write to file '{}'", path.to_string_lossy())
+                write!(f, "could not write to file '{}'", path.to_string_lossy())
             },
             QuizError::Io(ref err) => {
                 write!(f, "IO error ({})", err)

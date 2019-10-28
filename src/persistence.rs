@@ -8,9 +8,11 @@
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::fs::File;
+use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::str::FromStr;
 
 use super::common::{Location, QuizError, Result};
@@ -154,6 +156,12 @@ fn entry_to_question(
         settings.timeout
     };
 
+    let entry = if let Some(script) = entry.attributes.get("script") {
+        entry_from_script(entry, script)?
+    } else {
+        entry.clone()
+    };
+
     // TODO: Handle multiple question texts.
     let text = entry.text.clone();
     if entry.following.len() == 1 {
@@ -227,16 +235,71 @@ fn entry_to_question(
     };
 }
 
+
+/// Create a new entry from the results of running a script.
+fn entry_from_script(entry: &FileEntry, script_name: &str) -> Result<FileEntry> {
+    let mut script_path = if let Some(parent) = entry.location.path.parent() {
+        parent.to_path_buf()
+    } else {
+        PathBuf::new()
+    };
+    script_path.push(script_name);
+
+    let line1 = entry.text.clone();
+    let line2 = entry.following.join("\n");
+    let stdout = run_script(&script_path, &line1, &line2)
+        .map_err(|e| QuizError::Parse {
+            line: entry.location.line,
+            whole_entry: true,
+            message: format!("could not run script {} ({})", script_name, e),
+        })?;
+
+    let mut lines: Vec<String> = stdout.lines().map(|s| String::from(s)).collect();
+    if lines.len() >= 2 {
+        let mut attributes = entry.attributes.clone();
+        attributes.remove("script");
+        let text = lines.remove(0);
+        Ok(FileEntry {
+            id: entry.id.clone(),
+            text,
+            following: lines,
+            attributes,
+            location: entry.location.clone(),
+        })
+    } else {
+        Err(QuizError::Parse {
+            line: entry.location.line,
+            whole_entry: true,
+            message: format!("script {} did not print two or more lines", script_name),
+        })
+    }
+}
+
+
+fn run_script(script_path: &Path, arg1: &str, arg2: &str) -> io::Result<String> {
+    let result = Command::new(script_path)
+        .arg(arg1)
+        .arg(arg2)
+        .stdout(Stdio::piped())
+        .output()?;
+
+    Ok(String::from_utf8_lossy(&result.stdout).to_string())
+}
+
+
 #[derive(Debug)]
 struct GlobalSettings {
     instructions: Option<String>,
+    script: Option<String>,
     timeout: Option<u64>,
 }
 
 
 /// Read the initial settings from the file.
 fn read_settings(reader: &mut QuizReader) -> Result<GlobalSettings> {
-    let mut settings = GlobalSettings { instructions: None, timeout: None };
+    let mut settings = GlobalSettings { 
+        instructions: None, script: None, timeout: None,
+    };
     let mut first_line = true;
     loop {
         match reader.read_line()? {
@@ -245,6 +308,8 @@ fn read_settings(reader: &mut QuizReader) -> Result<GlobalSettings> {
                     settings.instructions.replace(val);
                 } else if key == "timeout" {
                     settings.timeout.replace(parse_u64(&val, reader.line)?);
+                } else if key == "script" {
+                    settings.script.replace(val);
                 } else {
                     return Err(QuizError::Parse {
                         line: reader.line,
@@ -341,6 +406,7 @@ enum FileLine {
     Blank,
 }
 
+#[derive(Clone, Debug)]
 struct FileEntry {
     id: String,
     text: String,

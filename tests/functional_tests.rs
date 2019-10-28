@@ -284,6 +284,22 @@ fn unicode_normalization_works() {
 }
 
 #[test]
+fn can_use_custom_script() {
+    play_quiz(
+        "test_custom_script",
+        &[],
+        &[
+            "(1) Who was the first President of the United States? (changed)",
+            "> Washington",
+            "Correct!",
+            "Score: 100.0% out of 1 question",
+            "1 correct",
+            "0 incorrect",
+        ],
+    );
+}
+
+#[test]
 fn parse_error_no_blank_line_between_questions() {
     assert_parse_error(
         "test_no_blank_line", "no blank line between questions", 2, false);
