@@ -65,6 +65,7 @@ impl Quiz {
                         let last = results.len() - 1;
                         if results[last].score < 1.0 {
                             results[last].score = 1.0;
+                            results[last].timed_out.replace(true);
                             ui.status("Previous answer marked correct.")?;
                         } else {
                             ui.status("Previous answer was already correct.")?;
@@ -159,14 +160,15 @@ impl Question for ShortAnswerQuestion {
                 if timed_out {
                     ui.score(score, timed_out)?;
                 }
-                Ok(mkresult(&self.get_common().id, &self.text, Some(guess), score))
+                Ok(mkresult(
+                    &self.get_common().id, &self.text, Some(guess), score, timed_out))
             } else {
                 ui.incorrect(Some(&self.answer[0]))?;
-                Ok(mkresult(&self.get_common().id, &self.text, Some(guess), 0.0))
+                Ok(mkresult(&self.get_common().id, &self.text, Some(guess), 0.0, false))
             }
         } else {
             ui.incorrect(Some(&self.answer[0]))?;
-            Ok(mkresult(&self.get_common().id, &self.text, None, 0.0))
+            Ok(mkresult(&self.get_common().id, &self.text, None, 0.0, false))
         }
     }
 
@@ -204,14 +206,15 @@ impl Question for FlashcardQuestion {
                 if timed_out {
                     ui.score(score, timed_out)?;
                 }
-                Ok(mkresult(&self.get_common().id, &text, Some(guess), score))
+                Ok(mkresult(
+                    &self.get_common().id, &text, Some(guess), score, timed_out))
             } else {
                 ui.incorrect(Some(&self.back[0]))?;
-                Ok(mkresult(&self.get_common().id, &text, Some(guess), 0.0))
+                Ok(mkresult(&self.get_common().id, &text, Some(guess), 0.0, false))
             }
         } else {
             ui.incorrect(Some(&self.back[0]))?;
-            Ok(mkresult(&self.get_common().id, &text, None, 0.0))
+            Ok(mkresult(&self.get_common().id, &text, None, 0.0, false))
         }
     }
 
@@ -387,7 +390,7 @@ impl Question for MultipleChoiceQuestion {
         let (score, timed_out) = calculate_score(
             if correct { 1.0 } else { 0.0 }, self.timeout, ui.get_elapsed());
         ui.score(score, timed_out)?;
-        Ok(mkresult(&self.get_common().id, &self.text, response, score))
+        Ok(mkresult(&self.get_common().id, &self.text, response, score, timed_out))
     }
 
     fn get_common(&self) -> &QuestionCommon { &self.common }
@@ -423,9 +426,8 @@ pub struct QuestionResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_list: Option<Vec<String>>,
     pub score: f64,
-
-    // It would be convenient to include a reference to the `Question` object as a field
-    // of this struct, but Rust's lifetimes make it more difficult than it's worth.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timed_out: Option<bool>,
 }
 
 
@@ -493,7 +495,11 @@ fn calculate_score(
 
 /// Construct a `QuestionResult` object.
 fn mkresult(
-    id: &str, text: &str, response: Option<String>, score: f64) -> QuestionResult {
+    id: &str,
+    text: &str,
+    response: Option<String>,
+    score: f64,
+    timed_out: bool) -> QuestionResult {
 
     QuestionResult {
         id: String::from(id),
@@ -502,6 +508,7 @@ fn mkresult(
         score,
         response,
         response_list: None,
+        timed_out: Some(timed_out),
     }
 }
 
@@ -517,6 +524,8 @@ fn mkresultlist(
         score,
         response: None,
         response_list: Some(responses),
+        // List questions don't support time outs.
+        timed_out: Some(false),
     }
 }
 

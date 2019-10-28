@@ -34,16 +34,16 @@ fn main() {
 
     let result = match options.cmd {
         Command::Take(options) => {
-            main_take(options)
+            main_take(&options)
         },
         Command::Count(options) => {
-            main_count(options)
+            main_count(&options)
         },
         Command::Results(options) => {
-            main_results(options)
+            main_results(&options)
         },
         Command::Search(options) => {
-            main_search(options)
+            main_search(&options)
         },
     };
 
@@ -57,7 +57,7 @@ fn main() {
 
 
 /// The main function for the `take` subcommand.
-pub fn main_take(options: common::TakeOptions) -> Result<()> {
+pub fn main_take(options: &common::TakeOptions) -> Result<()> {
     let mut quiz = persistence::load_quiz(&options.name)?;
     let mut ui = CmdUI::new();
     let results = quiz.take(&mut ui, &options)?;
@@ -70,7 +70,7 @@ pub fn main_take(options: common::TakeOptions) -> Result<()> {
 
 
 /// The main function for the `count` subcommand.
-pub fn main_count(options: common::CountOptions) -> Result<()> {
+pub fn main_count(options: &common::CountOptions) -> Result<()> {
     let quiz = persistence::load_quiz(&options.name)?;
     if options.list_tags {
         list_tags(&quiz)?;
@@ -89,7 +89,7 @@ pub fn main_count(options: common::CountOptions) -> Result<()> {
 
 
 /// The main function for the `results` subcommand.
-pub fn main_results(options: common::ResultsOptions) -> Result<()> {
+pub fn main_results(options: &common::ResultsOptions) -> Result<()> {
     let quiz = persistence::load_quiz(&options.name)?;
     let results = persistence::load_results(&options.name)?;
 
@@ -139,7 +139,7 @@ pub fn main_results(options: common::ResultsOptions) -> Result<()> {
 }
 
 
-pub fn main_search(options: common::SearchOptions) -> Result<()> {
+pub fn main_search(options: &common::SearchOptions) -> Result<()> {
     let quiz = persistence::load_quiz(&options.name)?;
 
     for question in quiz.questions.iter() {
