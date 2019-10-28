@@ -28,9 +28,15 @@ You can also try out these commands:
 ```shell
 # Count the questions in a quiz.
 $ popquiz count <name>
+# Count the number of questions per tag.
+$ popquiz count --list-tags
 
 # See previous results for a quiz.
 $ popquiz results <name>
+$ popquiz results <name> -n 20 --sort best
+$ popquiz results <name> -n 20 --sort worst
+$ popquiz results <name> -n 20 --sort most
+$ popquiz results <name> -n 20 --sort least
 
 # Search for a question.
 $ popquiz search <name> <keyword>
