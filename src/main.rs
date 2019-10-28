@@ -125,10 +125,10 @@ pub fn main_results(options: &common::ResultsOptions) -> Result<()> {
         return Ok(());
     }
 
-    let mut aggregated: Vec<(f64, usize, String, String)> = Vec::new();
+    let mut aggregated: Vec<(u64, usize, String, String)> = Vec::new();
     for (key, result) in results.iter() {
         // Only include questions that have scored results.
-        if let Some(score) = repetition::aggregate_results(&result) {
+        if let Some(score) = results_mean(&result) {
             if let Some(pos) = quiz.find(key) {
                 let text = &quiz.questions[pos].get_text();
                 aggregated.push((score, result.len(), key.clone(), text.clone()));
@@ -246,15 +246,19 @@ fn list_tags(quiz: &Quiz) -> Result<()> {
 
 fn print_stats(results: &Vec<QuestionResult>) -> Result<()> {
     my_println!("Sample: {}", format!("{:>6}", results.len()).cyan())?;
-    my_println!("Mean:   {}", format!("{:>5.1}%", results_mean(results) * 100.0).cyan())?;
-    my_println!("Median: {}", format!("{:>5.1}%", results_median(results) * 100.0).cyan())?;
-    my_println!("Max:    {}", format!("{:>5.1}%", results_max(results) * 100.0).cyan())?;
-    my_println!("Min:    {}", format!("{:>5.1}%", results_min(results) * 100.0).cyan())
+    let mean = results_mean(results).unwrap() as f64 / 1000.0;
+    my_println!("Mean:   {}", format!("{:>5.1}%", mean).cyan())?;
+    let median = results_median(results) as f64 / 1000.0;
+    my_println!("Median: {}", format!("{:>5.1}%", median).cyan())?;
+    let max = results_max(results) as f64 / 1000.0;
+    my_println!("Max:    {}", format!("{:>5.1}%", max).cyan())?;
+    let min = results_min(results) as f64 / 1000.0;
+    my_println!("Min:    {}", format!("{:>5.1}%", min).cyan())
 }
 
 
 /// An alias for a commonly-used typed in comparison functions.
-type CmpQuestionResult = (f64, usize, String, String);
+type CmpQuestionResult = (u64, usize, String, String);
 
 
 /// Comparison function that sorts an array of question results such that the best
@@ -318,44 +322,47 @@ fn response(result: &QuestionResult) -> String {
 }
 
 
-fn results_mean(results: &Vec<QuestionResult>) -> f64 {
-    let total: f64 = results.iter().map(|r| r.score).sum();
-    total / (results.len() as f64)
+fn results_mean(results: &Vec<QuestionResult>) -> Option<u64> {
+    if results.len() > 0 {
+        // Tried to do this with iterators but Rust's type checker couldn't handle it.
+        let mut sum = 0;
+        for result in results.iter() {
+            sum += result.score;
+        }
+        Some(sum / results.len() as u64)
+    } else {
+        None
+    }
 }
 
 
-fn results_median(results: &Vec<QuestionResult>) -> f64 {
-    // Have to convert to u64 for sort because f64 isn't totally orderable.
-    let mut results: Vec<u64> = results.iter().map(|r| (r.score * 100.0) as u64).collect();
+fn results_median(results: &Vec<QuestionResult>) -> u64 {
+    let mut results: Vec<u64> = results.iter().map(|r| r.score).collect();
     results.sort();
-    let results: Vec<f64> = results.iter().map(|n| (*n as f64) / 100.0).collect();
     if results.len() % 2 == 0 {
-        (results[results.len() / 2] + results[results.len() / 2]) / 2.0
+        (results[results.len() / 2] + results[results.len() / 2]) / 2
     } else {
         results[results.len() / 2]
     }
 }
 
 
-fn results_max(results: &Vec<QuestionResult>) -> f64 {
-    // Have to convert to u64 for max because f64 isn't totally orderable.
-    (results.iter().map(|r| (r.score * 100.0) as u64).max().unwrap() as f64) / 100.0
+fn results_max(results: &Vec<QuestionResult>) -> u64 {
+    results.iter().map(|r| r.score).max().unwrap()
 }
 
 
-fn results_min(results: &Vec<QuestionResult>) -> f64 {
-    // Have to convert to u64 for min because f64 isn't totally orderable.
-    (results.iter().map(|r| (r.score * 100.0) as u64).min().unwrap() as f64) / 100.0
+fn results_min(results: &Vec<QuestionResult>) -> u64 {
+    results.iter().map(|r| r.score).min().unwrap()
 }
 
 
-fn colored_score(score: f64) -> ColoredString {
-    let score = score * 100.0;
-    if score >= 80.0 {
-        format!("{:>5.1}%", score).green()
-    } else if score <= 20.0 {
-        format!("{:>5.1}%", score).red()
+fn colored_score(score: u64) -> ColoredString {
+    if score >= 800 {
+        format!("{:>5.1}%", score as f64 / 1000.0).green()
+    } else if score <= 200 {
+        format!("{:>5.1}%", score as f64 / 1000.0).red()
     } else {
-        format!("{:>5.1}%", score).cyan()
+        format!("{:>5.1}%", score as f64 / 1000.0).cyan()
     }
 }

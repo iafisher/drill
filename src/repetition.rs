@@ -25,9 +25,9 @@ use super::quiz::{Question, QuestionResult};
 // fractions, e.g. 2 means 1/2, 5 means 1/5 etc.
 const BUCKET_ALLOCATION: [usize; 4] = [2, 5, 5, 10];
 // What percentage correct for a question to move up a bucket.
-const UP_THRESHOLD: f64 = 0.9;
+const UP_THRESHOLD: u64 = 900;
 // What percentage correct for a question to move down a bucket.
-const DOWN_THRESHOLD: f64 = 0.4;
+const DOWN_THRESHOLD: u64 = 400;
 
 
 /// Choose a set of questions, filtered by the command-line options.
@@ -104,24 +104,6 @@ pub fn filter_tags(tags: &Vec<String>, options: &FilterOptions) -> bool {
     (options.tags.len() == 0 || options.tags.iter().all(|tag| tags.contains(tag)))
         // `q` must not have any excluded tags.
         && options.exclude.iter().all(|tag| !tags.contains(tag))
-}
-
-
-/// Return the percentage of correct responses in the vector of results. `None` is
-/// returned when the vector is empty.
-pub fn aggregate_results(results: &Vec<QuestionResult>) -> Option<f64> {
-    let mut sum = 0.0;
-    let mut graded_count = 0;
-    for result in results.iter() {
-        sum += result.score;
-        graded_count += 1;
-    }
-
-    if graded_count > 0 {
-        Some(100.0 * (sum / (graded_count as f64)))
-    } else {
-        None
-    }
 }
 
 

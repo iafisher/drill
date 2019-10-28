@@ -68,8 +68,8 @@ impl Quiz {
                 Err(QuizError::SignalMarkCorrect) => {
                     if results.len() > 0 {
                         let last = results.len() - 1;
-                        if results[last].score < 1.0 {
-                            results[last].score = 1.0;
+                        if results[last].score < 1000 {
+                            results[last].score = 1000;
                             results[last].timed_out.replace(true);
                             ui.status("Previous answer marked correct.")?;
                         } else {
@@ -102,13 +102,13 @@ impl Quiz {
         }
 
         let total = results.len();
-        let aggregate_score: f64 = results.iter().map(|r| r.score).sum();
-        let total_correct = results.iter().filter(|r| r.score == 1.0).count();
+        let aggregate_score: u64 = results.iter().map(|r| r.score).sum();
+        let total_correct = results.iter().filter(|r| r.score == 1000).count();
         let total_partially_correct = results.iter()
-            .filter(|r| r.score < 1.0 && r.score > 0.0)
+            .filter(|r| r.score < 1000 && r.score > 0)
             .count();
         let total_incorrect = total - total_correct - total_partially_correct;
-        let score = (aggregate_score / (total as f64)) * 100.0;
+        let score = aggregate_score / total as u64;
         let ret = QuizResult {
             time_finished: chrono::Utc::now(),
             total,
@@ -161,7 +161,7 @@ impl Question for ShortAnswerQuestion {
             if check(&self.answer, &guess) {
                 ui.correct()?;
                 let elapsed = ui.get_elapsed();
-                let (score, timed_out) = calculate_score(1.0, self.timeout, elapsed);
+                let (score, timed_out) = calculate_score(1000, self.timeout, elapsed);
                 if timed_out {
                     ui.score(score, timed_out)?;
                 }
@@ -169,11 +169,11 @@ impl Question for ShortAnswerQuestion {
                     &self.get_common().id, &self.text, Some(guess), score, timed_out))
             } else {
                 ui.incorrect(Some(&self.answer[0]))?;
-                Ok(mkresult(&self.get_common().id, &self.text, Some(guess), 0.0, false))
+                Ok(mkresult(&self.get_common().id, &self.text, Some(guess), 0, false))
             }
         } else {
             ui.incorrect(Some(&self.answer[0]))?;
-            Ok(mkresult(&self.get_common().id, &self.text, None, 0.0, false))
+            Ok(mkresult(&self.get_common().id, &self.text, None, 0, false))
         }
     }
 
@@ -207,7 +207,7 @@ impl Question for FlashcardQuestion {
             if check(&self.back, &guess) {
                 ui.correct()?;
                 let elapsed = ui.get_elapsed();
-                let (score, timed_out) = calculate_score(1.0, self.timeout, elapsed);
+                let (score, timed_out) = calculate_score(1000, self.timeout, elapsed);
                 if timed_out {
                     ui.score(score, timed_out)?;
                 }
@@ -215,11 +215,11 @@ impl Question for FlashcardQuestion {
                     &self.get_common().id, &text, Some(guess), score, timed_out))
             } else {
                 ui.incorrect(Some(&self.back[0]))?;
-                Ok(mkresult(&self.get_common().id, &text, Some(guess), 0.0, false))
+                Ok(mkresult(&self.get_common().id, &text, Some(guess), 0, false))
             }
         } else {
             ui.incorrect(Some(&self.back[0]))?;
-            Ok(mkresult(&self.get_common().id, &text, None, 0.0, false))
+            Ok(mkresult(&self.get_common().id, &text, None, 0, false))
         }
     }
 
@@ -288,6 +288,7 @@ impl Question for ListQuestion {
             ui.missed(&missed)?;
         }
         let score = (n - missed.len()) as f64 / (n as f64);
+        let score = (score * 1000.0) as u64;
         ui.score(score, false)?;
 
         Ok(mkresultlist(&self.get_common().id, &self.text, responses, score))
@@ -329,6 +330,7 @@ impl Question for OrderedListQuestion {
             }
         }
         let score = (ncorrect as f64) / (self.answer_list.len() as f64);
+        let score = (score * 1000.0) as u64;
         ui.score(score, false)?;
         Ok(mkresultlist(&self.get_common().id, &self.text, responses, score))
     }
@@ -393,7 +395,7 @@ impl Question for MultipleChoiceQuestion {
             }
         }
         let (score, timed_out) = calculate_score(
-            if correct { 1.0 } else { 0.0 }, self.timeout, ui.get_elapsed());
+            if correct { 1000 } else { 0 }, self.timeout, ui.get_elapsed());
         ui.score(score, timed_out)?;
         Ok(mkresult(&self.get_common().id, &self.text, response, score, timed_out))
     }
@@ -430,7 +432,8 @@ pub struct QuestionResult {
     /// field.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_list: Option<Vec<String>>,
-    pub score: f64,
+    /// Score out of 1,000 possible points.
+    pub score: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timed_out: Option<bool>,
 }
@@ -444,7 +447,8 @@ pub struct QuizResult {
     pub total_correct: usize,
     pub total_partially_correct: usize,
     pub total_incorrect: usize,
-    pub score: f64,
+    /// Score out of 1,000 possible points.
+    pub score: u64,
     pub per_question: Vec<QuestionResult>,
 }
 
@@ -481,16 +485,16 @@ fn normalize(guess: &str) -> String {
 /// long it took to answer the question. Return `(score, timed_out)` where `timed_out`
 /// indicates whether the time limit was exceeded.
 fn calculate_score(
-    base_score: f64, timeout: Option<u64>, elapsed: time::Duration) -> (f64, bool) {
+    base_score: u64, timeout: Option<u64>, elapsed: time::Duration) -> (u64, bool) {
     if let Some(timeout) = timeout {
         let e = elapsed.as_millis() as i128;
         let t = (timeout * 1000) as i128;
         if e <= t {
             (base_score, false)
         } else if e < 2*t {
-            ((base_score * (-1.0 / (t as f64)) * (e - 2 * t) as f64), true)
+            ((base_score as f64 * (-1.0 / (t as f64)) * (e - 2 * t) as f64) as u64, true)
         } else {
-            (0.0, true)
+            (0, true)
         }
     } else {
         (base_score, false)
@@ -503,7 +507,7 @@ fn mkresult(
     id: &str,
     text: &str,
     response: Option<String>,
-    score: f64,
+    score: u64,
     timed_out: bool) -> QuestionResult {
 
     QuestionResult {
@@ -520,7 +524,7 @@ fn mkresult(
 
 /// Construct a `QuestionResult` object with a list of responses.
 fn mkresultlist(
-    id: &str, text: &str, responses: Vec<String>, score: f64) -> QuestionResult {
+    id: &str, text: &str, responses: Vec<String>, score: u64) -> QuestionResult {
 
     QuestionResult {
         id: String::from(id),

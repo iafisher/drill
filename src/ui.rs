@@ -74,8 +74,8 @@ impl CmdUI {
         my_println!("{}", text)
     }
 
-    pub fn score(&mut self, score: f64, timed_out: bool) -> Result<()> {
-        let scorestr = format!("{:.1}%", score * 100.0).cyan();
+    pub fn score(&mut self, score: u64, timed_out: bool) -> Result<()> {
+        let scorestr = format!("{:.1}%", (score as f64) / 10.0).cyan();
         if timed_out {
             my_println!("Score for this question: {} (exceeded time limit)", scorestr)
         } else {
@@ -118,7 +118,7 @@ impl CmdUI {
 
     pub fn results(&mut self, results: &QuizResult) -> Result<()> {
         if results.total > 0 {
-            let score_as_str = format!("{:.1}%", results.score);
+            let score_as_str = format!("{:.1}%", (results.score as f64) / 10.0);
 
             my_print!("\n\n")?;
             my_print!("Score: ")?;

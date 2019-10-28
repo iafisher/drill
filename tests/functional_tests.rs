@@ -48,7 +48,7 @@ fn can_take_simple_quiz2() {
             "Incorrect. The correct answer was Frederick III.",
             "> Wilhelm II",
             "Correct!",
-            "Score for this question: 66.7%",
+            "Score for this question: 66.6%",
             r"RE: Score: (33\.3|83\.3)% out of 2 questions",
             r"RE: (0|1) correct",
             "1 partially correct",
