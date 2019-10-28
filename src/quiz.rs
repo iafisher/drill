@@ -108,7 +108,7 @@ impl Quiz {
             .filter(|r| r.score < 1000 && r.score > 0)
             .count();
         let total_incorrect = total - total_correct - total_partially_correct;
-        let score = aggregate_score / total as u64;
+        let score = if total > 0 { aggregate_score / total as u64 } else { 0 };
         let ret = QuizResult {
             time_finished: chrono::Utc::now(),
             total,
