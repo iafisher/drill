@@ -5,7 +5,7 @@ A command-line program to take quizzes.
 personal use and I do not guarantee that backwards compability will be maintained.
 
 
-## Installation
+## Installation and usage
 Installation requires [Rust](https://www.rust-lang.org/) and [Cargo](https://doc.rust-lang.org/stable/cargo/).
 
 ```shell
@@ -48,7 +48,7 @@ $ popquiz history <name> <question-id>
 If `<name>` is left out of any of these commands, it defaults to `main`.
 
 
-## In-quiz commands
+### In-quiz commands
 While taking a quiz, you may find that one of your answers is erroneously marked
 incorrect. On the next question, you can enter `!!` to mark the previous answer correct.
 You can also enter `!e` or `!edit` to open up the previous question in a text editor,
