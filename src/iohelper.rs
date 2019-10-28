@@ -77,20 +77,19 @@ pub fn confirm(message: &str) -> bool {
 
 
 /// Print `message` to standard output, breaking lines according to the current width
-/// of the terminal. If `prefix` is not `None`, then prepend it to the first line and
-/// indent all subsequent lines by its length.
-pub fn prettyprint(message: &str, prefix: Option<&str>) -> Result<()> {
+/// of the terminal. Prepend `prefix` to the first line and indent all subsequent lines
+/// by its length.
+pub fn prettyprint(message: &str, prefix: &str) -> Result<()> {
     prettyprint_colored(message, prefix, None, None)
 }
 
 
 pub fn prettyprint_colored(
     message: &str,
-    prefix: Option<&str>,
+    prefix: &str,
     message_color: Option<Color>,
     prefix_color: Option<Color>) -> Result<()> {
 
-    let prefix = prefix.unwrap_or("");
     let width = textwrap::termwidth() - prefix.len();
     let mut lines = textwrap::wrap_iter(message, width);
 

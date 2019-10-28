@@ -37,7 +37,7 @@ impl CmdUI {
     pub fn text(&mut self, text: &str) -> Result<()> {
         my_print!("\n")?;
         let prefix = format!("  ({}) ", self.number);
-        prettyprint_colored(&text, Some(&prefix), None, Some(Color::Cyan))?;
+        prettyprint_colored(&text, &prefix, None, Some(Color::Cyan))?;
         my_print!("\n")
     }
 
@@ -60,14 +60,14 @@ impl CmdUI {
                 "Incorrect.".red(), 
                 correction.green(),
             );
-            prettyprint(&message, None)
+            prettyprint(&message, "")
         } else {
-            prettyprint(&"Incorrect.".red(), None)
+            prettyprint(&"Incorrect.".red(), "")
         }
     }
 
     pub fn correct(&mut self) -> Result<()> {
-        prettyprint(&format!("{}", "Correct!".green()), None)
+        prettyprint(&format!("{}", "Correct!".green()), "")
     }
 
     pub fn status(&mut self, text: &str) -> Result<()> {
@@ -94,7 +94,7 @@ impl CmdUI {
     pub fn choices(&mut self, choices: &Vec<&str>) -> Result<()> {
         for (i, choice) in "abcd".chars().zip(choices.iter()) {
             let prefix = format!("     ({}) ", i);
-            prettyprint(choice, Some(&prefix))?;
+            prettyprint(choice, &prefix)?;
         }
         my_print!("\n")
     }
@@ -105,14 +105,14 @@ impl CmdUI {
 
     pub fn instructions(&mut self, text: &str) -> Result<()> {
         my_print!("\n")?;
-        prettyprint_colored(&text, Some("  "), Some(Color::BrightBlue), None)?;
+        prettyprint_colored(&text, "  ", Some(Color::BrightBlue), None)?;
         my_print!("\n")
     }
 
     pub fn warning(&mut self, text: &str) -> Result<()> {
         my_print!("\n")?;
         prettyprint_colored(
-            &format!("Warning: {}", text), Some("  "), Some(Color::Red), None)?;
+            &format!("Warning: {}", text), "  ", Some(Color::Red), None)?;
         my_print!("\n")
     }
 

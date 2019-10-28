@@ -83,8 +83,7 @@ pub fn main_history(options: &common::HistoryOptions) -> Result<()> {
     if let Some(pos) = quiz.find(&options.id) {
         let q = &quiz.questions[pos];
         let prefix = format!("[{}] ", q.get_common().id);
-        prettyprint_colored(
-            &q.get_text(), Some(&prefix), None, Some(Color::Cyan))?;
+        prettyprint_colored(&q.get_text(), &prefix, None, Some(Color::Cyan))?;
         my_print!("\n")?;
 
         let results = &q.get_common().prior_results;
@@ -99,17 +98,17 @@ pub fn main_history(options: &common::HistoryOptions) -> Result<()> {
                 } else {
                     format!("{}: {} for ", date, score)
                 };
-                prettyprint(&response(&result), Some(&prefix))?;
+                prettyprint(&response(&result), &prefix)?;
             }
 
             my_print!("\n")?;
             print_stats(&results)?;
         } else {
-            prettyprint("No results for this question.", None)?;
+            prettyprint("No results for this question.", "")?;
         }
 
     } else {
-        prettyprint(&format!("No question with id '{}' found.", options.id), None)?;
+        prettyprint(&format!("No question with id '{}' found.", options.id), "")?;
     }
     Ok(())
 }
@@ -154,10 +153,7 @@ pub fn main_results(options: &common::ResultsOptions) -> Result<()> {
     for (score, attempts, id, text) in aggregated.iter() {
         let first_prefix = format!("{:>5.1}%  of {:>2}   ", score, attempts);
         prettyprint_colored(
-            &format!("[{}] {}", id, text),
-            Some(&first_prefix),
-            None,
-            Some(Color::Cyan)
+            &format!("[{}] {}", id, text), &first_prefix, None, Some(Color::Cyan)
         )?;
     }
 
@@ -173,7 +169,7 @@ pub fn main_search(options: &common::SearchOptions) -> Result<()> {
         if text.contains(&options.term) {
             prettyprint_colored(
                 &text,
-                Some(&format!("[{}] ", question.get_common().id)),
+                &format!("[{}] ", question.get_common().id),
                 None,
                 Some(Color::Cyan),
             )?;
