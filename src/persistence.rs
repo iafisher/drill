@@ -156,7 +156,8 @@ fn entry_to_question(
         settings.timeout
     };
 
-    let entry = if let Some(script) = entry.attributes.get("script") {
+    let script = settings.script.as_ref().or(entry.attributes.get("script"));
+    let entry = if let Some(script) = script {
         entry_from_script(entry, script)?
     } else {
         entry.clone()

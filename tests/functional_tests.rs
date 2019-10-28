@@ -300,6 +300,25 @@ fn can_use_custom_script() {
 }
 
 #[test]
+fn can_use_global_custom_script() {
+    play_quiz(
+        "test_global_custom_script",
+        &["--in-order"],
+        &[
+            "(1) Who was the first President of the United States? (changed)",
+            "> Washington",
+            "Correct!",
+            "(2) Who was the second President of the United States? (changed)",
+            "> John Adams",
+            "Correct!",
+            "Score: 100.0% out of 2 questions",
+            "2 correct",
+            "0 incorrect",
+        ],
+    );
+}
+
+#[test]
 fn parse_error_no_blank_line_between_questions() {
     assert_parse_error(
         "test_no_blank_line", "no blank line between questions", 2, false);
