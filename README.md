@@ -31,9 +31,24 @@ $ popquiz count <name>
 
 # See previous results for a quiz.
 $ popquiz results <name>
+
+# Search for a question.
+$ popquiz search <name> <keyword>
+
+# See per-question history.
+$ popquiz history <name> <question-id>
 ```
 
 If `<name>` is left out of any of these commands, it defaults to `main`.
+
+
+## In-quiz commands
+While taking a quiz, you may find that one of your answers is erroneously marked
+incorrect. On the next question, you can enter `!!` to mark the previous answer correct.
+You can also enter `!e` or `!edit` to open up the previous question in a text editor,
+e.g. in case there is a typo in the question text.
+
+If all else fails, you can directly edit the results file that is created for each quiz.
 
 
 ## Quiz file format
@@ -83,9 +98,29 @@ one non-whitespace character. The currently-recognized keys are
               area", you might not want to penalize naming the sixth largest country.
               Only recognized for questions with multiple answers.
 - `ordered`: Answers must be supplied in the order given in the quiz file.
+- `script`: The path (relative to the location of the quiz file) of a script to generate
+            the question text and answer. The script should be executable and accept two
+            command-line arguments: the text of the question and the answers as listed in
+            the quiz file. If there are multiple lines of answers, the second argument
+            contains all of them, separated by newlines. The script should print two or
+            more lines to standard output. The first line is the new text of the question,
+            and every other line is a distinct answer to the question. If more than two
+            lines are printed, then the question becomes a list question. The primary
+            use case of this option is for testing conjugations of foreign language
+            verbs: the quiz files specifies just the verb itself, and the script selects
+            a random mood, tense, pronoun etc. and supplies the conjugated form as the
+            answer.
+- `timeout`: Number of seconds for the user to answer the question before starting to
+             lose credit. If they answer within the time limit, they are not penalized.
+             If they answer within twice the time limit, they are penalized
+             proportionally to how much they exceeded the time limit. If they take
+             longer than twice the time limit to answer, they get no credit. This option
+             is not available for questions with more than one answer.
 - `tags`: Comma-separated list of tags.
 
-Keys not in this list are ignored.
+Keys not in this list result in a parse error. `script` and `timeout` may also be listed
+in the quiz file before any of the questions, in which case they apply to every question
+that does not have an explicit setting for them.
 
 The `id` in the first line of each question allows popquiz to keep track of your results
 on each question even if you tweak the text of the question. It is conventionally a
