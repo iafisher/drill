@@ -18,8 +18,6 @@ use super::quiz::QuizResult;
 pub struct CmdUI {
     number: usize,
     time_started: time::Instant,
-    /// Have we finished printing out the prologue?
-    finished_prologue: bool,
 }
 
 
@@ -28,7 +26,6 @@ impl CmdUI {
         Self {
             number: 0,
             time_started: time::Instant::now(),
-            finished_prologue: false,
         }
     }
 
@@ -38,11 +35,6 @@ impl CmdUI {
     }
 
     pub fn text(&mut self, text: &str) -> Result<()> {
-        if !self.finished_prologue {
-            my_print!("\n")?;
-            self.finished_prologue = true;
-        }
-
         my_print!("\n")?;
         let prefix = format!("  ({}) ", self.number);
         prettyprint_colored(&text, Some(&prefix), None, Some(Color::Cyan))?;
