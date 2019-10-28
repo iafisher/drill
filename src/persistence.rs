@@ -251,7 +251,6 @@ fn entry_from_script(entry: &FileEntry, script_name: &str) -> Result<FileEntry> 
         script_path.push(".");
     }
     script_path.push(script_name);
-    println!("{:?}", script_path);
 
     let line1 = entry.text.clone();
     let line2 = entry.following.join("\n");
