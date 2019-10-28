@@ -21,8 +21,8 @@ use colored::*;
 use structopt::StructOpt;
 
 use common::{Command, QuizError, Options, Result};
-use iohelper::{confirm, prettyprint_colored};
-use quiz::Quiz;
+use iohelper::{confirm, prettyprint, prettyprint_colored};
+use quiz::{QuestionResult, Quiz};
 use ui::CmdUI;
 
 
@@ -33,17 +33,20 @@ fn main() {
     }
 
     let result = match options.cmd {
-        Command::Take(options) => {
-            main_take(&options)
-        },
         Command::Count(options) => {
             main_count(&options)
+        },
+        Command::History(options) => {
+            main_history(&options)
         },
         Command::Results(options) => {
             main_results(&options)
         },
         Command::Search(options) => {
             main_search(&options)
+        },
+        Command::Take(options) => {
+            main_take(&options)
         },
     };
 
@@ -56,20 +59,6 @@ fn main() {
 }
 
 
-/// The main function for the `take` subcommand.
-pub fn main_take(options: &common::TakeOptions) -> Result<()> {
-    let mut quiz = persistence::load_quiz(&options.name)?;
-    let mut ui = CmdUI::new();
-    let results = quiz.take(&mut ui, &options)?;
-
-    if results.total > 0 && (options.save || confirm("\nSave results? ")) {
-        persistence::save_results(&options.name, &results)?;
-    }
-    Ok(())
-}
-
-
-/// The main function for the `count` subcommand.
 pub fn main_count(options: &common::CountOptions) -> Result<()> {
     let quiz = persistence::load_quiz(&options.name)?;
     if options.list_tags {
@@ -83,6 +72,44 @@ pub fn main_count(options: &common::CountOptions) -> Result<()> {
             }
         }
         my_println!("{}", count)?;
+    }
+    Ok(())
+}
+
+
+
+pub fn main_history(options: &common::HistoryOptions) -> Result<()> {
+    let quiz = persistence::load_quiz(&options.name)?;
+    if let Some(pos) = quiz.find(&options.id) {
+        let q = &quiz.questions[pos];
+        let prefix = format!("[{}] ", q.get_common().id);
+        prettyprint_colored(
+            &q.get_text(), Some(&prefix), None, Some(Color::Cyan))?;
+        my_print!("\n")?;
+
+        let results = &q.get_common().prior_results;
+        if results.len() > 0 {
+            for result in results.iter() {
+                let date = result.time_asked
+                    .with_timezone(&chrono::Local)
+                    .format("%F %l:%M %p");
+                let score = colored_score(result.score);
+                let prefix = if let Some(true) = result.timed_out {
+                    format!("{}: {} (timeout) for ", date, score)
+                } else {
+                    format!("{}: {} for ", date, score)
+                };
+                prettyprint(&response(&result), Some(&prefix))?;
+            }
+
+            my_print!("\n")?;
+            print_stats(&results)?;
+        } else {
+            prettyprint("No results for this question.", None)?;
+        }
+
+    } else {
+        prettyprint(&format!("No question with id '{}' found.", options.id), None)?;
     }
     Ok(())
 }
@@ -102,8 +129,7 @@ pub fn main_results(options: &common::ResultsOptions) -> Result<()> {
     for (key, result) in results.iter() {
         // Only include questions that have scored results.
         if let Some(score) = repetition::aggregate_results(&result) {
-            let pos = quiz.questions.iter().position(|q| q.get_common().id == *key);
-            if let Some(pos) = pos {
+            if let Some(pos) = quiz.find(key) {
                 let text = &quiz.questions[pos].get_text();
                 aggregated.push((score, result.len(), key.clone(), text.clone()));
             }
@@ -160,6 +186,19 @@ pub fn main_search(options: &common::SearchOptions) -> Result<()> {
 }
 
 
+/// The main function for the `take` subcommand.
+pub fn main_take(options: &common::TakeOptions) -> Result<()> {
+    let mut quiz = persistence::load_quiz(&options.name)?;
+    let mut ui = CmdUI::new();
+    let results = quiz.take(&mut ui, &options)?;
+
+    if results.total > 0 && (options.save || confirm("\nSave results? ")) {
+        persistence::save_results(&options.name, &results)?;
+    }
+    Ok(())
+}
+
+
 /// Parse command-line arguments.
 pub fn parse_options() -> common::Options {
     let options = Options::from_args();
@@ -202,6 +241,15 @@ fn list_tags(quiz: &Quiz) -> Result<()> {
         }
     }
     Ok(())
+}
+
+
+fn print_stats(results: &Vec<QuestionResult>) -> Result<()> {
+    my_println!("Sample: {}", format!("{:>6}", results.len()).cyan())?;
+    my_println!("Mean:   {}", format!("{:>5.1}%", results_mean(results) * 100.0).cyan())?;
+    my_println!("Median: {}", format!("{:>5.1}%", results_median(results) * 100.0).cyan())?;
+    my_println!("Max:    {}", format!("{:>5.1}%", results_max(results) * 100.0).cyan())?;
+    my_println!("Min:    {}", format!("{:>5.1}%", results_min(results) * 100.0).cyan())
 }
 
 
@@ -256,4 +304,58 @@ fn is_broken_pipe(e: &QuizError) -> bool {
         }
     }
     false
+}
+
+
+fn response(result: &QuestionResult) -> String {
+    if let Some(response) = result.response.as_ref() {
+        format!("'{}'", response)
+    } else if let Some(response_list) = result.response_list.as_ref() {
+        format!("'{}'", response_list.join(" / "))
+    } else {
+        String::from("<response not recorded>")
+    }
+}
+
+
+fn results_mean(results: &Vec<QuestionResult>) -> f64 {
+    let total: f64 = results.iter().map(|r| r.score).sum();
+    total / (results.len() as f64)
+}
+
+
+fn results_median(results: &Vec<QuestionResult>) -> f64 {
+    // Have to convert to u64 for sort because f64 isn't totally orderable.
+    let mut results: Vec<u64> = results.iter().map(|r| (r.score * 100.0) as u64).collect();
+    results.sort();
+    let results: Vec<f64> = results.iter().map(|n| (*n as f64) / 100.0).collect();
+    if results.len() % 2 == 0 {
+        (results[results.len() / 2] + results[results.len() / 2]) / 2.0
+    } else {
+        results[results.len() / 2]
+    }
+}
+
+
+fn results_max(results: &Vec<QuestionResult>) -> f64 {
+    // Have to convert to u64 for max because f64 isn't totally orderable.
+    (results.iter().map(|r| (r.score * 100.0) as u64).max().unwrap() as f64) / 100.0
+}
+
+
+fn results_min(results: &Vec<QuestionResult>) -> f64 {
+    // Have to convert to u64 for min because f64 isn't totally orderable.
+    (results.iter().map(|r| (r.score * 100.0) as u64).min().unwrap() as f64) / 100.0
+}
+
+
+fn colored_score(score: f64) -> ColoredString {
+    let score = score * 100.0;
+    if score >= 80.0 {
+        format!("{:>5.1}%", score).green()
+    } else if score <= 20.0 {
+        format!("{:>5.1}%", score).red()
+    } else {
+        format!("{:>5.1}%", score).cyan()
+    }
 }

@@ -26,6 +26,11 @@ pub struct Quiz {
 
 
 impl Quiz {
+    /// Find a question given its id.
+    pub fn find(&self, id: &str) -> Option<usize> {
+        self.questions.iter().position(|q| q.get_common().id == id)
+    }
+
     pub fn take(
         &mut self, ui: &mut CmdUI, options: &TakeOptions) -> Result<QuizResult> {
 

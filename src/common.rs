@@ -107,20 +107,80 @@ pub struct Options {
     pub cmd: Command,
 }
 
+
 #[derive(StructOpt)]
 pub enum Command {
-    /// Take a quiz.
-    #[structopt(name = "take")]
-    Take(TakeOptions),
     /// Count questions or tags.
     #[structopt(name = "count")]
     Count(CountOptions),
+    /// Report history of particular questions.
+    #[structopt(name = "history")]
+    History(HistoryOptions),
     /// Report results of previous attempts.
     #[structopt(name = "results")]
     Results(ResultsOptions),
     /// Seach questions for a keyword.
     #[structopt(name = "search")]
     Search(SearchOptions),
+    /// Take a quiz.
+    #[structopt(name = "take")]
+    Take(TakeOptions),
+}
+
+
+#[derive(StructOpt)]
+pub struct CountOptions {
+    /// Name of the quiz to count.
+    #[structopt(default_value = "main")]
+    pub name: PathBuf,
+    /// List tags instead of counting questions.
+    #[structopt(long = "list-tags")]
+    pub list_tags: bool,
+    #[structopt(flatten)]
+    pub filter_opts: FilterOptions,
+}
+
+
+/// These filtering options are shared between the `take` and `count` subcommands.
+#[derive(StructOpt)]
+pub struct FilterOptions {
+    /// Exclude questions with the given tag.
+    #[structopt(long = "exclude")]
+    pub exclude: Vec<String>,
+    /// Only include questions with the given tag.
+    #[structopt(long = "tag")]
+    pub tags: Vec<String>,
+}
+
+
+#[derive(StructOpt)]
+pub struct HistoryOptions {
+    /// Name of the quiz.
+    pub name: PathBuf,
+    pub id: String,
+}
+
+
+#[derive(StructOpt)]
+pub struct ResultsOptions {
+    /// The name of the quiz for which to fetch the results.
+    #[structopt(default_value = "main")]
+    pub name: PathBuf,
+    /// Only show the first `n` results.
+    #[structopt(short = "n")]
+    pub num_to_show: Option<usize>,
+    /// One of 'best', 'worst', 'most' or 'least'. Defaults to 'best'.
+    #[structopt(short = "s", long = "sort", default_value = "best")]
+    pub sort: String,
+}
+
+
+#[derive(StructOpt)]
+pub struct SearchOptions {
+    /// The name of the quiz.
+    pub name: PathBuf,
+    /// The term to search for.
+    pub term: String,
 }
 
 #[derive(StructOpt)]
@@ -142,50 +202,6 @@ pub struct TakeOptions {
     pub save: bool,
     #[structopt(flatten)]
     pub filter_opts: FilterOptions,
-}
-
-#[derive(StructOpt)]
-pub struct CountOptions {
-    /// Name of the quiz to count.
-    #[structopt(default_value = "main")]
-    pub name: PathBuf,
-    /// List tags instead of counting questions.
-    #[structopt(long = "list-tags")]
-    pub list_tags: bool,
-    #[structopt(flatten)]
-    pub filter_opts: FilterOptions,
-}
-
-/// These filtering options are shared between the `take` and `count` subcommands.
-#[derive(StructOpt)]
-pub struct FilterOptions {
-    /// Exclude questions with the given tag.
-    #[structopt(long = "exclude")]
-    pub exclude: Vec<String>,
-    /// Only include questions with the given tag.
-    #[structopt(long = "tag")]
-    pub tags: Vec<String>,
-}
-
-#[derive(StructOpt)]
-pub struct ResultsOptions {
-    /// The name of the quiz for which to fetch the results.
-    #[structopt(default_value = "main")]
-    pub name: PathBuf,
-    /// Only show the first `n` results.
-    #[structopt(short = "n")]
-    pub num_to_show: Option<usize>,
-    /// One of 'best', 'worst', 'most' or 'least'. Defaults to 'best'.
-    #[structopt(short = "s", long = "sort", default_value = "best")]
-    pub sort: String,
-}
-
-#[derive(StructOpt)]
-pub struct SearchOptions {
-    /// The name of the quiz.
-    pub name: PathBuf,
-    /// The term to search for.
-    pub term: String,
 }
 
 
