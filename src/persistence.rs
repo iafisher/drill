@@ -44,8 +44,8 @@ pub fn load_results(fullname: &Path) -> Result<StoredResults> {
 }
 
 
-/// Save `results` to a file in the popquiz application's data directory, appending the
-/// results if previous results have been saved.
+/// Save `results` to a file in a results directory, appending the results if previous
+/// results have been recorded.
 pub fn save_results(fullname: &Path, results: &QuizResult) -> Result<()> {
     let results_dir = get_results_dir_path(fullname)?;
     if !results_dir.as_path().exists() {

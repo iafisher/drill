@@ -1,5 +1,6 @@
-# iafisher/popquiz
-A command-line program to take quizzes.
+# iafisher/drill
+Quiz yourself on trivia, general knowledge, foreign-language vocabulary etc. from the
+command-line.
 
 **DISCLAIMER**: While anyone is welcome to use this tool, it is primarily for my
 personal use and I do not guarantee that backwards compability will be maintained.
@@ -9,7 +10,7 @@ personal use and I do not guarantee that backwards compability will be maintaine
 Installation requires [Rust](https://www.rust-lang.org/) and [Cargo](https://doc.rust-lang.org/stable/cargo/).
 
 ```shell
-$ cargo install --git https://github.com/iafisher/popquiz.git
+$ cargo install --git https://github.com/iafisher/drill.git
 ```
 
 Make a directory for your quizzes and create a quiz for yourself following the format
@@ -18,7 +19,7 @@ in `sample_quiz`.
 Now, run
 
 ```shell
-$ popquiz take path/to/quiz
+$ drill take path/to/quiz
 ```
 
 to take your quiz! The program will create a `results` directory alongside your quiz
@@ -27,22 +28,22 @@ to keep track of your results over time.
 You can also try out these commands:
 ```shell
 # Count the questions in a quiz.
-$ popquiz count <name>
+$ drill count <name>
 # Count the number of questions per tag.
-$ popquiz count --list-tags
+$ drill count --list-tags
 
 # See previous results for a quiz.
-$ popquiz results <name>
-$ popquiz results <name> -n 20 --sort best
-$ popquiz results <name> -n 20 --sort worst
-$ popquiz results <name> -n 20 --sort most
-$ popquiz results <name> -n 20 --sort least
+$ drill results <name>
+$ drill results <name> -n 20 --sort best
+$ drill results <name> -n 20 --sort worst
+$ drill results <name> -n 20 --sort most
+$ drill results <name> -n 20 --sort least
 
 # Search for a question.
-$ popquiz search <name> <keyword>
+$ drill search <name> <keyword>
 
 # See per-question history.
-$ popquiz history <name> <question-id>
+$ drill history <name> <question-id>
 ```
 
 If `<name>` is left out of any of these commands, it defaults to `main`.

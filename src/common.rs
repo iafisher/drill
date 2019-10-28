@@ -98,7 +98,7 @@ impl error::Error for QuizError {
 
 /// Holds the command-line configuration for the application.
 #[derive(StructOpt)]
-#[structopt(name = "popquiz", about = "Take quizzes from the command line.")]
+#[structopt(name = "drill", about = "Take quizzes from the command line.")]
 pub struct Options {
     /// Do not emit colorized output.
     #[structopt(long = "no-color")]

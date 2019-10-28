@@ -475,7 +475,7 @@ fn spawn_and_mock(quiz: &str, input: &[&str], extra_args: &[&str]) -> (String, S
 }
 
 fn spawn(quiz: &str, extra_args: &[&str]) -> Child {
-    Command::new("./target/debug/popquiz")
+    Command::new("./target/debug/drill")
         .arg("--no-color")
         .arg("take")
         .args(extra_args)
