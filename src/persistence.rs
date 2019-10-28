@@ -244,7 +244,14 @@ fn entry_from_script(entry: &FileEntry, script_name: &str) -> Result<FileEntry> 
     } else {
         PathBuf::new()
     };
+
+    // If the script name isn't relative to any directory, it must begin with "./" or
+    // else the user's shell likely won't run it.
+    if script_path.components().count() == 0 {
+        script_path.push(".");
+    }
     script_path.push(script_name);
+    println!("{:?}", script_path);
 
     let line1 = entry.text.clone();
     let line2 = entry.following.join("\n");
