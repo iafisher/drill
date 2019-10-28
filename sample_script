@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+"""
+A sample script to be used to generate questions from a template.
+
+Scripts should accept two command-line arguments: the text of the question, and the list
+of answers as a newline-separated string. The script should print to standard output
+the generated text of the question, and then the generated answers to the question, one
+answer per line of output.
+"""
+import sys
+
+
+def main():
+    text = sys.argv[1]
+    answers = sys.argv[2].splitlines()
+
+    new_text = generate_new_text(text)
+    new_answers = [generate_new_answer(a) for a in answers]
+
+    print(new_text)
+    for new_answer in new_answers:
+        print(new_answer)
+
+
+def generate_new_text(text):
+    # Modify this function to change the text of the question, given the text that is
+    # written in the quiz file. In this case, we are only changing the question's
+    # answers, so we return the text unchanged.
+    return text
+
+
+def generate_new_answer(answer):
+    # Modify this function to change the individual answers to the question. In this
+    # case, we are assuming that the answers are the names of historical figures, and
+    # we are modifying them to accept just the last name as well as the full name.
+    first_name, last_name = answer.split(" ", maxsplit=1)
+    return f"{answer} / {last_name}"
+
+
+if __name__ == "__main__":
+    main()

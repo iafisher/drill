@@ -1,19 +1,70 @@
+# A quiz file consists of one or more question entries. Each question entry
+# is separated from the next entry by a blank line.
+#
+# The bracketed number below is the id of the question. It is typically a
+# number, but it can also include letters and symbols, and they do not have to
+# be in order.
+#
+# The question below is a short answer question. The text of the question comes
+# after the id on the same line, and the answer is on the next line. Multiple
+# acceptable variants of the answer are separated by forward slashes.
 [1] Which English countess is regarded as the first computer programmers?
 Ada Lovelace / Lady Lovelace / Ada, Countess of Lovelace
 
+
+# This question is a list question, by virtue of having multiple lines of
+# answers. Each line may have multiple slash-separated variants, like in the
+# question above. Unless otherwise specified (see the nex question), the
+# answers may be entered in any order.
 [2] Name the Home Islands of Japan.
 Hokkaido
 Honshu
 Shikoku
 Kyushu
+# You can tag your questions with keywords and then filter questions by tag
+# from the command-line.
 - tags: geography, japan
+# The line above is an example of a question field. A field line must come
+# after all answers and begin with a dash. Fields are used for additional
+# configuration and metadata. Here's another field:
+- nocredit: Okinawa
+# For list questions, the `nocredit` field is for answers that should count as
+# neither correct nor incorrect. In this case, Okinawa isn't one of the
+# traditional Home Islands of Japan, but it is one of the islands in the
+# Japanese archipelago, so entering it shouldn't count against the user.
+
 
 [3] Who were the first three Presidents of the United States, in order?
 George Washington / Washington
 John Adams / Adams
 Thomas Jefferson / Jefferson
+# The `ordered` field requires that the answers be entered in the order they
+# appear in the quiz file.
 - ordered: true
+
 
 [4] In what year did the Russo-Japanese War end?
 1905
 - choices: 1878 / 1945 / 1918 / 1908
+# The `choices` field makes this question into a multiple-choice question!
+
+
+[5] Quick: What's the capital of Paraguay?
+Asunción / Asuncion
+# ^ Unicode is fully supported!
+- timeout: 5
+# The user has 5 seconds to answer the question without being penalized. If
+# they answer correctly within twice the time limit, they will receive partial
+# credit.
+
+
+[6] List the first three post-war Prime Ministers of the United Kingdom.
+Winston Churchill
+Clement Attlee
+Anthony Eden
+- ordered: true
+- script: sample_script
+# The `script` field is used to programmatically modify the text and/or answers
+# to a question. In this case, the script modifies the answers to accept just
+# the last name of the Prime Minister as well as the full name. See the script
+# file itself for details.
