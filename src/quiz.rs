@@ -377,8 +377,8 @@ impl Question for MultipleChoiceQuestion {
 
                 let index = guess.to_ascii_lowercase().as_bytes()[0];
                 if 97 <= index && index < 101 {
-                    let guess = &self.choices[(index - 97) as usize];
-                    response.replace(guess.clone());
+                    let guess = choices[(index - 97) as usize];
+                    response.replace(String::from(guess));
                     if check(&self.answer, guess) {
                         ui.correct()?;
                         correct = true;
