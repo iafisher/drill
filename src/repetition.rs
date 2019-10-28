@@ -1,13 +1,15 @@
 /**
  * Choose the most optimal questions to ask based on past results.
  *
+ * Bucket 0: never asked before
  * Bucket 1: don't know at all, should ask immediately
  * Bucket 2: just learned, should ask within a day
  * Bucket 3: should ask within a week
  * Bucket 4: ask once a month or so
  *
- * Each quiz will consist roughly of 50% questions from Bucket 1, 20% questions each
- * from Bucket 2 and Bucket 3, and 10% questions from Bucket 4.
+ * All questions in Bucket 0 will be asked, and the remaining number of questions will
+ * consist roughly of 50% questions from Bucket 1, 20% questions each from Bucket 2 and
+ * Bucket 3, and 10% questions from Bucket 4.
  *
  * Author:  Ian Fisher (iafisher@protonmail.com)
  * Version: October 2019
@@ -23,7 +25,7 @@ use super::quiz::{Question, QuestionResult};
 
 // The percentage of questions that come from each bucket, expressed as integer
 // fractions, e.g. 2 means 1/2, 5 means 1/5 etc.
-const BUCKET_ALLOCATION: [usize; 4] = [2, 5, 5, 10];
+const BUCKET_ALLOCATION: [usize; 5] = [1, 2, 5, 5, 10];
 // What percentage correct for a question to move up a bucket.
 const UP_THRESHOLD: u64 = 900;
 // What percentage correct for a question to move down a bucket.
@@ -58,8 +60,8 @@ pub fn choose_questions<'a>(
     let mut chosen = Vec::new();
     let mut cumulative_allocation = 0;
     for i in 0..BUCKET_ALLOCATION.len() {
-        let mut allocation = options.num_to_ask / BUCKET_ALLOCATION[i];
         if i == BUCKET_ALLOCATION.len() - 1 {
+            println!("{}, {}", options.num_to_ask, chosen.len());
             allocation = options.num_to_ask - chosen.len();
         } else {
             // If previous buckets didn't have enough questions to fill their
@@ -67,6 +69,7 @@ pub fn choose_questions<'a>(
             allocation += cumulative_allocation - chosen.len();
         }
         allocation = cmp::min(allocation, buckets[i].len());
+        allocation = cmp::min(allocation, options.num_to_ask - chosen.len());
         for j in 0..allocation {
             chosen.push(*buckets[i][j]);
         }
