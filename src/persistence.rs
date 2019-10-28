@@ -350,47 +350,53 @@ fn read_settings(reader: &mut QuizReader) -> Result<GlobalSettings> {
 /// `Ok(Some(entry))` is returned on a successful read. `Ok(None)` is returned when the
 /// end of file is reached. `Err(e)` is returned if a parse error occurs.
 fn read_entry(path: &Path, reader: &mut QuizReader) -> Result<Option<FileEntry>> {
-    match reader.read_line()? {
-        Some(FileLine::First(id, text)) => {
-            let mut entry = FileEntry {
-                id,
-                text,
-                following: Vec::new(),
-                attributes: HashMap::new(),
-                location: Location { line: reader.line, path: path.to_path_buf() },
-            };
-            loop {
-                match reader.read_line()? {
-                    Some(FileLine::Blank) | None => {
-                        break;
-                    },
-                    Some(FileLine::Following(line)) => {
-                        entry.following.push(line);
-                    },
-                    Some(FileLine::Pair(key, value)) => {
-                        entry.attributes.insert(key, value);
-                    },
-                    Some(FileLine::First(..)) => {
-                        return Err(QuizError::Parse {
-                            line: reader.line,
-                            whole_entry: false,
-                            message: String::from("no blank line between questions"),
-                        });
+    // Loop over blank lines before the actual question.
+    loop {
+        match reader.read_line()? {
+            Some(FileLine::First(id, text)) => {
+                let mut entry = FileEntry {
+                    id,
+                    text,
+                    following: Vec::new(),
+                    attributes: HashMap::new(),
+                    location: Location { line: reader.line, path: path.to_path_buf() },
+                };
+                loop {
+                    match reader.read_line()? {
+                        Some(FileLine::Blank) | None => {
+                            break;
+                        },
+                        Some(FileLine::Following(line)) => {
+                            entry.following.push(line);
+                        },
+                        Some(FileLine::Pair(key, value)) => {
+                            entry.attributes.insert(key, value);
+                        },
+                        Some(FileLine::First(..)) => {
+                            return Err(QuizError::Parse {
+                                line: reader.line,
+                                whole_entry: false,
+                                message: String::from("no blank line between questions"),
+                            });
+                        }
                     }
                 }
-            }
-            Ok(Some(entry))
-        },
-        Some(_) => {
-            Err(QuizError::Parse {
-                line: reader.line,
-                whole_entry: false,
-                message: String::from("expected first line of question"),
-            })
-        },
-        None => {
-            Ok(None)
-        },
+                return Ok(Some(entry));
+            },
+            Some(FileLine::Blank) => {
+                continue;
+            },
+            Some(_) => {
+                return Err(QuizError::Parse {
+                    line: reader.line,
+                    whole_entry: false,
+                    message: String::from("expected first line of question"),
+                });
+            },
+            None => {
+                return Ok(None);
+            },
+        }
     }
 }
 
