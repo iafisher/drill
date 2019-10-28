@@ -392,11 +392,11 @@ impl Question for MultipleChoiceQuestion {
                 }
             } else {
                 ui.incorrect(Some(&answer))?;
+                break;
             }
         }
         let (score, timed_out) = calculate_score(
             if correct { 1000 } else { 0 }, self.timeout, ui.get_elapsed());
-        ui.score(score, timed_out)?;
         Ok(mkresult(&self.get_common().id, &self.text, response, score, timed_out))
     }
 

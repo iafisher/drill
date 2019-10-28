@@ -40,7 +40,6 @@ fn can_take_simple_quiz2() {
             // Since the order of the choices is random, guessing 'a' may or may not
             // have been correct.
             r"RE: (Correct!|Incorrect\. The correct answer was Harry S\. Truman\.)",
-            r"RE: Score for this question: (0|100)\.0%",
             "(2) List the modern Emperors of Germany in chronological order.",
             "> Wilhelm I",
             "Correct!",
