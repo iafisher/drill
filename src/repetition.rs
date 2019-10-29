@@ -60,8 +60,8 @@ pub fn choose_questions<'a>(
     let mut chosen = Vec::new();
     let mut cumulative_allocation = 0;
     for i in 0..BUCKET_ALLOCATION.len() {
+        let mut allocation = options.num_to_ask / BUCKET_ALLOCATION[i];
         if i == BUCKET_ALLOCATION.len() - 1 {
-            println!("{}, {}", options.num_to_ask, chosen.len());
             allocation = options.num_to_ask - chosen.len();
         } else {
             // If previous buckets didn't have enough questions to fill their
