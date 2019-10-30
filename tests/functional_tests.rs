@@ -318,12 +318,6 @@ fn can_use_global_custom_script() {
 }
 
 #[test]
-fn parse_error_no_blank_line_between_questions() {
-    assert_parse_error(
-        "test_no_blank_line", "no blank line between questions", 2, false);
-}
-
-#[test]
 fn parse_error_no_blank_line_after_settings() {
     assert_parse_error(
         "test_no_blank_line_after_settings",

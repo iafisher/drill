@@ -368,7 +368,8 @@ fn read_entry(path: &Path, reader: &mut QuizReader) -> Result<Option<FileEntry>>
                     location: Location { line: reader.line, path: path.to_path_buf() },
                 };
                 loop {
-                    match reader.read_line()? {
+                    let line = reader.read_line()?;
+                    match line {
                         Some(FileLine::Blank) | None => {
                             break;
                         },
@@ -379,11 +380,8 @@ fn read_entry(path: &Path, reader: &mut QuizReader) -> Result<Option<FileEntry>>
                             entry.attributes.insert(key, value);
                         },
                         Some(FileLine::First(..)) => {
-                            return Err(QuizError::Parse {
-                                line: reader.line,
-                                whole_entry: false,
-                                message: String::from("no blank line between questions"),
-                            });
+                            reader.push(line.unwrap());
+                            break;
                         }
                     }
                 }
