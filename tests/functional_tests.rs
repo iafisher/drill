@@ -375,6 +375,11 @@ fn parse_error_field_on_wrong_question() {
         "test_field_on_wrong_question", "unexpected field 'nocredit'", 1, true);
 }
 
+#[test]
+fn parse_error_duplicate_ids() {
+    assert_parse_error("test_duplicate_ids", "duplicate ID", 2, false);
+}
+
 fn assert_parse_error(path: &str, message: &str, lineno: usize, whole_entry: bool) {
     let (_, stderr) = spawn_and_mock(&format!("parse/{}", path), &[], &[]);
     let expected = if whole_entry {

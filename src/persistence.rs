@@ -5,7 +5,7 @@
  * Author:  Ian Fisher (iafisher@protonmail.com)
  * Version: October 2019
  */
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::fs::File;
 use std::io;
@@ -111,10 +111,19 @@ fn parse(path: &Path, old_results: &StoredResults) -> Result<Quiz> {
     let quiz_settings = read_settings(&mut reader)?;
 
     let mut questions = Vec::new();
+    let mut used_ids = HashSet::new();
     loop {
         match read_entry(path, &mut reader) {
             Ok(Some(entry)) => {
                 let q = entry_to_question(&entry, &quiz_settings, old_results)?;
+                if used_ids.contains(&q.get_common().id) {
+                    return Err(QuizError::Parse {
+                        line: entry.location.line,
+                        whole_entry: false,
+                        message: String::from("duplicate ID"),
+                    });
+                }
+                used_ids.insert(q.get_common().id.clone());
                 questions.push(q);
             },
             Ok(None) => {
