@@ -539,6 +539,12 @@ fn mkresultlist(
 }
 
 
+const MAX_SCORE: u64 = 1000;
+pub fn score_to_perc(score: u64) -> f64 {
+    (score as f64) / (MAX_SCORE as f64)
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

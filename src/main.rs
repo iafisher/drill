@@ -151,7 +151,8 @@ pub fn main_results(options: &common::ResultsOptions) -> Result<()> {
     }
 
     for (score, attempts, id, text) in aggregated.iter() {
-        let first_prefix = format!("{:>5.1}%  of {:>2}   ", score, attempts);
+        let score = quiz::score_to_perc(*score) * 100.0;
+        let first_prefix = format!("{:>5.1}% of {:>2}   ", score, attempts);
         prettyprint_colored(
             &format!("[{}] {}", id, text), &first_prefix, None, Some(Color::Cyan)
         )?;
@@ -240,13 +241,13 @@ fn list_tags(quiz: &Quiz) -> Result<()> {
 
 fn print_stats(results: &Vec<QuestionResult>) -> Result<()> {
     my_println!("Sample: {}", format!("{:>6}", results.len()).cyan())?;
-    let mean = results_mean(results).unwrap() as f64 / 1000.0;
+    let mean = quiz::score_to_perc(results_mean(results).unwrap()) * 100.0;
     my_println!("Mean:   {}", format!("{:>5.1}%", mean).cyan())?;
-    let median = results_median(results) as f64 / 1000.0;
+    let median = quiz::score_to_perc(results_median(results)) * 100.0;
     my_println!("Median: {}", format!("{:>5.1}%", median).cyan())?;
-    let max = results_max(results) as f64 / 1000.0;
+    let max = quiz::score_to_perc(results_max(results)) * 100.0;
     my_println!("Max:    {}", format!("{:>5.1}%", max).cyan())?;
-    let min = results_min(results) as f64 / 1000.0;
+    let min = quiz::score_to_perc(results_min(results)) * 100.0;
     my_println!("Min:    {}", format!("{:>5.1}%", min).cyan())
 }
 
@@ -334,7 +335,7 @@ fn results_median(results: &Vec<QuestionResult>) -> u64 {
     let mut results: Vec<u64> = results.iter().map(|r| r.score).collect();
     results.sort();
     if results.len() % 2 == 0 {
-        (results[results.len() / 2] + results[results.len() / 2]) / 2
+        (results[results.len() / 2] + results[(results.len() / 2) - 1]) / 2
     } else {
         results[results.len() / 2]
     }
@@ -352,11 +353,12 @@ fn results_min(results: &Vec<QuestionResult>) -> u64 {
 
 
 fn colored_score(score: u64) -> ColoredString {
-    if score >= 800 {
-        format!("{:>5.1}%", score as f64 / 1000.0).green()
-    } else if score <= 200 {
-        format!("{:>5.1}%", score as f64 / 1000.0).red()
+    let score = quiz::score_to_perc(score) * 100.0;
+    if score >= 80.0 {
+        format!("{:>5.1}%", score).green()
+    } else if score <= 20.0 {
+        format!("{:>5.1}%", score).red()
     } else {
-        format!("{:>5.1}%", score as f64 / 1000.0).cyan()
+        format!("{:>5.1}%", score).cyan()
     }
 }

@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::path::Path;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::thread;
 use std::time;
@@ -21,7 +22,6 @@ fn can_take_simple_quiz1() {
         ],
     );
 }
-
 
 #[test]
 fn can_take_simple_quiz2() {
@@ -54,6 +54,65 @@ fn can_take_simple_quiz2() {
             r"RE: (0|1) incorrect",
         ],
     );
+}
+
+#[test]
+fn can_save_results_and_track_history() {
+    play_quiz(
+        "test1",
+        &[],
+        &[
+            "(1) What is the capital of Mongolia?",
+            "> Ulan Bator",
+            "Correct!",
+            "Score: 100.0% out of 1 question",
+            "1 correct",
+            "0 incorrect",
+            // TODO: I don't know why this string doesn't show up in the output.
+            // Save results?
+            "> yes",
+        ],
+    );
+
+    play_quiz(
+        "test1",
+        &[],
+        &[
+            "(1) What is the capital of Mongolia?",
+            "> Khovd",
+            "Incorrect. The correct answer was Ulan Bator.",
+            "Score: 0.0% out of 1 question",
+            "0 correct",
+            "1 incorrect",
+            // TODO: I don't know why this string doesn't show up in the output.
+            // Save results?
+            "> yes",
+        ],
+    );
+
+    assert!(Path::new("tests/quizzes/results/test1_results.json").exists());
+
+    let (stdout, stderr) = spawn_and_mock(
+        &["--no-color", "results", "tests/quizzes/test1"]);
+    assert_match(&stderr, "");
+    assert_match(&stdout, "50.0% of  2   [1] What is the capital of Mongolia?\n");
+
+    let (stdout, stderr) = spawn_and_mock(
+        &["--no-color", "history", "tests/quizzes/test1", "1"]);
+    assert_match(&stderr, "");
+    assert_match(
+        &stdout,
+        r#"RE:
+\[1\] What is the capital of Mongolia\?
+
+20\d{2}-\d{2}-\d{2}  \d{1,2}:\d{2} (AM|PM): 100.0% for 'Ulan Bator'
+20\d{2}-\d{2}-\d{2}  \d{1,2}:\d{2} (AM|PM):   0.0% for 'Khovd'
+
+Sample:      2
+Mean:    50.0%
+Median:  50.0%
+Max:    100.0%
+Min:      0.0%"#);
 }
 
 #[test]
@@ -205,7 +264,8 @@ fn flashcards_context() {
 fn timeouts_work() {
     // This test can't use `play_quiz` because it needs to control how long the thread
     // sleeps between answering questions.
-    let mut process = spawn("test_timeouts", &["--no-color", "take", "--in-order"]);
+    let mut process = spawn(
+        &["--no-color", "take", "--in-order", "tests/quizzes/test_timeouts"]);
     let stdin = process.stdin.as_mut().expect("Failed to open stdin");
     stdin_write(stdin, "Chisinau");
     sleep(1200);
@@ -319,19 +379,16 @@ fn can_use_global_custom_script() {
 
 #[test]
 fn counting_tags_works() {
-    let (stdout, stderr) = spawn_and_mock("test_tags", &["count", "--list-tags"]);
-    assert!(stderr == "", format!("Contents of stderr: {:?}", stderr));
-    assert!(
-        stdout == "africa (1)\nasia (2)\neurope (2)\noceania (1)\nsouth-america (1)\n",
-        format!("Contents of stdout: {:?}", stdout)
-    );
+    let (stdout, stderr) = spawn_and_mock(
+        &["count", "--list-tags", "tests/quizzes/test_tags"]);
+    assert_match(&stderr, "");
+    assert_match(
+        &stdout, "africa (1)\nasia (2)\neurope (2)\noceania (1)\nsouth-america (1)\n");
 
-    let (stdout, stderr) = spawn_and_mock("test1", &["count", "--list-tags"]);
-    assert!(stderr == "", format!("Contents of stderr: {:?}", stderr));
-    assert!(
-        stdout == "No questions have been assigned tags.\n",
-        format!("Contents of stdout: {:?}", stdout)
-    );
+    let (stdout, stderr) = spawn_and_mock(
+        &["count", "--list-tags", "tests/quizzes/test1"]);
+    assert_match(&stderr, "");
+    assert_match(&stdout, "No questions have been assigned tags.\n");
 }
 
 #[test]
@@ -398,19 +455,42 @@ fn parse_error_duplicate_ids() {
 }
 
 fn assert_parse_error(path: &str, message: &str, lineno: usize, whole_entry: bool) {
-    let (_, stderr) = spawn_and_mock(&format!("parse/{}", path), &["--no-color", "take"]);
+    let fullpath = format!("tests/quizzes/parse/{}", path);
+    let (_, stderr) = spawn_and_mock(&["--no-color", "take", &fullpath]);
     let expected = if whole_entry {
         format!("Error: {} in entry beginning on line {}\n", message, lineno)
     } else {
         format!("Error: {} on line {}\n", message, lineno)
     };
-    assert!(stderr == expected, format!("Contents of stderr: {:?}", stderr));
+    assert_match(&stderr, &expected);
+}
+
+fn assert_match(got: &str, expected: &str) {
+    if expected.starts_with("RE:") {
+        let expected = expected[3..].trim();
+        let re = Regex::new(&expected).unwrap();
+        assert!(
+            re.is_match(&got.trim()),
+            format!(
+                "Failed to match {:?} against pattern {:?}",
+                got.trim(),
+                expected,
+            )
+        );
+    } else {
+        assert!(
+            expected.trim() == got.trim(),
+            format!("Expected {:?}, got {:?}", expected.trim(), got.trim()),
+        );
+    }
 }
 
 fn play_quiz(name: &str, extra_args: &[&str], in_out: &[&str]) {
     let mut args = vec!["--no-color", "take"];
     args.extend_from_slice(extra_args);
-    let mut child = spawn(name, &args[..]);
+    let fullpath = format!("tests/quizzes/{}", name);
+    args.push(&fullpath);
+    let mut child = spawn(&args[..]);
     {
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         for line in in_out {
@@ -435,22 +515,7 @@ fn play_quiz(name: &str, extra_args: &[&str], in_out: &[&str]) {
                 }
             }
 
-            if expected.starts_with("RE:") {
-                let re = Regex::new(&expected[3..].trim()).unwrap();
-                assert!(
-                    re.is_match(&got.trim()),
-                    format!(
-                        "Failed to match {:?} against pattern {:?}",
-                        got.trim(),
-                        &expected[3..],
-                    )
-                );
-            } else {
-                assert!(
-                    expected.trim() == got.trim(),
-                    format!("Expected {:?}, got {:?}", expected.trim(), got.trim()),
-                );
-            }
+            assert_match(&got, &expected);
         }
     }
 
@@ -475,18 +540,17 @@ fn assert_in_order(mock_stdout: &str, data: &[&str]) {
     }
 }
 
-fn spawn_and_mock(quiz: &str, extra_args: &[&str]) -> (String, String) {
-    let child = spawn(quiz, extra_args);
+fn spawn_and_mock(args: &[&str]) -> (String, String) {
+    let child = spawn(args);
     let result = child.wait_with_output().expect("Failed to read stdout");
     let stdout = String::from_utf8_lossy(&result.stdout).to_string();
     let stderr = String::from_utf8_lossy(&result.stderr).to_string();
     (stdout, stderr)
 }
 
-fn spawn(quiz: &str, extra_args: &[&str]) -> Child {
+fn spawn(args: &[&str]) -> Child {
     Command::new("./target/debug/drill")
-        .args(extra_args)
-        .arg(&format!("tests/quizzes/{}", quiz))
+        .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
