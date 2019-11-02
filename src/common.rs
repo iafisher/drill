@@ -199,6 +199,9 @@ pub struct TakeOptions {
     /// Limit the total number of questions.
     #[structopt(short = "n", default_value = "20")]
     pub num_to_ask: usize,
+    /// Choose questions randomly instead of according to spaced repetition.
+    #[structopt(long = "--random")]
+    pub random: bool,
     /// Save results without prompting.
     #[structopt(long = "save")]
     pub save: bool,
@@ -212,7 +215,7 @@ impl TakeOptions {
     pub fn new() -> Self {
         TakeOptions {
             name: PathBuf::new(), num_to_ask: 20, save: false, flip: false,
-            in_order: false, filter_opts: FilterOptions::new()
+            in_order: false, random: false, filter_opts: FilterOptions::new()
         }
     }
 }

@@ -1,6 +1,6 @@
 # iafisher/drill
 Quiz yourself on trivia, general knowledge, foreign-language vocabulary etc. from the
-command-line.
+command-line used spaced repetition.
 
 **DISCLAIMER**: While anyone is welcome to use this tool, it is primarily for my
 personal use and I do not guarantee that backwards compability will be maintained.
@@ -47,6 +47,8 @@ $ drill history <name> <question-id>
 ```
 
 If `<name>` is left out of any of these commands, it defaults to `main`.
+
+drill is configurable with command-line flags. Run `drill --help` for details.
 
 
 ### In-quiz commands
