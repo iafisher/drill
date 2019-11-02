@@ -419,6 +419,14 @@ fn counting_questions_works() {
 }
 
 #[test]
+fn searching_questions_works() {
+    let (stdout, stderr) = spawn_and_mock(
+        &["--no-color", "search", "tests/quizzes/test_tags", "Turkey"]);
+    assert_match(&stderr, "");
+    assert_match(&stdout, "[2] What is the capital of Turkey?\n");
+}
+
+#[test]
 fn parse_error_no_blank_line_after_settings() {
     assert_parse_error(
         "test_no_blank_line_after_settings",

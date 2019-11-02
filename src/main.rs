@@ -174,8 +174,6 @@ pub fn main_search(options: &common::SearchOptions) -> Result<()> {
                 None,
                 Some(Color::Cyan),
             )?;
-            my_println!("")?;
-            break;
         }
     }
 
