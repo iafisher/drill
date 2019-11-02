@@ -448,6 +448,14 @@ fn parse_error_no_blank_line_after_settings() {
 }
 
 #[test]
+fn non_zero_exit_code_on_error() {
+    let child = spawn(
+        &["--no-color", "take", "tests/quizzes/parse/test_no_blank_line_after_settings"]);
+    let result = child.wait_with_output().expect("Failed to read stdout");
+    assert!(!result.status.success(), format!("Exit code: {:?}", result.status.code()));
+}
+
+#[test]
 fn parse_error_wrong_ordered_value() {
     assert_parse_error(
         "test_wrong_ordered_value",
