@@ -271,7 +271,7 @@ fn entry_from_script(entry: &FileEntry, script_name: &str) -> Result<FileEntry> 
         })?;
 
     let mut lines: Vec<String> = stdout.lines().map(|s| String::from(s)).collect();
-    if lines.len() >= 2 {
+    if lines.len() > 0 {
         let mut attributes = entry.attributes.clone();
         attributes.remove("script");
         let text = lines.remove(0);
@@ -286,7 +286,7 @@ fn entry_from_script(entry: &FileEntry, script_name: &str) -> Result<FileEntry> 
         Err(QuizError::Parse {
             line: entry.location.line,
             whole_entry: true,
-            message: format!("script {} did not print two or more lines", script_name),
+            message: format!("script {} did not print anything", script_name),
         })
     }
 }

@@ -378,6 +378,22 @@ fn can_use_global_custom_script() {
 }
 
 #[test]
+fn can_use_custom_script_for_flashcards() {
+    play_quiz(
+        "test_flashcard_script",
+        &[],
+        &[
+            r"RE: \(1\) to comb( \[perf\])?",
+            "> чистить",
+            r"RE: Incorrect\. The correct answer was (причёсывать|причесать)\.",
+            "Score: 0.0% out of 1 question",
+            "0 correct",
+            "1 incorrect",
+        ]
+    );
+}
+
+#[test]
 fn listing_tags_works() {
     let (stdout, stderr) = spawn_and_mock(
         &["count", "--list-tags", "tests/quizzes/test_tags"]);
@@ -556,14 +572,16 @@ fn play_quiz(name: &str, extra_args: &[&str], in_out: &[&str]) {
 
     let result = child.wait_with_output().expect("Failed to read stdout");
     let stdout = String::from_utf8_lossy(&result.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&result.stderr).to_string();
 
     let mut lines_iter = stdout.lines();
+    let premature = format!("Premature end of output. Contents of stderr: {:?}", stderr);
     for expected in in_out {
         if !expected.starts_with("> ") {
-            let mut got = lines_iter.next().expect("Premature end of output");
+            let mut got = lines_iter.next().expect(&premature);
             loop {
                 if got.trim().len() == 0 {
-                    got = lines_iter.next().expect("Premature end of output");
+                    got = lines_iter.next().expect(&premature);
                 } else {
                     break;
                 }
