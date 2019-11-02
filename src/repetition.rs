@@ -19,7 +19,8 @@ use std::cmp;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 
-use super::common::{FilterOptions, TakeOptions};
+use super::common;
+use super::common::{TakeOptions};
 use super::quiz::{Question, QuestionResult};
 
 
@@ -39,7 +40,7 @@ pub fn choose_questions<'a>(
 
     let mut candidates = Vec::new();
     for question in questions.iter() {
-        if filter_tags(&question.get_common().tags, &options.filter_opts) {
+        if common::filter_tags(&question.get_common().tags, &options.filter_opts) {
             candidates.push(question);
         }
     }
@@ -98,15 +99,6 @@ fn get_bucket(results: &Vec<QuestionResult>) -> usize {
         }
     }
     bucket
-}
-
-
-/// Return `true` if `tags` satisfies the constraints in `options`.
-pub fn filter_tags(tags: &Vec<String>, options: &FilterOptions) -> bool {
-    // Either no tags were specified, or `q` has at least one of the specified tags.
-    (options.tags.len() == 0 || options.tags.iter().any(|tag| tags.contains(tag)))
-        // `q` must not have any excluded tags.
-        && options.exclude.iter().all(|tag| !tags.contains(tag))
 }
 
 

@@ -67,7 +67,7 @@ pub fn main_count(options: &common::CountOptions) -> Result<()> {
         let mut count = 0;
         for question in quiz.questions.iter() {
             let tags = &question.get_common().tags;
-            if repetition::filter_tags(tags, &options.filter_opts) {
+            if common::filter_tags(tags, &options.filter_opts) {
                 count += 1;
             }
         }
@@ -167,6 +167,11 @@ pub fn main_search(options: &common::SearchOptions) -> Result<()> {
 
     for question in quiz.questions.iter() {
         let text = question.get_text();
+        let tags = &question.get_common().tags;
+        if !common::filter_tags(&tags, &options.filter_opts) {
+            continue;
+        }
+
         if text.contains(&options.term) {
             prettyprint_colored(
                 &text,

@@ -181,6 +181,8 @@ pub struct SearchOptions {
     pub name: PathBuf,
     /// The term to search for.
     pub term: String,
+    #[structopt(flatten)]
+    pub filter_opts: FilterOptions,
 }
 
 #[derive(StructOpt)]
@@ -223,4 +225,13 @@ impl FilterOptions {
             tags: Vec::new(), exclude: Vec::new(),
         }
     }
+}
+
+
+/// Return `true` if `tags` satisfies the constraints in `options`.
+pub fn filter_tags(tags: &Vec<String>, options: &FilterOptions) -> bool {
+    // Either no tags were specified, or `q` has at least one of the specified tags.
+    (options.tags.len() == 0 || options.tags.iter().any(|tag| tags.contains(tag)))
+        // `q` must not have any excluded tags.
+        && options.exclude.iter().all(|tag| !tags.contains(tag))
 }
