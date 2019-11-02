@@ -205,7 +205,7 @@ fn flashcards_context() {
 fn timeouts_work() {
     // This test can't use `play_quiz` because it needs to control how long the thread
     // sleeps between answering questions.
-    let mut process = spawn("test_timeouts", &["--in-order"]);
+    let mut process = spawn("test_timeouts", &["--no-color", "take", "--in-order"]);
     let stdin = process.stdin.as_mut().expect("Failed to open stdin");
     stdin_write(stdin, "Chisinau");
     sleep(1200);
@@ -318,6 +318,23 @@ fn can_use_global_custom_script() {
 }
 
 #[test]
+fn counting_tags_works() {
+    let (stdout, stderr) = spawn_and_mock("test_tags", &["count", "--list-tags"]);
+    assert!(stderr == "", format!("Contents of stderr: {:?}", stderr));
+    assert!(
+        stdout == "africa (1)\nasia (2)\neurope (2)\noceania (1)\nsouth-america (1)\n",
+        format!("Contents of stdout: {:?}", stdout)
+    );
+
+    let (stdout, stderr) = spawn_and_mock("test1", &["count", "--list-tags"]);
+    assert!(stderr == "", format!("Contents of stderr: {:?}", stderr));
+    assert!(
+        stdout == "No questions have been assigned tags.\n",
+        format!("Contents of stdout: {:?}", stdout)
+    );
+}
+
+#[test]
 fn parse_error_no_blank_line_after_settings() {
     assert_parse_error(
         "test_no_blank_line_after_settings",
@@ -381,7 +398,7 @@ fn parse_error_duplicate_ids() {
 }
 
 fn assert_parse_error(path: &str, message: &str, lineno: usize, whole_entry: bool) {
-    let (_, stderr) = spawn_and_mock(&format!("parse/{}", path), &[], &[]);
+    let (_, stderr) = spawn_and_mock(&format!("parse/{}", path), &["--no-color", "take"]);
     let expected = if whole_entry {
         format!("Error: {} in entry beginning on line {}\n", message, lineno)
     } else {
@@ -391,7 +408,9 @@ fn assert_parse_error(path: &str, message: &str, lineno: usize, whole_entry: boo
 }
 
 fn play_quiz(name: &str, extra_args: &[&str], in_out: &[&str]) {
-    let mut child = spawn(name, extra_args);
+    let mut args = vec!["--no-color", "take"];
+    args.extend_from_slice(extra_args);
+    let mut child = spawn(name, &args[..]);
     {
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         for line in in_out {
@@ -456,17 +475,8 @@ fn assert_in_order(mock_stdout: &str, data: &[&str]) {
     }
 }
 
-fn spawn_and_mock(quiz: &str, input: &[&str], extra_args: &[&str]) -> (String, String) {
-    let mut child = spawn(quiz, extra_args);
-
-    {
-        let stdin = child.stdin.as_mut().expect("Failed to open stdin");
-        for line in input {
-            stdin_write(stdin, &line);
-        }
-    }
-
-
+fn spawn_and_mock(quiz: &str, extra_args: &[&str]) -> (String, String) {
+    let child = spawn(quiz, extra_args);
     let result = child.wait_with_output().expect("Failed to read stdout");
     let stdout = String::from_utf8_lossy(&result.stdout).to_string();
     let stderr = String::from_utf8_lossy(&result.stderr).to_string();
@@ -475,8 +485,6 @@ fn spawn_and_mock(quiz: &str, input: &[&str], extra_args: &[&str]) -> (String, S
 
 fn spawn(quiz: &str, extra_args: &[&str]) -> Child {
     Command::new("./target/debug/drill")
-        .arg("--no-color")
-        .arg("take")
         .args(extra_args)
         .arg(&format!("tests/quizzes/{}", quiz))
         .stdin(Stdio::piped())

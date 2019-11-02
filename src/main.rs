@@ -228,12 +228,10 @@ fn list_tags(quiz: &Quiz) -> Result<()> {
     if tags.len() == 0 {
         my_println!("No questions have been assigned tags.")?;
     } else {
-        my_println!("Available tags:")?;
-
         let mut tags_in_order: Vec<(&str, u32)> = tags.into_iter().collect();
         tags_in_order.sort();
         for (tag, count) in tags_in_order.iter() {
-            my_println!("  {} ({})", tag, count)?;
+            my_println!("{} ({})", tag, count)?;
         }
     }
     Ok(())
