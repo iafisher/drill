@@ -62,7 +62,7 @@ impl CmdUI {
             );
             prettyprint(&message, "")
         } else {
-            prettyprint(&"Incorrect.".red(), "")
+            prettyprint(&format!("{}", "Incorrect.".red()), "")
         }
     }
 
