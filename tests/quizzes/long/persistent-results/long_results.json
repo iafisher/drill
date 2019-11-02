@@ -10,6 +10,17 @@
       ],
       "score": 1000,
       "timed_out": false
+    },
+    {
+      "text": "What are the three core types of objects in the Git version control system?",
+      "time_asked": "2019-11-02T19:51:15.520652950Z",
+      "response_list": [
+        "trees",
+        "commits",
+        "files"
+      ],
+      "score": 666,
+      "timed_out": false
     }
   ],
   "2": [
@@ -24,12 +35,31 @@
       ],
       "score": 750,
       "timed_out": false
+    },
+    {
+      "text": "What are the four layers of the network stack, from lowest to highest?",
+      "time_asked": "2019-11-02T19:52:07.960656654Z",
+      "response_list": [
+        "link",
+        "internet",
+        "transport",
+        "application"
+      ],
+      "score": 1000,
+      "timed_out": false
     }
   ],
   "3": [
     {
       "text": "What application-level communications protocol is used to deliver mail between email servers?",
       "time_asked": "2019-11-02T05:36:02.795428857Z",
+      "response": "SMTP",
+      "score": 1000,
+      "timed_out": false
+    },
+    {
+      "text": "What application-level communications protocol is used to deliver mail between email servers?",
+      "time_asked": "2019-11-02T19:51:58.440885425Z",
       "response": "SMTP",
       "score": 1000,
       "timed_out": false
@@ -42,12 +72,26 @@
       "response": "IMAP",
       "score": 1000,
       "timed_out": false
+    },
+    {
+      "text": "What application-level communications protocol is used by email clients to retrieve mail from email servers, replacing the earlier POP3 standard?",
+      "time_asked": "2019-11-02T19:52:14.601043779Z",
+      "response": "IMAP",
+      "score": 1000,
+      "timed_out": false
     }
   ],
   "5": [
     {
       "text": "What application-level communications protocol is used by routers to assign IP addresses dynamically?",
       "time_asked": "2019-11-02T05:35:50.446288385Z",
+      "response": "DHCP",
+      "score": 1000,
+      "timed_out": false
+    },
+    {
+      "text": "What application-level communications protocol is used by routers to assign IP addresses dynamically?",
+      "time_asked": "2019-11-02T19:51:11.315663213Z",
       "response": "DHCP",
       "score": 1000,
       "timed_out": false
@@ -60,12 +104,26 @@
       "response": "minimum spanning tree",
       "score": 1000,
       "timed_out": false
+    },
+    {
+      "text": "For a connected graph, what is the term for the acyclic connected subgraph with the minimum sum of edge weights?",
+      "time_asked": "2019-11-02T19:52:12.140575320Z",
+      "response": "minimum spanning tree",
+      "score": 1000,
+      "timed_out": false
     }
   ],
   "7": [
     {
       "text": "What is the name for a concurrency primitive that supports two operations, acquire and release?",
       "time_asked": "2019-11-02T05:35:53.295888768Z",
+      "response": "lock",
+      "score": 1000,
+      "timed_out": false
+    },
+    {
+      "text": "What is the name for a concurrency primitive that supports two operations, acquire and release?",
+      "time_asked": "2019-11-02T19:52:01.446271257Z",
       "response": "lock",
       "score": 1000,
       "timed_out": false
