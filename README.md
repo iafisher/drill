@@ -56,3 +56,7 @@ You can also enter `!e` or `!edit` to open up the previous question in a text ed
 e.g. in case there is a typo in the question text.
 
 If all else fails, you can directly edit the results file that is created for each quiz.
+
+
+## Development
+Run the test suite with `./t`. Any arguments provided will be passed to `cargo test`.
