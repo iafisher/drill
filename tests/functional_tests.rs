@@ -105,8 +105,8 @@ fn can_save_results_and_track_history() {
         r#"RE:
 \[1\] What is the capital of Mongolia\?
 
-20\d{2}-\d{2}-\d{2}  \d{1,2}:\d{2} (AM|PM): 100.0% for 'Ulan Bator'
-20\d{2}-\d{2}-\d{2}  \d{1,2}:\d{2} (AM|PM):   0.0% for 'Khovd'
+20\d{2}-\d{2}-\d{2} [ 1]\d:\d{2} (AM|PM): 100.0% for 'Ulan Bator'
+20\d{2}-\d{2}-\d{2} [ 1]\d:\d{2} (AM|PM):   0.0% for 'Khovd'
 
 Sample:      2
 Mean:    50.0%
@@ -378,7 +378,7 @@ fn can_use_global_custom_script() {
 }
 
 #[test]
-fn counting_tags_works() {
+fn listing_tags_works() {
     let (stdout, stderr) = spawn_and_mock(
         &["count", "--list-tags", "tests/quizzes/test_tags"]);
     assert_match(&stderr, "");
@@ -389,6 +389,33 @@ fn counting_tags_works() {
         &["count", "--list-tags", "tests/quizzes/test1"]);
     assert_match(&stderr, "");
     assert_match(&stdout, "No questions have been assigned tags.\n");
+}
+
+#[test]
+fn counting_questions_works() {
+    let (stdout, stderr) = spawn_and_mock(&["count", "tests/quizzes/test_tags"]);
+    assert_match(&stderr, "");
+    assert_match(&stdout, "6");
+
+    let (stdout, stderr) = spawn_and_mock(
+        &["count", "tests/quizzes/test_tags", "--tag", "asia"]);
+    assert_match(&stderr, "");
+    assert_match(&stdout, "2");
+
+    let (stdout, stderr) = spawn_and_mock(
+        &["count", "tests/quizzes/test_tags", "--exclude", "oceania"]);
+    assert_match(&stderr, "");
+    assert_match(&stdout, "5");
+
+    let (stdout, stderr) = spawn_and_mock(
+        &["count", "tests/quizzes/test_tags", "--tag", "asia", "--tag", "europe"]);
+    assert_match(&stderr, "");
+    assert_match(&stdout, "3");
+
+    let (stdout, stderr) = spawn_and_mock(
+        &["count", "tests/quizzes/test_tags", "--exclude", "asia", "--tag", "europe"]);
+    assert_match(&stderr, "");
+    assert_match(&stdout, "1");
 }
 
 #[test]

@@ -103,8 +103,8 @@ fn get_bucket(results: &Vec<QuestionResult>) -> usize {
 
 /// Return `true` if `tags` satisfies the constraints in `options`.
 pub fn filter_tags(tags: &Vec<String>, options: &FilterOptions) -> bool {
-    // Either no tags were specified, or `q` has all the specified tags.
-    (options.tags.len() == 0 || options.tags.iter().all(|tag| tags.contains(tag)))
+    // Either no tags were specified, or `q` has at least one of the specified tags.
+    (options.tags.len() == 0 || options.tags.iter().any(|tag| tags.contains(tag)))
         // `q` must not have any excluded tags.
         && options.exclude.iter().all(|tag| !tags.contains(tag))
 }

@@ -1,0 +1,33 @@
+[1] What are the three core types of objects in the Git version control system?
+commits / commit
+trees / tree
+blobs / blob
+- tags: computer-science
+
+[2] What are the four layers of the network stack, from lowest to highest?
+link layer / link
+internet layer / internet
+transport layer / transport
+application layer / application
+- ordered: true
+- tags: computer-science
+
+[3] What application-level communications protocol is used to deliver mail between email servers?
+Simple Mail Transfer Protocol / SMTP
+- tags: computer-science
+
+[4] What application-level communications protocol is used by email clients to retrieve mail from email servers, replacing the earlier POP3 standard?
+Internet Message Access Protocol / IMAP
+- tags: computer-science
+
+[5] What application-level communications protocol is used by routers to assign IP addresses dynamically?
+Dynamic Host Configuration Protocol / DHCP
+- tags: computer-science
+
+[6] For a connected graph, what is the term for the acyclic connected subgraph with the minimum sum of edge weights?
+minimum-spanning tree / minimum spanning tree
+- tags: computer-science
+
+[7] What is the name for a concurrency primitive that supports two operations, acquire and release?
+mutex / lock
+- tags: computer-science
