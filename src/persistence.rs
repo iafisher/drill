@@ -297,6 +297,7 @@ fn run_script(script_path: &Path, arg1: &str, arg2: &str) -> io::Result<String> 
         .arg(arg1)
         .arg(arg2)
         .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
         .output()?;
 
     Ok(String::from_utf8_lossy(&result.stdout).to_string())
