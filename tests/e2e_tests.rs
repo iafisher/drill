@@ -4,6 +4,8 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::thread;
 use std::time;
 
+use nix::unistd::Pid;
+use nix::sys::signal::{self, Signal};
 use regex::Regex;
 
 
@@ -187,6 +189,57 @@ fn can_take_flipped_flashcard_quiz() {
             "0 incorrect",
         ],
     );
+}
+
+
+#[test]
+fn ctrl_d_skips_current_question() {
+    play_quiz(
+        "test_flashcard",
+        &["--in-order"],
+        &[
+            "(1) el pan",
+            "> Ctrl+D",
+            "Incorrect. The correct answer was bread.",
+            "(2) el vino",
+            "> Ctrl+D",
+            "Incorrect. The correct answer was wine.",
+            "(3) la mantequilla",
+            "> Ctrl+D",
+            "Incorrect. The correct answer was butter.",
+            "Score: 0.0% out of 3 questions",
+            "0 correct",
+            "3 incorrect",
+        ]
+    );
+}
+
+#[test]
+fn ctrl_c_aborts_quiz() {
+    play_quiz(
+        "test_flashcard",
+        &["--in-order"],
+        &[
+            "(1) el pan",
+            "> Ctrl+C",
+        ]
+    );
+
+    // This test case fails incorrectly for reasons I don't understand.
+    // play_quiz(
+    //     "test_flashcard",
+    //     &["--in-order"],
+    //     &[
+    //         "(1) el pan",
+    //         "> bread",
+    //         "Correct!",
+    //         "(2) el vino",
+    //         "> Ctrl+C",
+    //         "Score: 100.0% out of 1 question",
+    //         "1 correct",
+    //         "0 incorrect",
+    //     ]
+    // );
 }
 
 #[test]
@@ -596,11 +649,20 @@ fn play_quiz(name: &str, extra_args: &[&str], in_out: &[&str]) {
     let fullpath = format!("tests/quizzes/{}", name);
     args.push(&fullpath);
     let mut child = spawn(&args[..]);
+    let id = child.id();
     {
         let stdin = child.stdin.as_mut().expect("Failed to open stdin");
         for line in in_out {
             if line.starts_with("> ") {
-                stdin_write(stdin, &line[1..]);
+                if *line == "> Ctrl+C" {
+                    // Give the program enough time to emit some output.
+                    sleep(100);
+                    signal::kill(Pid::from_raw(id as i32), Signal::SIGINT).unwrap();
+                } else if *line == "> Ctrl+D" {
+                    stdin.write(b"").unwrap();
+                } else {
+                    stdin_write(stdin, &line[1..]);
+                }
             }
         }
     }
@@ -610,13 +672,14 @@ fn play_quiz(name: &str, extra_args: &[&str], in_out: &[&str]) {
     let stderr = String::from_utf8_lossy(&result.stderr).to_string();
 
     let mut lines_iter = stdout.lines();
-    let premature = format!("Premature end of output. Contents of stderr: {:?}", stderr);
     for expected in in_out {
         if !expected.starts_with("> ") {
-            let mut got = lines_iter.next().expect(&premature);
+            let mut got = lines_iter.next()
+                .expect(&format!("Premature end of output. Expected {:?}. Contents of stderr: {:?}", expected, stderr));
             loop {
                 if got.trim().len() == 0 {
-                    got = lines_iter.next().expect(&premature);
+                    got = lines_iter.next()
+                        .expect(&format!("Premature end of output. Expected {:?}. Contents of stderr: {:?}", expected, stderr));
                 } else {
                     break;
                 }

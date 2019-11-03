@@ -18,4 +18,5 @@ textwrap = { version = "0.11", features = ["term_size"] }
 unicode-normalization = "0.1.8"
 
 [dev-dependencies]
+nix = "0.15.0"
 regex = "1"
