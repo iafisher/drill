@@ -249,31 +249,52 @@ impl Question for ListQuestion {
         let mut satisfied = vec![false; n];
 
         ui.text(&self.text)?;
-        let mut count = 0;
         let mut responses = Vec::new();
-        while count < n {
-            if let Some(guess) = ui.prompt()? {
-                responses.push(guess.clone());
-
-                if let Some(index) = check_one(&self.answer_list, &guess) {
-                    if satisfied[index] {
-                        ui.status("You already said that.")?;
+        while responses.len() < n {
+            match ui.prompt() {
+                Ok(Some(guess)) => {
+                    if let Some(index) = check_one(&self.answer_list, &guess) {
+                        if satisfied[index] {
+                            ui.status("You already said that.")?;
+                        } else {
+                            satisfied[index] = true;
+                            responses.push(guess.clone());
+                            ui.correct()?;
+                        }
                     } else {
-                        satisfied[index] = true;
-                        ui.correct()?;
-                        count += 1;
+                        if check(&self.no_credit, &guess) {
+                            ui.status("No credit.")?;
+                        } else {
+                            responses.push(guess.clone());
+                            ui.incorrect(None)?;
+                        }
                     }
-                } else {
-                    if check(&self.no_credit, &guess) {
-                        ui.status("No credit.")?;
+                },
+                Ok(None) => {
+                    ui.incorrect(None)?;
+                    break;
+                },
+                Err(QuizError::SignalMarkCorrect) => {
+                    if let Some(last) = responses.last().as_ref() {
+                        if check_one(&self.answer_list, last).is_none() {
+                            // We can't actually mark the answer correct without knowing
+                            // which real answer it was meant to match, so instead we
+                            // just undo the answer.
+                            responses.pop();
+                            ui.status("Previous answer undone.")?;
+                        } else {
+                            ui.status("Previous answer was already correct.")?;
+                        }
                     } else {
-                        ui.incorrect(None)?;
-                        count += 1;
+                        // If there was no previous answer to this question, then we
+                        // propagate the error upwards so that the previous question
+                        // can be corrected.
+                        return Err(QuizError::SignalMarkCorrect);
                     }
+                },
+                Err(e) => {
+                    return Err(e);
                 }
-            } else {
-                ui.incorrect(None)?;
-                break;
             }
         }
 
@@ -312,21 +333,45 @@ impl Question for OrderedListQuestion {
     fn ask(&self, ui: &mut CmdUI) -> Result<QuestionResult> {
         ui.text(&self.text)?;
 
+        let mut index = 0;
         let mut ncorrect = 0;
         let mut responses = Vec::new();
-        for answer in self.answer_list.iter() {
-            if let Some(guess) = ui.prompt()? {
-                responses.push(guess.clone());
+        while index < self.answer_list.len() {
+            let answer = &self.answer_list[index];
+            match ui.prompt() {
+                Ok(Some(guess)) => {
+                    responses.push(guess.clone());
 
-                if check(answer, &guess) {
-                    ui.correct()?;
-                    ncorrect += 1;
-                } else {
+                    if check(answer, &guess) {
+                        ui.correct()?;
+                        ncorrect += 1;
+                    } else {
+                        ui.incorrect(Some(&answer[0]))?;
+                    }
+                    index += 1;
+                },
+                Ok(None) => {
                     ui.incorrect(Some(&answer[0]))?;
-                }
-            } else {
-                ui.incorrect(Some(&answer[0]))?;
-                break;
+                    break;
+                },
+                Err(QuizError::SignalMarkCorrect) => {
+                    if let Some(last) = responses.last().as_ref() {
+                        if check_one(&self.answer_list, last).is_none() {
+                            ncorrect += 1;
+                            ui.status("Previous answer marked correct.")?;
+                        } else {
+                            ui.status("Previous answer was already correct.")?;
+                        }
+                    } else {
+                        // If there was no previous answer to this question, then we
+                        // propagate the error upwards so that the previous question
+                        // can be corrected.
+                        return Err(QuizError::SignalMarkCorrect);
+                    }
+                },
+                Err(e) => {
+                    return Err(e);
+                },
             }
         }
         let score = (ncorrect as f64) / (self.answer_list.len() as f64);
