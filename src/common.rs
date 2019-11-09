@@ -10,8 +10,6 @@ use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
-use structopt::StructOpt;
-
 
 pub type Result<T> = ::std::result::Result<T, QuizError>;
 
@@ -97,115 +95,63 @@ impl error::Error for QuizError {
 
 
 /// Holds the command-line configuration for the application.
-#[derive(StructOpt)]
-#[structopt(name = "drill", about = "Take quizzes from the command line.")]
 pub struct Options {
     /// Do not emit colorized output.
-    #[structopt(long = "no-color")]
     pub no_color: bool,
-    #[structopt(subcommand)]
     pub cmd: Command,
 }
 
 
-#[derive(StructOpt)]
 pub enum Command {
-    /// Count questions or tags.
-    #[structopt(name = "count")]
     Count(CountOptions),
-    /// Report history of particular questions.
-    #[structopt(name = "history")]
     History(HistoryOptions),
-    /// Report results of previous attempts.
-    #[structopt(name = "results")]
     Results(ResultsOptions),
-    /// Seach questions for a keyword.
-    #[structopt(name = "search")]
     Search(SearchOptions),
-    /// Take a quiz.
-    #[structopt(name = "take")]
     Take(TakeOptions),
 }
 
 
-#[derive(StructOpt)]
 pub struct CountOptions {
-    /// Name of the quiz to count.
-    #[structopt(default_value = "main")]
     pub name: PathBuf,
-    /// List tags instead of counting questions.
-    #[structopt(long = "list-tags")]
     pub list_tags: bool,
-    #[structopt(flatten)]
     pub filter_opts: FilterOptions,
 }
 
 
 /// These filtering options are shared between the `take` and `count` subcommands.
-#[derive(StructOpt)]
 pub struct FilterOptions {
-    /// Exclude questions with the given tag.
-    #[structopt(long = "exclude")]
     pub exclude: Vec<String>,
-    /// Only include questions with the given tag.
-    #[structopt(long = "tag")]
     pub tags: Vec<String>,
 }
 
 
-#[derive(StructOpt)]
 pub struct HistoryOptions {
-    /// Name of the quiz.
     pub name: PathBuf,
     pub id: String,
 }
 
 
-#[derive(StructOpt)]
 pub struct ResultsOptions {
-    /// The name of the quiz for which to fetch the results.
-    #[structopt(default_value = "main")]
     pub name: PathBuf,
-    /// Only show the first `n` results.
-    #[structopt(short = "n")]
     pub num_to_show: Option<usize>,
-    /// One of 'best', 'worst', 'most' or 'least'. Defaults to 'best'.
-    #[structopt(short = "s", long = "sort", default_value = "best")]
     pub sort: String,
 }
 
 
-#[derive(StructOpt)]
 pub struct SearchOptions {
-    /// The name of the quiz.
     pub name: PathBuf,
-    /// The term to search for.
     pub term: String,
-    #[structopt(flatten)]
     pub filter_opts: FilterOptions,
 }
 
-#[derive(StructOpt)]
 pub struct TakeOptions {
     /// Name of the quiz to take.
-    #[structopt(default_value = "main")]
     pub name: PathBuf,
-    /// Flip flashcards.
-    #[structopt(long = "flip")]
     pub flip: bool,
-    /// Ask the questions in the order they appear in the quiz file.
-    #[structopt(long = "in-order")]
     pub in_order: bool,
-    /// Limit the total number of questions.
-    #[structopt(short = "n", default_value = "20")]
     pub num_to_ask: usize,
-    /// Choose questions randomly instead of according to spaced repetition.
-    #[structopt(long = "--random")]
     pub random: bool,
-    /// Save results without prompting.
-    #[structopt(long = "save")]
     pub save: bool,
-    #[structopt(flatten)]
     pub filter_opts: FilterOptions,
 }
 

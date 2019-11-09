@@ -14,11 +14,12 @@ mod ui;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::env;
 use std::io;
 use std::io::Write;
+use std::path::PathBuf;
 
 use colored::*;
-use structopt::StructOpt;
 
 use common::{Command, QuizError, Options, Result};
 use iohelper::{confirm, prettyprint, prettyprint_colored};
@@ -201,18 +202,279 @@ pub fn main_take(options: &common::TakeOptions) -> Result<()> {
 
 
 /// Parse command-line arguments.
-pub fn parse_options() -> common::Options {
-    let options = Options::from_args();
+fn parse_options() -> common::Options {
+    let mut args: Vec<String> = env::args().collect();
+    args.remove(0);
+    if args.len() == 0 {
+        return Options {
+            no_color: false,
+            cmd: common::Command::Take(parse_take_options(&Vec::new())),
+        };
+    }
 
-    if let Command::Results(options) = &options.cmd {
-        let s = &options.sort;
-        if s != "most" && s != "least" && s != "best" && s != "worst" {
-            eprintln!("{}: unknown value `{}` for --sort.", "Error".red(), s);
-            ::std::process::exit(2);
+    let no_color = args[0] == "--no-color";
+    if no_color {
+        args.remove(0);
+    }
+
+    match args[0].as_str() {
+        "--count" => {
+            return Options {
+                no_color,
+                cmd: common::Command::Count(parse_count_options(&args)),
+            };
+        },
+        "--history" => {
+            return Options {
+                no_color,
+                cmd: common::Command::History(parse_history_options(&args)),
+            };
+        },
+        "--results" => {
+            return Options {
+                no_color,
+                cmd: common::Command::Results(parse_results_options(&args)),
+            };
+        },
+        "--search" => {
+            return Options {
+                no_color,
+                cmd: common::Command::Search(parse_search_options(&args)),
+            };
+        },
+        "--take" => {
+            return Options {
+                no_color,
+                cmd: common::Command::Take(parse_take_options(&args)),
+            };
+        },
+        "-h" | "--help" => {
+            println!("{}", HELP);
+            ::std::process::exit(0);
+        },
+        _ => {
+            if args[0].starts_with("-") {
+                cmd_error(&format!("Unexpected option {}.", args[0]));
+            } else {
+                return Options {
+                    no_color,
+                    cmd: common::Command::Take(parse_take_options(&args)),
+                };
+            }
+        }
+    }
+}
+
+
+fn parse_count_options(args: &Vec<String>) -> common::CountOptions {
+    let mut name = None;
+    let mut list_tags = false;
+    let mut exclude = Vec::new();
+    let mut tags = Vec::new();
+    let mut i = 1;
+    while i < args.len() {
+        if args[i] == "--list-tags" {
+            list_tags = true;
+            i += 1;
+        } else if args[i] == "--tag" {
+            cmd_assert_next(args, i);
+            tags.push(args[i+1].clone());
+            i += 2;
+        } else if args[i] == "--exclude" {
+            cmd_assert_next(args, i);
+            exclude.push(args[i+1].clone());
+            i += 2;
+        } else if args[i].starts_with("-") {
+            cmd_error_unexpected_option(&args[i]);
+        } else {
+            if name.is_some() {
+                cmd_error(&format!("Unexpected positional argument '{}'.", args[i]));
+            } else {
+                name.replace(PathBuf::from(&args[i]));
+            }
+            i += 1;
         }
     }
 
-    options
+    common::CountOptions {
+        name: name.unwrap_or(PathBuf::from("main")),
+        list_tags,
+        filter_opts: common::FilterOptions { exclude, tags },
+    }
+}
+
+
+fn parse_history_options(args: &Vec<String>) -> common::HistoryOptions {
+    if args.len() != 3 {
+        cmd_error("Expected exactly two arguments to --history.");
+    }
+
+    if args[1].starts_with("-") {
+        cmd_error(&format!("Expected quiz name, not {}.", args[1]));
+    }
+
+    common::HistoryOptions {
+        name: PathBuf::from(&args[1]),
+        id: args[2].clone(),
+    }
+}
+
+
+fn parse_results_options(args: &Vec<String>) -> common::ResultsOptions {
+    let mut name = None;
+    let mut num_to_show = None;
+    let mut sort = None;
+    let mut i = 1;
+    while i < args.len() {
+        if args[i] == "-n" {
+            cmd_assert_next(args, i);
+            if let Ok(n) = usize::from_str_radix(&args[i+1], 10) {
+                num_to_show.replace(n);
+            } else {
+                cmd_error("Expected integer argument to -n.");
+            }
+            i += 2;
+        } else if args[i] == "-s" || args[i] == "--sort" {
+            cmd_assert_next(args, i);
+            if args[i+1] != "best" && args[i+1] != "worst" &&
+               args[i+1] != "most" && args[i+1] != "least" {
+                cmd_error("Expected argument to --sort to be one of 'best', 'worst', 'most' or 'least'.");
+            }
+            sort.replace(args[i+1].clone());
+            i += 2;
+        } else if args[i].starts_with("-") {
+            cmd_error_unexpected_option(&args[i]);
+        } else {
+            if name.is_some() {
+                cmd_error(&format!("Unexpected positional argument '{}'.", args[i]));
+            } else {
+                name.replace(PathBuf::from(&args[i]));
+            }
+            i += 1;
+        }
+    }
+
+    common::ResultsOptions {
+        name: name.unwrap_or(PathBuf::from("main")),
+        num_to_show,
+        sort: sort.unwrap_or(String::from("best")),
+    }
+}
+
+
+fn parse_search_options(args: &Vec<String>) -> common::SearchOptions {
+    if args.len() < 3 {
+        cmd_error("Expected exactly at least two arguments to --search.");
+    }
+
+    if args[1].starts_with("-") {
+        cmd_error(&format!("Expected quiz name, not {}.", args[1]));
+    }
+
+    let mut i = 3;
+    let mut tags = Vec::new();
+    let mut exclude = Vec::new();
+    while i < args.len() {
+        if args[i] == "--tag" {
+            cmd_assert_next(args, i);
+            tags.push(args[i+1].clone());
+            i += 2;
+        } else if args[i] == "--exclude" {
+            cmd_assert_next(args, i);
+            exclude.push(args[i+1].clone());
+            i += 2;
+        } else {
+            cmd_error_unexpected_option(&args[i]);
+        }
+    }
+
+    common::SearchOptions {
+        name: PathBuf::from(&args[1]),
+        term: args[2].clone(),
+        filter_opts: common::FilterOptions { tags, exclude },
+    }
+}
+
+
+fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
+    let mut name = None;
+    let mut flip = false;
+    let mut in_order = false;
+    let mut num_to_ask = 20;
+    let mut random = false;
+    let mut save = false;
+    let mut exclude = Vec::new();
+    let mut tags = Vec::new();
+    let mut i = if args.len() > 0 && args[0] == "--take" { 1 } else { 0 };
+    while i < args.len() {
+        if args[i] == "--flip" {
+            flip = true;
+            i += 1;
+        } else if args[i] == "--in-order" {
+            in_order = true;
+            i += 1;
+        } else if args[i] == "-n" {
+            cmd_assert_next(args, i);
+            if let Ok(n) = usize::from_str_radix(&args[i+1], 10) {
+                num_to_ask = n;
+            } else {
+                cmd_error("Expected integer argument to -n.");
+            }
+            i += 2;
+        } else if args[i] == "--random" {
+            random = true;
+            i += 1;
+        } else if args[i] == "--save" {
+            save = true;
+            i += 1;
+        } else if args[i] == "--tag" {
+            cmd_assert_next(args, i);
+            tags.push(args[i+1].clone());
+            i += 2;
+        } else if args[i] == "--exclude" {
+            cmd_assert_next(args, i);
+            exclude.push(args[i+1].clone());
+            i += 2;
+        } else if args[i].starts_with("-") {
+            cmd_error_unexpected_option(&args[i]);
+        } else {
+            if name.is_some() {
+                cmd_error(&format!("Unexpected positional argument '{}'.", args[i]));
+            } else {
+                name.replace(PathBuf::from(&args[i]));
+            }
+            i += 1;
+        }
+    }
+
+    common::TakeOptions {
+        name: name.unwrap_or(PathBuf::from("main")),
+        flip,
+        in_order,
+        num_to_ask,
+        random,
+        save,
+        filter_opts: common::FilterOptions { exclude, tags },
+    }
+}
+
+
+fn cmd_assert_next(args: &Vec<String>, i: usize) {
+    if i == args.len() - 1 || args[i+1].starts_with("-") {
+        cmd_error(&format!("Option {} expected an argument.", args[i]));
+    }
+}
+
+
+fn cmd_error_unexpected_option(option: &str) -> ! {
+    cmd_error(&format!("Unexpected option {}.", option));
+}
+
+
+fn cmd_error(msg: &str) -> ! {
+    eprintln!("{}", msg);
+    eprintln!("\nRun drill --help for assistance.");
+    ::std::process::exit(1);
 }
 
 
@@ -380,3 +642,47 @@ fn colored_score(score: u64) -> ColoredString {
         format!("{:>5.1}%", score).cyan()
     }
 }
+
+
+const HELP: &'static str = r"drill: quiz yourself from the command line.
+
+Usage:
+  drill <quiz>
+  drill --count <quiz>
+  drill --history <quiz> <question>
+  drill --results <quiz>
+  drill --search <quiz> <term>
+  drill --help
+
+If <quiz> is not provided, it defaults to 'main' as long as the subcommand
+requires no other positional argments.
+
+
+take subcommand:
+  --exclude <tag>    Exclude all questions with given tag.
+  --flip             Flip all flashcards in the quiz.
+  --in-order         Ask questions in the order they appear in the quiz file.
+  --random           Choose questions randomly instead of according to spaced
+                     repetition.
+  --save             Save results without prompting.
+  --tag <tag>        Include all questions with given tag.
+
+
+count subcommand:
+  --exclude <tag>    Exclude all questions with given tag.
+  --list-tags        Count questions per tag.
+  --tag <tag>        Include all questions with given tag.
+
+
+history subcommand:
+  <no special options>
+
+
+results subcommand:
+  -n <N>             Number of results to display.
+  -s, --sort <sort>  Sort order. One of 'best', 'worst', 'most' or 'least'.
+
+
+search subcommand:
+  --exclude <tag>    Exclude all questions with given tag.
+  --tag <tag>        Include all questions with given tag.";
