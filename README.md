@@ -19,7 +19,7 @@ in `sample_quiz`.
 Now, run
 
 ```shell
-$ drill take path/to/quiz
+$ drill path/to/quiz
 ```
 
 to take your quiz! The program will create a `results` directory alongside your quiz
@@ -28,25 +28,25 @@ to keep track of your results over time.
 You can also try out these commands:
 ```shell
 # Count the questions in a quiz.
-$ drill count <name>
+$ drill --count <name>
 # Count the number of questions per tag.
-$ drill count --list-tags
+$ drill --count --list-tags
 
 # See previous results for a quiz.
-$ drill results <name>
-$ drill results <name> -n 20 --sort best
-$ drill results <name> -n 20 --sort worst
-$ drill results <name> -n 20 --sort most
-$ drill results <name> -n 20 --sort least
+$ drill --results <name>
+$ drill --results <name> -n 20 --sort best
+$ drill --results <name> -n 20 --sort worst
+$ drill --results <name> -n 20 --sort most
+$ drill --results <name> -n 20 --sort least
 
 # Search for a question.
-$ drill search <name> <keyword>
+$ drill --search <name> <keyword>
 
 # See per-question history.
-$ drill history <name> <question-id>
+$ drill --history <name> <question-id>
 ```
 
-If `<name>` is left out of any of these commands, it defaults to `main`.
+If `<name>` isn't supplied and isn't followed by a positional argument, then it defaults to `main`.
 
 drill is configurable with command-line flags. Run `drill --help` for details.
 
@@ -61,4 +61,4 @@ If all else fails, you can directly edit the results file that is created for ea
 
 
 ## Development
-Run the test suite with `./t`. Any arguments provided will be passed to `cargo test`.
+Run the test suite with `./t`. Any arguments provided to `./t` will be passed on to `cargo test`.
