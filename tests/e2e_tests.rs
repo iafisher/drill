@@ -542,6 +542,114 @@ fn searching_questions_works() {
 }
 
 #[test]
+fn history_subcommand_works() {
+    let (stdout, stderr) = spawn_and_mock(
+        &["--no-color", "history", "tests/quizzes/long/long", "1"]);
+    assert_match(&stderr, "");
+    assert_match(
+        &stdout, 
+        r"
+[1] What are the three core types of objects in the Git version control system?
+
+2019-11-01 10:36 PM: 100.0% for 'blobs / trees / commits'
+2019-11-02 12:51 PM:  66.6% for 'trees / commits / files'
+2019-11-08  5:29 PM:   0.0% for ''
+
+Sample:      3
+Mean:    55.5%
+Median:  66.6%
+Max:    100.0%
+Min:      0.0%
+        ",
+    );
+
+    let (stdout, stderr) = spawn_and_mock(
+        &["--no-color", "history", "tests/quizzes/long/long", "3"]);
+    assert_match(&stderr, "");
+    assert_match(
+        &stdout, 
+        r"
+[3] What application-level communications protocol is used to deliver mail
+    between email servers?
+
+2019-11-01 10:36 PM: 100.0% for 'SMTP'
+2019-11-02 12:51 PM: 100.0% for 'SMTP'
+
+Sample:      2
+Mean:   100.0%
+Median: 100.0%
+Max:    100.0%
+Min:    100.0%
+        ",
+    );
+}
+
+#[test]
+fn results_subcommand_works() {
+    let (stdout, stderr) = spawn_and_mock(
+        &["--no-color", "results", "tests/quizzes/long/long"]);
+    assert_match(&stderr, "");
+    assert_match(
+        &stdout,
+        r"
+100.0% of  3   [5] What application-level communications protocol is used by
+               routers to assign IP addresses dynamically?
+100.0% of  2   [3] What application-level communications protocol is used to
+               deliver mail between email servers?
+100.0% of  2   [4] What application-level communications protocol is used by
+               email clients to retrieve mail from email servers, replacing the
+               earlier POP3 standard?
+100.0% of  2   [7] What is the name for a concurrency primitive that supports
+               two operations, acquire and release?
+ 66.6% of  3   [6] For a connected graph, what is the term for the acyclic
+               connected subgraph with the minimum sum of edge weights?
+ 58.3% of  3   [2] What are the four layers of the network stack, from lowest to
+               highest?
+ 55.5% of  3   [1] What are the three core types of objects in the Git version
+               control system?
+        ",
+    );
+
+    let (stdout, stderr) = spawn_and_mock(
+        &[
+            "--no-color", "results", "tests/quizzes/long/long", "--sort", "worst",
+            "-n", "3",
+        ]
+    );
+
+    assert_match(&stderr, "");
+    assert_match(
+        &stdout,
+        r"
+ 55.5% of  3   [1] What are the three core types of objects in the Git version
+               control system?
+ 58.3% of  3   [2] What are the four layers of the network stack, from lowest to
+               highest?
+ 66.6% of  3   [6] For a connected graph, what is the term for the acyclic
+               connected subgraph with the minimum sum of edge weights?
+        ",
+    );
+
+    let (stdout, stderr) = spawn_and_mock(
+        &[
+            "--no-color", "results", "tests/quizzes/long/long", "--sort", "most",
+            "-n", "2",
+        ]
+    );
+
+    assert_match(&stderr, "");
+    assert_match(
+        &stdout,
+        r"
+ 55.5% of  3   [1] What are the three core types of objects in the Git version
+               control system?
+ 58.3% of  3   [2] What are the four layers of the network stack, from lowest to
+               highest?
+        ",
+    );
+}
+
+#[test]
 fn parse_error_no_blank_line_after_settings() {
     assert_parse_error(
         "test_no_blank_line_after_settings",
@@ -638,7 +746,7 @@ fn assert_match(got: &str, expected: &str) {
     } else {
         assert!(
             expected.trim() == got.trim(),
-            format!("Expected {:?}, got {:?}", expected.trim(), got.trim()),
+            format!("Expected:\n  {:?}\n\ngot:\n  {:?}", expected.trim(), got.trim()),
         );
     }
 }

@@ -21,6 +21,13 @@
       ],
       "score": 666,
       "timed_out": false
+    },
+    {
+      "text": "What are the three core types of objects in the Git version control system?",
+      "time_asked": "2019-11-09T01:29:55.423127882Z",
+      "response_list": [],
+      "score": 0,
+      "timed_out": false
     }
   ],
   "2": [
@@ -46,6 +53,13 @@
         "application"
       ],
       "score": 1000,
+      "timed_out": false
+    },
+    {
+      "text": "What are the four layers of the network stack, from lowest to highest?",
+      "time_asked": "2019-11-09T01:30:03.442487751Z",
+      "response_list": [],
+      "score": 0,
       "timed_out": false
     }
   ],
@@ -95,6 +109,13 @@
       "response": "DHCP",
       "score": 1000,
       "timed_out": false
+    },
+    {
+      "text": "What application-level communications protocol is used by routers to assign IP addresses dynamically?",
+      "time_asked": "2019-11-09T01:29:59.497308952Z",
+      "response": "DHCP",
+      "score": 1000,
+      "timed_out": false
     }
   ],
   "6": [
@@ -110,6 +131,13 @@
       "time_asked": "2019-11-02T19:52:12.140575320Z",
       "response": "minimum spanning tree",
       "score": 1000,
+      "timed_out": false
+    },
+    {
+      "text": "For a connected graph, what is the term for the acyclic connected subgraph with the minimum sum of edge weights?",
+      "time_asked": "2019-11-09T01:29:53.190514900Z",
+      "response": "spanning tree",
+      "score": 0,
       "timed_out": false
     }
   ],

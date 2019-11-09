@@ -135,6 +135,7 @@ pub fn main_results(options: &common::ResultsOptions) -> Result<()> {
         }
     }
 
+    aggregated.sort_by(cmp_results_id);
     if options.sort == "best" {
         aggregated.sort_by(cmp_results_best);
     } else if options.sort == "worst" {
@@ -256,7 +257,21 @@ fn print_stats(results: &Vec<QuestionResult>) -> Result<()> {
 
 
 /// An alias for a commonly-used typed in comparison functions.
+/// (score, number of results, ID, question text)
 type CmpQuestionResult = (u64, usize, String, String);
+
+
+/// Comparison function that sorts an array of question results in alphabetical order
+/// of ID.
+fn cmp_results_id(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
+    if a.2 < b.2 {
+        return Ordering::Less;
+    } else if a.2 > b.2 {
+        return Ordering::Greater;
+    } else {
+        return Ordering::Equal;
+    }
+}
 
 
 /// Comparison function that sorts an array of question results such that the best
