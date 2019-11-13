@@ -95,6 +95,8 @@ pub fn choose_questions<'a>(
 
 
 fn get_bucket(results: &Vec<QuestionResult>) -> usize {
+    // TODO(2019-11-12): If answered correctly in the past 24 hours or so, put it in the
+    // highest bucket.
     let mut bucket = 0;
     for result in results.iter() {
         // 90% and 40% are arbitrary thresholds that I may need to adjust.
