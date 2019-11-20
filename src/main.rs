@@ -253,14 +253,10 @@ fn parse_options() -> common::Options {
             ::std::process::exit(0);
         },
         _ => {
-            if args[0].starts_with("-") {
-                cmd_error(&format!("Unexpected option {}.", args[0]));
-            } else {
-                return Options {
-                    no_color,
-                    cmd: common::Command::Take(parse_take_options(&args)),
-                };
-            }
+            return Options {
+                no_color,
+                cmd: common::Command::Take(parse_take_options(&args)),
+            };
         }
     }
 }
@@ -662,6 +658,7 @@ take subcommand:
   --exclude <tag>    Exclude all questions with given tag.
   --flip             Flip all flashcards in the quiz.
   --in-order         Ask questions in the order they appear in the quiz file.
+  -n <N>             Number of questions to ask. Defaults to 20.
   --random           Choose questions randomly instead of according to spaced
                      repetition.
   --save             Save results without prompting.
