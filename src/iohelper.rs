@@ -56,26 +56,6 @@ pub fn prompt(message: &str) -> Result<Option<String>> {
 }
 
 
-/// Prompt the user with a yes-no question and return `true` if they enter yes.
-pub fn confirm(message: &str) -> bool {
-    loop {
-        match prompt(message) {
-            Ok(Some(response)) => {
-                let norm = response.trim_start().to_lowercase();
-                if norm.starts_with("y") {
-                    return true;
-                } else if norm.starts_with("n") {
-                    return false;
-                }
-            },
-            _ => {
-                return false;
-            }
-        }
-    }
-}
-
-
 /// Print `message` to standard output, breaking lines according to the current width
 /// of the terminal. Prepend `prefix` to the first line and indent all subsequent lines
 /// by its length.

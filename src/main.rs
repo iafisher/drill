@@ -22,7 +22,7 @@ use std::path::PathBuf;
 use colored::*;
 
 use common::{Command, QuizError, Options, Result};
-use iohelper::{confirm, prettyprint, prettyprint_colored};
+use iohelper::{prettyprint, prettyprint_colored};
 use quiz::{QuestionResult, Quiz};
 use ui::CmdUI;
 
@@ -194,7 +194,7 @@ pub fn main_take(options: &common::TakeOptions) -> Result<()> {
     let mut ui = CmdUI::new();
     let results = quiz.take(&mut ui, &options)?;
 
-    if results.total > 0 && (options.save || confirm("\nSave results? ")) {
+    if results.total > 0 && !options.no_save {
         persistence::save_results(&options.name, &results)?;
     }
     Ok(())
@@ -396,9 +396,9 @@ fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
     let mut name = None;
     let mut flip = false;
     let mut in_order = false;
+    let mut no_save = false;
     let mut num_to_ask = 20;
     let mut random = false;
-    let mut save = false;
     let mut exclude = Vec::new();
     let mut tags = Vec::new();
     let mut i = if args.len() > 0 && args[0] == "--take" { 1 } else { 0 };
@@ -420,8 +420,8 @@ fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
         } else if args[i] == "--random" {
             random = true;
             i += 1;
-        } else if args[i] == "--save" {
-            save = true;
+        } else if args[i] == "--no-save" {
+            no_save = true;
             i += 1;
         } else if args[i] == "--tag" {
             cmd_assert_next(args, i);
@@ -447,9 +447,9 @@ fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
         name: name.unwrap_or(PathBuf::from("main")),
         flip,
         in_order,
+        no_save,
         num_to_ask,
         random,
-        save,
         filter_opts: common::FilterOptions { exclude, tags },
     }
 }

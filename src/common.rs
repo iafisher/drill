@@ -149,31 +149,10 @@ pub struct TakeOptions {
     pub name: PathBuf,
     pub flip: bool,
     pub in_order: bool,
+    pub no_save: bool,
     pub num_to_ask: usize,
     pub random: bool,
-    pub save: bool,
     pub filter_opts: FilterOptions,
-}
-
-
-impl TakeOptions {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        TakeOptions {
-            name: PathBuf::new(), num_to_ask: 20, save: false, flip: false,
-            in_order: false, random: false, filter_opts: FilterOptions::new()
-        }
-    }
-}
-
-
-impl FilterOptions {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        FilterOptions {
-            tags: Vec::new(), exclude: Vec::new(),
-        }
-    }
 }
 
 

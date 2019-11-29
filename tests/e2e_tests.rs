@@ -13,7 +13,7 @@ use regex::Regex;
 fn can_take_simple_quiz1() {
     play_quiz(
         "test1",
-        &[],
+        &["--no-save"],
         &[
             "(1) What is the capital of Mongolia?",
             "> Ulan Bator",
@@ -29,7 +29,7 @@ fn can_take_simple_quiz1() {
 fn can_take_simple_quiz2() {
     play_quiz(
         "test2",
-        &["--in-order"],
+        &["--no-save", "--in-order"],
         &[
             "(1) Who was President of the United States during the Korean War?",
             r"RE: \(a\) (Harry S\. Truman|Franklin D\. Roosevelt|John F\. Kennedy|Lyndon Johnson)",
@@ -70,9 +70,6 @@ fn can_save_results_and_track_history() {
             "100.0% out of 1 question",
             "1 correct",
             "0 incorrect",
-            // TODO: I don't know why this string doesn't show up in the output.
-            // Save results?
-            "> yes",
         ],
     );
 
@@ -86,9 +83,6 @@ fn can_save_results_and_track_history() {
             "0.0% out of 1 question",
             "0 correct",
             "1 incorrect",
-            // TODO: I don't know why this string doesn't show up in the output.
-            // Save results?
-            "> yes",
         ],
     );
 
@@ -121,7 +115,7 @@ Min:      0.0%"#);
 fn can_take_quiz_with_list_question() {
     play_quiz(
         "test_list",
-        &["--in-order"],
+        &["--no-save", "--in-order"],
         &[
             "(1) Name the five members of the UN Security Council.",
             "> China",
@@ -151,7 +145,7 @@ fn can_take_quiz_with_list_question() {
 fn can_take_flashcard_quiz() {
     play_quiz(
         "test_flashcard",
-        &["--in-order"],
+        &["--no-save", "--in-order"],
         &[
             "(1) el pan",
             "> bread",
@@ -173,7 +167,7 @@ fn can_take_flashcard_quiz() {
 fn can_take_flipped_flashcard_quiz() {
     play_quiz(
         "test_flashcard",
-        &["--in-order", "--flip"],
+        &["--no-save", "--in-order", "--flip"],
         &[
             "(1) bread",
             "> el pan",
@@ -196,7 +190,7 @@ fn can_take_flipped_flashcard_quiz() {
 fn ctrl_d_skips_current_question() {
     play_quiz(
         "test_flashcard",
-        &["--in-order"],
+        &["--no-save", "--in-order"],
         &[
             "(1) el pan",
             "> Ctrl+D",
@@ -218,7 +212,7 @@ fn ctrl_d_skips_current_question() {
 fn ctrl_c_aborts_quiz() {
     play_quiz(
         "test_flashcard",
-        &["--in-order"],
+        &["--no-save", "--in-order"],
         &[
             "(1) el pan",
             "> Ctrl+C",
@@ -246,7 +240,7 @@ fn ctrl_c_aborts_quiz() {
 fn no_credit_answers_work() {
     play_quiz(
         "test_no_credit",
-        &[],
+        &["--no-save"],
         &[
             "(1) Name the three largest cities of the Inland Empire.",
             "> Riverside",
@@ -271,7 +265,7 @@ fn no_credit_answers_work() {
 fn quiz_instructions_are_displayed() {
     play_quiz(
         "test_instructions",
-        &[],
+        &["--no-save"],
         &[
             "Include the state's postal code.",
             "(1) What is the capital of Michigan?",
@@ -288,7 +282,7 @@ fn quiz_instructions_are_displayed() {
 fn flashcards_context() {
     play_quiz(
         "test_flashcard_context",
-        &[],
+        &["--no-save"],
         &[
             "(1) to read [perf]",
             "> прочитать",
@@ -301,7 +295,7 @@ fn flashcards_context() {
 
     play_quiz(
         "test_flashcard_context",
-        &["--flip"],
+        &["--no-save", "--flip"],
         &[
             "(1) прочитать [bleh]",
             "> to read",
@@ -318,7 +312,7 @@ fn timeouts_work() {
     // This test can't use `play_quiz` because it needs to control how long the thread
     // sleeps between answering questions.
     let mut process = spawn(
-        &["--no-color", "tests/quizzes/test_timeouts", "--in-order"]);
+        &["--no-color", "tests/quizzes/test_timeouts", "--in-order", "--no-save"]);
     let stdin = process.stdin.as_mut().expect("Failed to open stdin");
     stdin_write(stdin, "Chisinau");
     sleep(1200);
@@ -350,7 +344,7 @@ fn timeouts_work() {
 fn can_correct_questions_in_quiz() {
     play_quiz(
         "test_correction",
-        &["--in-order"],
+        &["--no-save", "--in-order"],
         &[
             "(1) What is the largest city in Northern California?",
             "> San Jose",
@@ -383,7 +377,7 @@ fn can_correct_questions_in_quiz() {
 fn can_correct_list_questions_in_quiz() {
     play_quiz(
         "test_correction_list",
-        &["--in-order"],
+        &["--no-save", "--in-order"],
         &[
             "(1) What is the capital of Ecuador?",
             "> Quit",
@@ -418,7 +412,7 @@ fn can_correct_list_questions_in_quiz() {
 fn unicode_normalization_works() {
     play_quiz(
         "test_unicode_normalization",
-        &[],
+        &["--no-save"],
         &[
             "(1) traffic",
             "> el tra\u{0301}fico",
@@ -434,7 +428,7 @@ fn unicode_normalization_works() {
 fn can_use_custom_script() {
     play_quiz(
         "test_custom_script",
-        &[],
+        &["--no-save"],
         &[
             "(1) Who was the first President of the United States? (changed)",
             "> Washington",
@@ -450,7 +444,7 @@ fn can_use_custom_script() {
 fn can_use_global_custom_script() {
     play_quiz(
         "test_global_custom_script",
-        &["--in-order"],
+        &["--no-save", "--in-order"],
         &[
             "(1) Who was the first President of the United States? (changed)",
             "> Washington",
@@ -469,7 +463,7 @@ fn can_use_global_custom_script() {
 fn can_use_custom_script_for_flashcards() {
     play_quiz(
         "test_flashcard_script",
-        &[],
+        &["--no-save"],
         &[
             r"RE: \(1\) to comb( \[perf\])?",
             "> чистить",
