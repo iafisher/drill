@@ -48,7 +48,7 @@ $ drill --history <name> <question-id>
 
 If `<name>` isn't supplied and isn't followed by a positional argument, then it defaults to `main`.
 
-drill is configurable with command-line flags. Run `drill --help` for details.
+drill is configurable with command-line flags. Run `drill --help` for details. For convenience, you can set an environment variable called `DRILL_HOME` to the directory containing your quizzes, and drill will read from this directory regardless of where it is invoked.
 
 
 ### In-quiz commands

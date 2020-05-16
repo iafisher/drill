@@ -33,6 +33,13 @@ fn main() {
         colored::control::set_override(false);
     }
 
+    if let Ok(val) = env::var("DRILL_HOME") {
+        if let Err(_) = env::set_current_dir(&val) {
+            eprintln!("{}: could not cd to $DRILL_HOME ({})", "Error".red(), val);
+            ::std::process::exit(2);
+        }
+    }
+
     let result = match options.cmd {
         Command::Count(options) => {
             main_count(&options)
