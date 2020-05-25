@@ -1,3 +1,9 @@
+/**
+ * End-to-end tests for the drill application.
+ *
+ * WARNING: These tests will not work if invoked directly with cargo. Use the `t` helper
+ * script to run the test suite instead.
+ */
 use std::io::Write;
 use std::path::Path;
 use std::process::{Child, ChildStdin, Command, Stdio};
