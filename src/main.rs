@@ -21,11 +21,10 @@ use std::path::PathBuf;
 
 use colored::*;
 
-use common::{Command, QuizError, Options, Result};
+use common::{Command, Options, QuizError, Result};
 use iohelper::{prettyprint, prettyprint_colored};
 use quiz::{QuestionResult, Quiz};
 use ui::CmdUI;
-
 
 fn main() {
     let options = parse_options();
@@ -41,21 +40,11 @@ fn main() {
     }
 
     let result = match options.cmd {
-        Command::Count(options) => {
-            main_count(&options)
-        },
-        Command::History(options) => {
-            main_history(&options)
-        },
-        Command::Results(options) => {
-            main_results(&options)
-        },
-        Command::Search(options) => {
-            main_search(&options)
-        },
-        Command::Take(options) => {
-            main_take(&options)
-        },
+        Command::Count(options) => main_count(&options),
+        Command::History(options) => main_history(&options),
+        Command::Results(options) => main_results(&options),
+        Command::Search(options) => main_search(&options),
+        Command::Take(options) => main_take(&options),
     };
 
     if let Err(e) = result {
@@ -65,7 +54,6 @@ fn main() {
         }
     }
 }
-
 
 pub fn main_count(options: &common::CountOptions) -> Result<()> {
     let quiz = persistence::load_quiz(&options.name)?;
@@ -84,8 +72,6 @@ pub fn main_count(options: &common::CountOptions) -> Result<()> {
     Ok(())
 }
 
-
-
 pub fn main_history(options: &common::HistoryOptions) -> Result<()> {
     let quiz = persistence::load_quiz(&options.name)?;
     if let Some(pos) = quiz.find(&options.id) {
@@ -97,7 +83,8 @@ pub fn main_history(options: &common::HistoryOptions) -> Result<()> {
         let results = &q.get_common().prior_results;
         if results.len() > 0 {
             for result in results.iter() {
-                let date = result.time_asked
+                let date = result
+                    .time_asked
                     .with_timezone(&chrono::Local)
                     .format("%F %l:%M %p");
                 let score = colored_score(result.score);
@@ -114,13 +101,11 @@ pub fn main_history(options: &common::HistoryOptions) -> Result<()> {
         } else {
             prettyprint("No results for this question.", "")?;
         }
-
     } else {
         prettyprint(&format!("No question with id '{}' found.", options.id), "")?;
     }
     Ok(())
 }
-
 
 /// The main function for the `results` subcommand.
 pub fn main_results(options: &common::ResultsOptions) -> Result<()> {
@@ -163,13 +148,15 @@ pub fn main_results(options: &common::ResultsOptions) -> Result<()> {
         let score = quiz::score_to_perc(*score) * 100.0;
         let first_prefix = format!("{:>5.1}% of {:>2}   ", score, attempts);
         prettyprint_colored(
-            &format!("[{}] {}", id, text), &first_prefix, None, Some(Color::Cyan)
+            &format!("[{}] {}", id, text),
+            &first_prefix,
+            None,
+            Some(Color::Cyan),
         )?;
     }
 
     Ok(())
 }
-
 
 pub fn main_search(options: &common::SearchOptions) -> Result<()> {
     let quiz = persistence::load_quiz(&options.name)?;
@@ -194,7 +181,6 @@ pub fn main_search(options: &common::SearchOptions) -> Result<()> {
     Ok(())
 }
 
-
 /// The main function for the `take` subcommand.
 pub fn main_take(options: &common::TakeOptions) -> Result<()> {
     let mut quiz = persistence::load_quiz(&options.name)?;
@@ -206,7 +192,6 @@ pub fn main_take(options: &common::TakeOptions) -> Result<()> {
     }
     Ok(())
 }
-
 
 /// Parse command-line arguments.
 fn parse_options() -> common::Options {
@@ -230,35 +215,35 @@ fn parse_options() -> common::Options {
                 no_color,
                 cmd: common::Command::Count(parse_count_options(&args)),
             };
-        },
+        }
         "--history" => {
             return Options {
                 no_color,
                 cmd: common::Command::History(parse_history_options(&args)),
             };
-        },
+        }
         "--results" => {
             return Options {
                 no_color,
                 cmd: common::Command::Results(parse_results_options(&args)),
             };
-        },
+        }
         "--search" => {
             return Options {
                 no_color,
                 cmd: common::Command::Search(parse_search_options(&args)),
             };
-        },
+        }
         "--take" => {
             return Options {
                 no_color,
                 cmd: common::Command::Take(parse_take_options(&args)),
             };
-        },
+        }
         "-h" | "--help" => {
             println!("{}", HELP);
             ::std::process::exit(0);
-        },
+        }
         _ => {
             return Options {
                 no_color,
@@ -267,7 +252,6 @@ fn parse_options() -> common::Options {
         }
     }
 }
-
 
 fn parse_count_options(args: &Vec<String>) -> common::CountOptions {
     let mut name = None;
@@ -281,11 +265,11 @@ fn parse_count_options(args: &Vec<String>) -> common::CountOptions {
             i += 1;
         } else if args[i] == "--tag" {
             cmd_assert_next(args, i);
-            tags.push(args[i+1].clone());
+            tags.push(args[i + 1].clone());
             i += 2;
         } else if args[i] == "--exclude" {
             cmd_assert_next(args, i);
-            exclude.push(args[i+1].clone());
+            exclude.push(args[i + 1].clone());
             i += 2;
         } else if args[i].starts_with("-") {
             cmd_error_unexpected_option(&args[i]);
@@ -306,7 +290,6 @@ fn parse_count_options(args: &Vec<String>) -> common::CountOptions {
     }
 }
 
-
 fn parse_history_options(args: &Vec<String>) -> common::HistoryOptions {
     if args.len() != 3 {
         cmd_error("Expected exactly two arguments to --history.");
@@ -322,7 +305,6 @@ fn parse_history_options(args: &Vec<String>) -> common::HistoryOptions {
     }
 }
 
-
 fn parse_results_options(args: &Vec<String>) -> common::ResultsOptions {
     let mut name = None;
     let mut num_to_show = None;
@@ -331,7 +313,7 @@ fn parse_results_options(args: &Vec<String>) -> common::ResultsOptions {
     while i < args.len() {
         if args[i] == "-n" {
             cmd_assert_next(args, i);
-            if let Ok(n) = usize::from_str_radix(&args[i+1], 10) {
+            if let Ok(n) = usize::from_str_radix(&args[i + 1], 10) {
                 num_to_show.replace(n);
             } else {
                 cmd_error("Expected integer argument to -n.");
@@ -339,11 +321,16 @@ fn parse_results_options(args: &Vec<String>) -> common::ResultsOptions {
             i += 2;
         } else if args[i] == "-s" || args[i] == "--sort" {
             cmd_assert_next(args, i);
-            if args[i+1] != "best" && args[i+1] != "worst" &&
-               args[i+1] != "most" && args[i+1] != "least" {
-                cmd_error("Expected argument to --sort to be one of 'best', 'worst', 'most' or 'least'.");
+            if args[i + 1] != "best"
+                && args[i + 1] != "worst"
+                && args[i + 1] != "most"
+                && args[i + 1] != "least"
+            {
+                cmd_error(
+                    "Expected argument to --sort to be one of 'best', 'worst', 'most' or 'least'.",
+                );
             }
-            sort.replace(args[i+1].clone());
+            sort.replace(args[i + 1].clone());
             i += 2;
         } else if args[i].starts_with("-") {
             cmd_error_unexpected_option(&args[i]);
@@ -364,7 +351,6 @@ fn parse_results_options(args: &Vec<String>) -> common::ResultsOptions {
     }
 }
 
-
 fn parse_search_options(args: &Vec<String>) -> common::SearchOptions {
     if args.len() < 3 {
         cmd_error("Expected exactly at least two arguments to --search.");
@@ -380,11 +366,11 @@ fn parse_search_options(args: &Vec<String>) -> common::SearchOptions {
     while i < args.len() {
         if args[i] == "--tag" {
             cmd_assert_next(args, i);
-            tags.push(args[i+1].clone());
+            tags.push(args[i + 1].clone());
             i += 2;
         } else if args[i] == "--exclude" {
             cmd_assert_next(args, i);
-            exclude.push(args[i+1].clone());
+            exclude.push(args[i + 1].clone());
             i += 2;
         } else {
             cmd_error_unexpected_option(&args[i]);
@@ -398,7 +384,6 @@ fn parse_search_options(args: &Vec<String>) -> common::SearchOptions {
     }
 }
 
-
 fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
     let mut name = None;
     let mut flip = false;
@@ -408,7 +393,11 @@ fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
     let mut random = false;
     let mut exclude = Vec::new();
     let mut tags = Vec::new();
-    let mut i = if args.len() > 0 && args[0] == "--take" { 1 } else { 0 };
+    let mut i = if args.len() > 0 && args[0] == "--take" {
+        1
+    } else {
+        0
+    };
     while i < args.len() {
         if args[i] == "--flip" {
             flip = true;
@@ -418,7 +407,7 @@ fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
             i += 1;
         } else if args[i] == "-n" {
             cmd_assert_next(args, i);
-            if let Ok(n) = usize::from_str_radix(&args[i+1], 10) {
+            if let Ok(n) = usize::from_str_radix(&args[i + 1], 10) {
                 num_to_ask = n;
             } else {
                 cmd_error("Expected integer argument to -n.");
@@ -432,11 +421,11 @@ fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
             i += 1;
         } else if args[i] == "--tag" {
             cmd_assert_next(args, i);
-            tags.push(args[i+1].clone());
+            tags.push(args[i + 1].clone());
             i += 2;
         } else if args[i] == "--exclude" {
             cmd_assert_next(args, i);
-            exclude.push(args[i+1].clone());
+            exclude.push(args[i + 1].clone());
             i += 2;
         } else if args[i].starts_with("-") {
             cmd_error_unexpected_option(&args[i]);
@@ -461,25 +450,21 @@ fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
     }
 }
 
-
 fn cmd_assert_next(args: &Vec<String>, i: usize) {
-    if i == args.len() - 1 || args[i+1].starts_with("-") {
+    if i == args.len() - 1 || args[i + 1].starts_with("-") {
         cmd_error(&format!("Option {} expected an argument.", args[i]));
     }
 }
 
-
 fn cmd_error_unexpected_option(option: &str) -> ! {
     cmd_error(&format!("Unexpected option {}.", option));
 }
-
 
 fn cmd_error(msg: &str) -> ! {
     eprintln!("{}", msg);
     eprintln!("\nRun drill --help for assistance.");
     ::std::process::exit(1);
 }
-
 
 /// Print a list of tags.
 fn list_tags(quiz: &Quiz) -> Result<()> {
@@ -488,7 +473,7 @@ fn list_tags(quiz: &Quiz) -> Result<()> {
     for question in quiz.questions.iter() {
         for tag in question.get_common().tags.iter() {
             if let Some(n) = tags.get(tag.as_str()) {
-                tags.insert(tag.as_str(), n+1);
+                tags.insert(tag.as_str(), n + 1);
             } else {
                 tags.insert(tag.as_str(), 1);
             }
@@ -507,7 +492,6 @@ fn list_tags(quiz: &Quiz) -> Result<()> {
     Ok(())
 }
 
-
 fn print_stats(results: &Vec<QuestionResult>) -> Result<()> {
     my_println!("Sample: {}", format!("{:>6}", results.len()).cyan())?;
     let mean = quiz::score_to_perc(results_mean(results).unwrap()) * 100.0;
@@ -520,11 +504,9 @@ fn print_stats(results: &Vec<QuestionResult>) -> Result<()> {
     my_println!("Min:    {}", format!("{:>5.1}%", min).cyan())
 }
 
-
 /// An alias for a commonly-used typed in comparison functions.
 /// (score, number of results, ID, question text)
 type CmpQuestionResult = (u64, usize, String, String);
-
 
 /// Comparison function that sorts an array of question results in alphabetical order
 /// of ID.
@@ -538,7 +520,6 @@ fn cmp_results_id(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
     }
 }
 
-
 /// Comparison function that sorts an array of question results such that the best
 /// results come first.
 fn cmp_results_best(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
@@ -551,13 +532,11 @@ fn cmp_results_best(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
     }
 }
 
-
 /// Comparison function that sorts an array of question results such that the worst
 /// results come first.
 fn cmp_results_worst(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
     return cmp_results_best(a, b).reverse();
 }
-
 
 /// Comparison function that sorts an array of question results such that the results
 /// with the most attempts come first.
@@ -571,13 +550,11 @@ fn cmp_results_most(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
     }
 }
 
-
 /// Comparison function that sorts an array of question results such that the results
 /// with the least attempts come first.
 fn cmp_results_least(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
     return cmp_results_most(a, b).reverse();
 }
-
 
 fn is_broken_pipe(e: &QuizError) -> bool {
     if let QuizError::Io(e) = e {
@@ -588,7 +565,6 @@ fn is_broken_pipe(e: &QuizError) -> bool {
     false
 }
 
-
 fn response(result: &QuestionResult) -> String {
     if let Some(response) = result.response.as_ref() {
         format!("'{}'", response)
@@ -598,7 +574,6 @@ fn response(result: &QuestionResult) -> String {
         String::from("<response not recorded>")
     }
 }
-
 
 fn results_mean(results: &Vec<QuestionResult>) -> Option<u64> {
     if results.len() > 0 {
@@ -613,7 +588,6 @@ fn results_mean(results: &Vec<QuestionResult>) -> Option<u64> {
     }
 }
 
-
 fn results_median(results: &Vec<QuestionResult>) -> u64 {
     let mut results: Vec<u64> = results.iter().map(|r| r.score).collect();
     results.sort();
@@ -624,16 +598,13 @@ fn results_median(results: &Vec<QuestionResult>) -> u64 {
     }
 }
 
-
 fn results_max(results: &Vec<QuestionResult>) -> u64 {
     results.iter().map(|r| r.score).max().unwrap()
 }
 
-
 fn results_min(results: &Vec<QuestionResult>) -> u64 {
     results.iter().map(|r| r.score).min().unwrap()
 }
-
 
 fn colored_score(score: u64) -> ColoredString {
     let score = quiz::score_to_perc(score) * 100.0;
@@ -645,7 +616,6 @@ fn colored_score(score: u64) -> ColoredString {
         format!("{:>5.1}%", score).cyan()
     }
 }
-
 
 const HELP: &'static str = r"drill: quiz yourself from the command line.
 

@@ -14,12 +14,10 @@ use super::common::{Location, QuizError, Result};
 use super::iohelper::{prettyprint, prettyprint_colored, prompt};
 use super::quiz::QuizResult;
 
-
 pub struct CmdUI {
     number: usize,
     time_started: time::Instant,
 }
-
 
 impl CmdUI {
     pub fn new() -> Self {
@@ -57,7 +55,7 @@ impl CmdUI {
         if let Some(correction) = correction {
             let message = format!(
                 "{} The correct answer was {}.",
-                "Incorrect.".red(), 
+                "Incorrect.".red(),
                 correction.green(),
             );
             prettyprint(&message, "")
@@ -77,7 +75,10 @@ impl CmdUI {
     pub fn score(&mut self, score: u64, timed_out: bool) -> Result<()> {
         let scorestr = format!("{:.1}%", (score as f64) / 10.0).cyan();
         if timed_out {
-            my_println!("Score for this question: {} (exceeded time limit)", scorestr)
+            my_println!(
+                "Score for this question: {} (exceeded time limit)",
+                scorestr
+            )
         } else {
             my_println!("Score for this question: {}", scorestr)
         }
@@ -111,8 +112,7 @@ impl CmdUI {
 
     pub fn warning(&mut self, text: &str) -> Result<()> {
         my_print!("\n")?;
-        prettyprint_colored(
-            &format!("Warning: {}", text), "  ", Some(Color::Red), None)?;
+        prettyprint_colored(&format!("Warning: {}", text), "  ", Some(Color::Red), None)?;
         my_print!("\n")
     }
 
@@ -133,7 +133,8 @@ impl CmdUI {
             my_print!(" correct\n")?;
             if results.total_partially_correct > 0 {
                 my_print!(
-                    "{}", format!("{}", results.total_partially_correct).bright_green()
+                    "{}",
+                    format!("{}", results.total_partially_correct).bright_green()
                 )?;
                 my_print!(" partially correct\n")?;
             }

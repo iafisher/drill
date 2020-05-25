@@ -10,9 +10,7 @@ use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
-
 pub type Result<T> = ::std::result::Result<T, QuizError>;
-
 
 #[derive(Debug, Clone)]
 pub struct Location {
@@ -30,7 +28,11 @@ pub enum QuizError {
     Io(io::Error),
     ReadlineInterrupted,
     EmptyQuiz,
-    Parse { line: usize, whole_entry: bool, message: String },
+    Parse {
+        line: usize,
+        whole_entry: bool,
+        message: String,
+    },
     CannotOpenEditor,
     /// Not really an error, but a signal sent when the user wants to mark their
     /// previous answer as correct.
@@ -39,29 +41,24 @@ pub enum QuizError {
     SignalEdit,
 }
 
-
 impl fmt::Display for QuizError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             QuizError::QuizNotFound(ref path) => {
                 write!(f, "could not find quiz named '{}'", path.to_string_lossy())
-            },
-            QuizError::Json(ref err) => {
-                write!(f, "could not parse JSON ({})", err)
-            },
+            }
+            QuizError::Json(ref err) => write!(f, "could not parse JSON ({})", err),
             QuizError::CannotWriteToFile(ref path) => {
                 write!(f, "could not write to file '{}'", path.to_string_lossy())
-            },
-            QuizError::Io(ref err) => {
-                write!(f, "IO error ({})", err)
-            },
-            QuizError::EmptyQuiz => {
-                write!(f, "no questions found")
-            },
-            QuizError::ReadlineInterrupted => {
-                Ok(())
-            },
-            QuizError::Parse { line, whole_entry, ref message } => {
+            }
+            QuizError::Io(ref err) => write!(f, "IO error ({})", err),
+            QuizError::EmptyQuiz => write!(f, "no questions found"),
+            QuizError::ReadlineInterrupted => Ok(()),
+            QuizError::Parse {
+                line,
+                whole_entry,
+                ref message,
+            } => {
                 let location = if !whole_entry {
                     format!("on line {}", line)
                 } else {
@@ -69,20 +66,13 @@ impl fmt::Display for QuizError {
                 };
 
                 write!(f, "{} {}", message, location)
-            },
-            QuizError::CannotOpenEditor => {
-                write!(f, "unable to open text editor")
-            },
-            QuizError::SignalMarkCorrect => {
-                write!(f, "internal error ('SignalMarkCorrect')")
-            },
-            QuizError::SignalEdit => {
-                write!(f, "internal error ('SignalEdit')")
-            },
+            }
+            QuizError::CannotOpenEditor => write!(f, "unable to open text editor"),
+            QuizError::SignalMarkCorrect => write!(f, "internal error ('SignalMarkCorrect')"),
+            QuizError::SignalEdit => write!(f, "internal error ('SignalEdit')"),
         }
     }
 }
-
 
 impl error::Error for QuizError {
     fn cause(&self) -> Option<&error::Error> {
@@ -93,14 +83,12 @@ impl error::Error for QuizError {
     }
 }
 
-
 /// Holds the command-line configuration for the application.
 pub struct Options {
     /// Do not emit colorized output.
     pub no_color: bool,
     pub cmd: Command,
 }
-
 
 pub enum Command {
     Count(CountOptions),
@@ -110,13 +98,11 @@ pub enum Command {
     Take(TakeOptions),
 }
 
-
 pub struct CountOptions {
     pub name: PathBuf,
     pub list_tags: bool,
     pub filter_opts: FilterOptions,
 }
-
 
 /// These filtering options are shared between the `take` and `count` subcommands.
 pub struct FilterOptions {
@@ -124,19 +110,16 @@ pub struct FilterOptions {
     pub tags: Vec<String>,
 }
 
-
 pub struct HistoryOptions {
     pub name: PathBuf,
     pub id: String,
 }
-
 
 pub struct ResultsOptions {
     pub name: PathBuf,
     pub num_to_show: Option<usize>,
     pub sort: String,
 }
-
 
 pub struct SearchOptions {
     pub name: PathBuf,
@@ -154,7 +137,6 @@ pub struct TakeOptions {
     pub random: bool,
     pub filter_opts: FilterOptions,
 }
-
 
 /// Return `true` if `tags` satisfies the constraints in `options`.
 pub fn filter_tags(tags: &Vec<String>, options: &FilterOptions) -> bool {

@@ -10,10 +10,9 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::thread;
 use std::time;
 
-use nix::unistd::Pid;
 use nix::sys::signal::{self, Signal};
+use nix::unistd::Pid;
 use regex::Regex;
-
 
 #[test]
 fn can_take_simple_quiz1() {
@@ -94,13 +93,14 @@ fn can_save_results_and_track_history() {
 
     assert!(Path::new("tests/quizzes/results/test1_results.json").exists());
 
-    let (stdout, stderr) = spawn_and_mock(
-        &["--no-color", "--results", "tests/quizzes/test1"]);
+    let (stdout, stderr) = spawn_and_mock(&["--no-color", "--results", "tests/quizzes/test1"]);
     assert_match(&stderr, "");
-    assert_match(&stdout, "50.0% of  2   [1] What is the capital of Mongolia?\n");
+    assert_match(
+        &stdout,
+        "50.0% of  2   [1] What is the capital of Mongolia?\n",
+    );
 
-    let (stdout, stderr) = spawn_and_mock(
-        &["--no-color", "--history", "tests/quizzes/test1", "1"]);
+    let (stdout, stderr) = spawn_and_mock(&["--no-color", "--history", "tests/quizzes/test1", "1"]);
     assert_match(&stderr, "");
     assert_match(
         &stdout,
@@ -114,7 +114,8 @@ Sample:      2
 Mean:    50.0%
 Median:  50.0%
 Max:    100.0%
-Min:      0.0%"#);
+Min:      0.0%"#,
+    );
 }
 
 #[test]
@@ -191,7 +192,6 @@ fn can_take_flipped_flashcard_quiz() {
     );
 }
 
-
 #[test]
 fn ctrl_d_skips_current_question() {
     play_quiz(
@@ -210,7 +210,7 @@ fn ctrl_d_skips_current_question() {
             "0.0% out of 3 questions",
             "0 correct",
             "3 incorrect",
-        ]
+        ],
     );
 }
 
@@ -219,10 +219,7 @@ fn ctrl_c_aborts_quiz() {
     play_quiz(
         "test_flashcard",
         &["--no-save", "--in-order"],
-        &[
-            "(1) el pan",
-            "> Ctrl+C",
-        ]
+        &["(1) el pan", "> Ctrl+C"],
     );
 
     // This test case fails when it should pass, but I don't understand why.
@@ -317,8 +314,12 @@ fn flashcards_context() {
 fn timeouts_work() {
     // This test can't use `play_quiz` because it needs to control how long the thread
     // sleeps between answering questions.
-    let mut process = spawn(
-        &["--no-color", "tests/quizzes/test_timeouts", "--in-order", "--no-save"]);
+    let mut process = spawn(&[
+        "--no-color",
+        "tests/quizzes/test_timeouts",
+        "--in-order",
+        "--no-save",
+    ]);
     let stdin = process.stdin.as_mut().expect("Failed to open stdin");
     stdin_write(stdin, "Chisinau");
     sleep(1200);
@@ -477,7 +478,7 @@ fn can_use_custom_script_for_flashcards() {
             "0.0% out of 1 question",
             "0 correct",
             "1 incorrect",
-        ]
+        ],
     );
 }
 
@@ -512,14 +513,14 @@ fn can_use_choice_groups() {
 
 #[test]
 fn listing_tags_works() {
-    let (stdout, stderr) = spawn_and_mock(
-        &["--count", "--list-tags", "tests/quizzes/test_tags"]);
+    let (stdout, stderr) = spawn_and_mock(&["--count", "--list-tags", "tests/quizzes/test_tags"]);
     assert_match(&stderr, "");
     assert_match(
-        &stdout, "africa (1)\nasia (2)\neurope (2)\noceania (1)\nsouth-america (1)\n");
+        &stdout,
+        "africa (1)\nasia (2)\neurope (2)\noceania (1)\nsouth-america (1)\n",
+    );
 
-    let (stdout, stderr) = spawn_and_mock(
-        &["--count", "--list-tags", "tests/quizzes/test1"]);
+    let (stdout, stderr) = spawn_and_mock(&["--count", "--list-tags", "tests/quizzes/test1"]);
     assert_match(&stderr, "");
     assert_match(&stdout, "No questions have been assigned tags.\n");
 }
@@ -530,57 +531,71 @@ fn counting_questions_works() {
     assert_match(&stderr, "");
     assert_match(&stdout, "6");
 
-    let (stdout, stderr) = spawn_and_mock(
-        &["--count", "tests/quizzes/test_tags", "--tag", "asia"]);
+    let (stdout, stderr) = spawn_and_mock(&["--count", "tests/quizzes/test_tags", "--tag", "asia"]);
     assert_match(&stderr, "");
     assert_match(&stdout, "2");
 
-    let (stdout, stderr) = spawn_and_mock(
-        &["--count", "tests/quizzes/test_tags", "--exclude", "oceania"]);
+    let (stdout, stderr) =
+        spawn_and_mock(&["--count", "tests/quizzes/test_tags", "--exclude", "oceania"]);
     assert_match(&stderr, "");
     assert_match(&stdout, "5");
 
-    let (stdout, stderr) = spawn_and_mock(
-        &["--count", "tests/quizzes/test_tags", "--tag", "asia", "--tag", "europe"]);
+    let (stdout, stderr) = spawn_and_mock(&[
+        "--count",
+        "tests/quizzes/test_tags",
+        "--tag",
+        "asia",
+        "--tag",
+        "europe",
+    ]);
     assert_match(&stderr, "");
     assert_match(&stdout, "3");
 
-    let (stdout, stderr) = spawn_and_mock(
-        &[
-            "--count", "tests/quizzes/test_tags", "--exclude", "asia",
-            "--tag", "europe",
-        ]
-    );
+    let (stdout, stderr) = spawn_and_mock(&[
+        "--count",
+        "tests/quizzes/test_tags",
+        "--exclude",
+        "asia",
+        "--tag",
+        "europe",
+    ]);
     assert_match(&stderr, "");
     assert_match(&stdout, "1");
 }
 
 #[test]
 fn searching_questions_works() {
-    let (stdout, stderr) = spawn_and_mock(
-        &["--no-color", "--search", "tests/quizzes/test_tags", "Turkey"]);
+    let (stdout, stderr) = spawn_and_mock(&[
+        "--no-color",
+        "--search",
+        "tests/quizzes/test_tags",
+        "Turkey",
+    ]);
     assert_match(&stderr, "");
     assert_match(&stdout, "[2] What is the capital of Turkey?\n");
 
-    let (stdout, stderr) = spawn_and_mock(
-        &[
-            "--no-color", "--search", "tests/quizzes/test_tags", "capital",
-            "--tag", "europe",
-        ]
-    );
+    let (stdout, stderr) = spawn_and_mock(&[
+        "--no-color",
+        "--search",
+        "tests/quizzes/test_tags",
+        "capital",
+        "--tag",
+        "europe",
+    ]);
     assert_match(&stderr, "");
     assert_match(
         &stdout,
-        "[2] What is the capital of Turkey?\n[3] What is the capital of Bulgaria?");
+        "[2] What is the capital of Turkey?\n[3] What is the capital of Bulgaria?",
+    );
 }
 
 #[test]
 fn history_subcommand_works() {
-    let (stdout, stderr) = spawn_and_mock(
-        &["--no-color", "--history", "tests/quizzes/long/long", "1"]);
+    let (stdout, stderr) =
+        spawn_and_mock(&["--no-color", "--history", "tests/quizzes/long/long", "1"]);
     assert_match(&stderr, "");
     assert_match(
-        &stdout, 
+        &stdout,
         r"
 [1] What are the three core types of objects in the Git version control system?
 
@@ -596,11 +611,11 @@ Min:      0.0%
         ",
     );
 
-    let (stdout, stderr) = spawn_and_mock(
-        &["--no-color", "--history", "tests/quizzes/long/long", "3"]);
+    let (stdout, stderr) =
+        spawn_and_mock(&["--no-color", "--history", "tests/quizzes/long/long", "3"]);
     assert_match(&stderr, "");
     assert_match(
-        &stdout, 
+        &stdout,
         r"
 [3] What application-level communications protocol is used to deliver mail
     between email servers?
@@ -619,8 +634,7 @@ Min:    100.0%
 
 #[test]
 fn results_subcommand_works() {
-    let (stdout, stderr) = spawn_and_mock(
-        &["--no-color", "--results", "tests/quizzes/long/long"]);
+    let (stdout, stderr) = spawn_and_mock(&["--no-color", "--results", "tests/quizzes/long/long"]);
     assert_match(&stderr, "");
     assert_match(
         &stdout,
@@ -643,12 +657,15 @@ fn results_subcommand_works() {
         ",
     );
 
-    let (stdout, stderr) = spawn_and_mock(
-        &[
-            "--no-color", "--results", "tests/quizzes/long/long", "--sort", "worst",
-            "-n", "3",
-        ]
-    );
+    let (stdout, stderr) = spawn_and_mock(&[
+        "--no-color",
+        "--results",
+        "tests/quizzes/long/long",
+        "--sort",
+        "worst",
+        "-n",
+        "3",
+    ]);
 
     assert_match(&stderr, "");
     assert_match(
@@ -663,12 +680,15 @@ fn results_subcommand_works() {
         ",
     );
 
-    let (stdout, stderr) = spawn_and_mock(
-        &[
-            "--no-color", "--results", "tests/quizzes/long/long", "--sort", "most",
-            "-n", "2",
-        ]
-    );
+    let (stdout, stderr) = spawn_and_mock(&[
+        "--no-color",
+        "--results",
+        "tests/quizzes/long/long",
+        "--sort",
+        "most",
+        "-n",
+        "2",
+    ]);
 
     assert_match(&stderr, "");
     assert_match(
@@ -694,10 +714,15 @@ fn parse_error_no_blank_line_after_settings() {
 
 #[test]
 fn non_zero_exit_code_on_error() {
-    let child = spawn(
-        &["--no-color", "tests/quizzes/parse/test_no_blank_line_after_settings"]);
+    let child = spawn(&[
+        "--no-color",
+        "tests/quizzes/parse/test_no_blank_line_after_settings",
+    ]);
     let result = child.wait_with_output().expect("Failed to read stdout");
-    assert!(!result.status.success(), format!("Exit code: {:?}", result.status.code()));
+    assert!(
+        !result.status.success(),
+        format!("Exit code: {:?}", result.status.code())
+    );
 }
 
 #[test]
@@ -713,7 +738,11 @@ fn parse_error_wrong_ordered_value() {
 #[test]
 fn parse_error_no_first_line() {
     assert_parse_error(
-        "test_no_first_line", "expected first line of question", 1, false);
+        "test_no_first_line",
+        "expected first line of question",
+        1,
+        false,
+    );
 }
 
 #[test]
@@ -739,13 +768,21 @@ fn parse_error_unknown_field() {
 #[test]
 fn parse_error_unknown_global_field() {
     assert_parse_error(
-        "test_unknown_global_field", "unexpected field 'whatever'", 1, false);
+        "test_unknown_global_field",
+        "unexpected field 'whatever'",
+        1,
+        false,
+    );
 }
 
 #[test]
 fn parse_error_field_on_wrong_question() {
     assert_parse_error(
-        "test_field_on_wrong_question", "unexpected field 'nocredit'", 1, true);
+        "test_field_on_wrong_question",
+        "unexpected field 'nocredit'",
+        1,
+        true,
+    );
 }
 
 #[test]
@@ -756,7 +793,11 @@ fn parse_error_duplicate_ids() {
 #[test]
 fn parse_error_duplicate_choice_groups() {
     assert_parse_error(
-        "test_duplicate_choice_group_ids", "duplicate choice group ID", 4, false);
+        "test_duplicate_choice_group_ids",
+        "duplicate choice group ID",
+        4,
+        false,
+    );
 }
 
 #[test]
@@ -792,7 +833,11 @@ fn parse_error_missing_choice_group_answer() {
 #[test]
 fn parse_error_choice_group_line_in_question() {
     assert_parse_error(
-        "test_choice_group_line_in_question", "unexpected line in question", 3, false);
+        "test_choice_group_line_in_question",
+        "unexpected line in question",
+        3,
+        false,
+    );
 }
 
 #[test]
@@ -808,7 +853,11 @@ fn parse_error_unexpected_line_choice_group() {
 #[test]
 fn parse_error_nameless_choice_group() {
     assert_parse_error(
-        "test_nameless_choice_group", "expected identifier", 1, false);
+        "test_nameless_choice_group",
+        "expected identifier",
+        1,
+        false,
+    );
 }
 
 fn assert_parse_error(path: &str, message: &str, lineno: usize, whole_entry: bool) {
@@ -877,12 +926,16 @@ fn play_quiz(name: &str, extra_args: &[&str], in_out: &[&str]) {
     let mut lines_iter = stdout.lines();
     for expected in in_out {
         if !expected.starts_with("> ") {
-            let mut got = lines_iter.next()
-                .expect(&format!("Premature end of output. Expected {:?}. Contents of stderr: {:?}", expected, stderr));
+            let mut got = lines_iter.next().expect(&format!(
+                "Premature end of output. Expected {:?}. Contents of stderr: {:?}",
+                expected, stderr
+            ));
             loop {
                 if got.trim().len() == 0 {
-                    got = lines_iter.next()
-                        .expect(&format!("Premature end of output. Expected {:?}. Contents of stderr: {:?}", expected, stderr));
+                    got = lines_iter.next().expect(&format!(
+                        "Premature end of output. Expected {:?}. Contents of stderr: {:?}",
+                        expected, stderr
+                    ));
                 } else {
                     break;
                 }
@@ -908,7 +961,10 @@ fn assert_in_order(mock_stdout: &str, data: &[&str]) {
             // `mock_stdout`.
             last_pos = (pos + last_pos) + datum.len();
         } else {
-            panic!("Missing: {:?}; Contents of stdout: {:?}", datum, mock_stdout);
+            panic!(
+                "Missing: {:?}; Contents of stdout: {:?}",
+                datum, mock_stdout
+            );
         }
     }
 }
@@ -932,8 +988,12 @@ fn spawn(args: &[&str]) -> Child {
 }
 
 fn stdin_write(stdin: &mut ChildStdin, line: &str) {
-    stdin.write_all(line.as_bytes()).expect("Failed to write to stdin");
-    stdin.write_all("\n".as_bytes()).expect("Failed to write to stdin");
+    stdin
+        .write_all(line.as_bytes())
+        .expect("Failed to write to stdin");
+    stdin
+        .write_all("\n".as_bytes())
+        .expect("Failed to write to stdin");
 }
 
 fn sleep(millis: u64) {

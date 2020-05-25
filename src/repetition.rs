@@ -20,9 +20,8 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 
 use super::common;
-use super::common::{TakeOptions};
+use super::common::TakeOptions;
 use super::quiz::{Question, QuestionResult};
-
 
 // The percentage of questions that come from each bucket, expressed as integer
 // fractions, e.g. 2 means 1/2, 5 means 1/5 etc.
@@ -32,12 +31,11 @@ const UP_THRESHOLD: u64 = 900;
 // What percentage correct for a question to move down a bucket.
 const DOWN_THRESHOLD: u64 = 400;
 
-
 /// Choose a set of questions, filtered by the command-line options.
 pub fn choose_questions<'a>(
-    questions: &'a Vec<Box<Question>>, 
-    options: &TakeOptions) -> Vec<&'a Box<Question>> {
-
+    questions: &'a Vec<Box<Question>>,
+    options: &TakeOptions,
+) -> Vec<&'a Box<Question>> {
     let mut candidates = Vec::new();
     for question in questions.iter() {
         if common::filter_tags(&question.get_common().tags, &options.filter_opts) {
@@ -93,7 +91,6 @@ pub fn choose_questions<'a>(
     chosen
 }
 
-
 fn get_bucket(results: &Vec<QuestionResult>) -> usize {
     // TODO(2019-11-12): If answered correctly in the past 24 hours or so, put it in the
     // highest bucket.
@@ -102,13 +99,12 @@ fn get_bucket(results: &Vec<QuestionResult>) -> usize {
         // 90% and 40% are arbitrary thresholds that I may need to adjust.
         if result.score >= UP_THRESHOLD && bucket < BUCKET_ALLOCATION.len() - 1 {
             bucket += 1;
-        } else if result.score <= DOWN_THRESHOLD  && bucket > 0 {
+        } else if result.score <= DOWN_THRESHOLD && bucket > 0 {
             bucket -= 1;
         }
     }
     bucket
 }
-
 
 /// Comparison function that sorts an array of `Question` objects in the order the
 /// questions appeared in the original quiz file based on the `location` field.
@@ -126,13 +122,10 @@ fn cmp_questions_in_order(a: &&Box<Question>, b: &&Box<Question>) -> cmp::Orderi
     }
 }
 
-
 /// Comparison function that sorts an array of `Question` objects so that the questions
 /// that were least recently asked appear first. Questions that have never been asked
 /// will appear at the very front.
-fn cmp_questions_oldest_first(
-    a: &&&Box<Question>, b: &&&Box<Question>) -> cmp::Ordering {
-
+fn cmp_questions_oldest_first(a: &&&Box<Question>, b: &&&Box<Question>) -> cmp::Ordering {
     // NOTE: This method assumes that the `prior_results` field of `Question` objects
     // is ordered chronologically, which should always be true.
     let a_common = a.get_common();

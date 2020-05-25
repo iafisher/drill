@@ -9,13 +9,12 @@ use std::time;
 
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use unicode_normalization::UnicodeNormalization;
 
-use super::common::{Location, Result, QuizError, TakeOptions};
+use super::common::{Location, QuizError, Result, TakeOptions};
 use super::repetition;
 use super::ui::CmdUI;
-
 
 /// Represents an entire quiz.
 #[derive(Debug)]
@@ -24,16 +23,13 @@ pub struct Quiz {
     pub questions: Vec<Box<dyn Question>>,
 }
 
-
 impl Quiz {
     /// Find a question given its id.
     pub fn find(&self, id: &str) -> Option<usize> {
         self.questions.iter().position(|q| q.get_common().id == id)
     }
 
-    pub fn take(
-        &mut self, ui: &mut CmdUI, options: &TakeOptions) -> Result<QuizResult> {
-
+    pub fn take(&mut self, ui: &mut CmdUI, options: &TakeOptions) -> Result<QuizResult> {
         if options.flip {
             for q in self.questions.iter_mut() {
                 q.flip();
@@ -61,10 +57,10 @@ impl Quiz {
             match result {
                 Ok(result) => {
                     results.push(result);
-                },
+                }
                 Err(QuizError::ReadlineInterrupted) => {
                     break;
-                },
+                }
                 Err(QuizError::SignalMarkCorrect) => {
                     if results.len() > 0 {
                         let last = results.len() - 1;
@@ -80,22 +76,23 @@ impl Quiz {
                     }
                     // Continue asking the same question.
                     continue;
-                },
+                }
                 Err(QuizError::SignalEdit) => {
                     if index > 0 {
-                        let prev = &questions[index-1];
+                        let prev = &questions[index - 1];
                         ui.launch_editor(&prev.get_common().location)?;
                         ui.status(
-                            "Edited previous question. Enter !! to mark your answer correct.")?;
+                            "Edited previous question. Enter !! to mark your answer correct.",
+                        )?;
                     } else {
                         ui.status("No previous question to edit.")?;
                     }
                     // Continue asking the same question.
-                    continue
-                },
+                    continue;
+                }
                 Err(e) => {
                     return Err(e);
-                },
+                }
             }
             index += 1;
             ui.next();
@@ -104,11 +101,16 @@ impl Quiz {
         let total = results.len();
         let aggregate_score: u64 = results.iter().map(|r| r.score).sum();
         let total_correct = results.iter().filter(|r| r.score == 1000).count();
-        let total_partially_correct = results.iter()
+        let total_partially_correct = results
+            .iter()
             .filter(|r| r.score < 1000 && r.score > 0)
             .count();
         let total_incorrect = total - total_correct - total_partially_correct;
-        let score = if total > 0 { aggregate_score / total as u64 } else { 0 };
+        let score = if total > 0 {
+            aggregate_score / total as u64
+        } else {
+            0
+        };
         let ret = QuizResult {
             time_finished: chrono::Utc::now(),
             total,
@@ -123,15 +125,15 @@ impl Quiz {
     }
 }
 
-
 pub trait Question: std::fmt::Debug {
     fn ask(&self, ui: &mut CmdUI) -> Result<QuestionResult>;
     fn get_common(&self) -> &QuestionCommon;
     fn get_text(&self) -> String;
-    fn timed(&self) -> bool { false }
+    fn timed(&self) -> bool {
+        false
+    }
     fn flip(&mut self) {}
 }
-
 
 #[derive(Debug, Clone)]
 pub struct QuestionCommon {
@@ -140,7 +142,6 @@ pub struct QuestionCommon {
     pub tags: Vec<String>,
     pub location: Location,
 }
-
 
 #[derive(Debug, Clone)]
 pub struct ShortAnswerQuestion {
@@ -152,7 +153,6 @@ pub struct ShortAnswerQuestion {
     pub timeout: Option<u64>,
     pub common: QuestionCommon,
 }
-
 
 impl Question for ShortAnswerQuestion {
     fn ask(&self, ui: &mut CmdUI) -> Result<QuestionResult> {
@@ -166,10 +166,21 @@ impl Question for ShortAnswerQuestion {
                     ui.score(score, timed_out)?;
                 }
                 Ok(mkresult(
-                    &self.get_common().id, &self.text, Some(guess), score, timed_out))
+                    &self.get_common().id,
+                    &self.text,
+                    Some(guess),
+                    score,
+                    timed_out,
+                ))
             } else {
                 ui.incorrect(Some(&self.answer[0]))?;
-                Ok(mkresult(&self.get_common().id, &self.text, Some(guess), 0, false))
+                Ok(mkresult(
+                    &self.get_common().id,
+                    &self.text,
+                    Some(guess),
+                    0,
+                    false,
+                ))
             }
         } else {
             ui.incorrect(Some(&self.answer[0]))?;
@@ -177,11 +188,16 @@ impl Question for ShortAnswerQuestion {
         }
     }
 
-    fn get_common(&self) -> &QuestionCommon { &self.common }
-    fn get_text(&self) -> String { self.text.clone() }
-    fn timed(&self) -> bool { self.timeout.is_some() }
+    fn get_common(&self) -> &QuestionCommon {
+        &self.common
+    }
+    fn get_text(&self) -> String {
+        self.text.clone()
+    }
+    fn timed(&self) -> bool {
+        self.timeout.is_some()
+    }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct FlashcardQuestion {
@@ -192,7 +208,6 @@ pub struct FlashcardQuestion {
     pub timeout: Option<u64>,
     pub common: QuestionCommon,
 }
-
 
 impl Question for FlashcardQuestion {
     fn ask(&self, ui: &mut CmdUI) -> Result<QuestionResult> {
@@ -212,10 +227,21 @@ impl Question for FlashcardQuestion {
                     ui.score(score, timed_out)?;
                 }
                 Ok(mkresult(
-                    &self.get_common().id, &text, Some(guess), score, timed_out))
+                    &self.get_common().id,
+                    &text,
+                    Some(guess),
+                    score,
+                    timed_out,
+                ))
             } else {
                 ui.incorrect(Some(&self.back[0]))?;
-                Ok(mkresult(&self.get_common().id, &text, Some(guess), 0, false))
+                Ok(mkresult(
+                    &self.get_common().id,
+                    &text,
+                    Some(guess),
+                    0,
+                    false,
+                ))
             }
         } else {
             ui.incorrect(Some(&self.back[0]))?;
@@ -223,16 +249,21 @@ impl Question for FlashcardQuestion {
         }
     }
 
-    fn get_common(&self) -> &QuestionCommon { &self.common }
-    fn get_text(&self) -> String { self.front[0].clone() }
-    fn timed(&self) -> bool { self.timeout.is_some() }
+    fn get_common(&self) -> &QuestionCommon {
+        &self.common
+    }
+    fn get_text(&self) -> String {
+        self.front[0].clone()
+    }
+    fn timed(&self) -> bool {
+        self.timeout.is_some()
+    }
 
     fn flip(&mut self) {
         mem::swap(&mut self.front, &mut self.back);
         mem::swap(&mut self.front_context, &mut self.back_context);
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct ListQuestion {
@@ -241,7 +272,6 @@ pub struct ListQuestion {
     pub no_credit: Vec<String>,
     pub common: QuestionCommon,
 }
-
 
 impl Question for ListQuestion {
     fn ask(&self, ui: &mut CmdUI) -> Result<QuestionResult> {
@@ -269,11 +299,11 @@ impl Question for ListQuestion {
                             ui.incorrect(None)?;
                         }
                     }
-                },
+                }
                 Ok(None) => {
                     ui.incorrect(None)?;
                     break;
-                },
+                }
                 Err(QuizError::SignalMarkCorrect) => {
                     if let Some(last) = responses.last().as_ref() {
                         if check_one(&self.answer_list, last).is_none() {
@@ -291,7 +321,7 @@ impl Question for ListQuestion {
                         // can be corrected.
                         return Err(QuizError::SignalMarkCorrect);
                     }
-                },
+                }
                 Err(e) => {
                     return Err(e);
                 }
@@ -312,13 +342,21 @@ impl Question for ListQuestion {
         let score = (score * 1000.0) as u64;
         ui.score(score, false)?;
 
-        Ok(mkresultlist(&self.get_common().id, &self.text, responses, score))
+        Ok(mkresultlist(
+            &self.get_common().id,
+            &self.text,
+            responses,
+            score,
+        ))
     }
 
-    fn get_common(&self) -> &QuestionCommon { &self.common }
-    fn get_text(&self) -> String { self.text.clone() }
+    fn get_common(&self) -> &QuestionCommon {
+        &self.common
+    }
+    fn get_text(&self) -> String {
+        self.text.clone()
+    }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct OrderedListQuestion {
@@ -327,7 +365,6 @@ pub struct OrderedListQuestion {
     pub no_credit: Vec<String>,
     pub common: QuestionCommon,
 }
-
 
 impl Question for OrderedListQuestion {
     fn ask(&self, ui: &mut CmdUI) -> Result<QuestionResult> {
@@ -349,11 +386,11 @@ impl Question for OrderedListQuestion {
                         ui.incorrect(Some(&answer[0]))?;
                     }
                     index += 1;
-                },
+                }
                 Ok(None) => {
                     ui.incorrect(Some(&answer[0]))?;
                     break;
-                },
+                }
                 Err(QuizError::SignalMarkCorrect) => {
                     if let Some(last) = responses.last().as_ref() {
                         if check_one(&self.answer_list, last).is_none() {
@@ -368,22 +405,30 @@ impl Question for OrderedListQuestion {
                         // can be corrected.
                         return Err(QuizError::SignalMarkCorrect);
                     }
-                },
+                }
                 Err(e) => {
                     return Err(e);
-                },
+                }
             }
         }
         let score = (ncorrect as f64) / (self.answer_list.len() as f64);
         let score = (score * 1000.0) as u64;
         ui.score(score, false)?;
-        Ok(mkresultlist(&self.get_common().id, &self.text, responses, score))
+        Ok(mkresultlist(
+            &self.get_common().id,
+            &self.text,
+            responses,
+            score,
+        ))
     }
 
-    fn get_common(&self) -> &QuestionCommon { &self.common }
-    fn get_text(&self) -> String { self.text.clone() }
+    fn get_common(&self) -> &QuestionCommon {
+        &self.common
+    }
+    fn get_text(&self) -> String {
+        self.text.clone()
+    }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct MultipleChoiceQuestion {
@@ -393,7 +438,6 @@ pub struct MultipleChoiceQuestion {
     pub timeout: Option<u64>,
     pub common: QuestionCommon,
 }
-
 
 impl Question for MultipleChoiceQuestion {
     fn ask(&self, ui: &mut CmdUI) -> Result<QuestionResult> {
@@ -441,22 +485,35 @@ impl Question for MultipleChoiceQuestion {
             }
         }
         let (score, timed_out) = calculate_score(
-            if correct { 1000 } else { 0 }, self.timeout, ui.get_elapsed());
-        Ok(mkresult(&self.get_common().id, &self.text, response, score, timed_out))
+            if correct { 1000 } else { 0 },
+            self.timeout,
+            ui.get_elapsed(),
+        );
+        Ok(mkresult(
+            &self.get_common().id,
+            &self.text,
+            response,
+            score,
+            timed_out,
+        ))
     }
 
-    fn get_common(&self) -> &QuestionCommon { &self.common }
-    fn get_text(&self) -> String { self.text.clone() }
-    fn timed(&self) -> bool { self.timeout.is_some() }
+    fn get_common(&self) -> &QuestionCommon {
+        &self.common
+    }
+    fn get_text(&self) -> String {
+        self.text.clone()
+    }
+    fn timed(&self) -> bool {
+        self.timeout.is_some()
+    }
 }
-
 
 /// Each member of the vector should be an equivalent answer, e.g.
 /// `vec!["Mount Everest", "Everest"]`, not different answers to the same question. The
 /// first element of the vector is taken to be the canonical form of the answer for
 /// display.
 pub type Answer = Vec<String>;
-
 
 /// Represents the result of answering a question on a particular occasion.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -483,7 +540,6 @@ pub struct QuestionResult {
     pub timed_out: Option<bool>,
 }
 
-
 /// Represents the results of taking a quiz on a particular occasion.
 #[derive(Debug)]
 pub struct QuizResult {
@@ -497,7 +553,6 @@ pub struct QuizResult {
     pub per_question: Vec<QuestionResult>,
 }
 
-
 /// Return the index of the first answer in `answer_list` that `guess` matches, or
 /// `None` if `guess` satisfies none.
 pub fn check_one(answer_list: &Vec<Answer>, guess: &str) -> Option<usize> {
@@ -509,7 +564,6 @@ pub fn check_one(answer_list: &Vec<Answer>, guess: &str) -> Option<usize> {
     None
 }
 
-
 /// Return `true` if the given string is equivalent to the Answer object.
 pub fn check(ans: &Answer, guess: &str) -> bool {
     for variant in ans.iter() {
@@ -520,24 +574,24 @@ pub fn check(ans: &Answer, guess: &str) -> bool {
     false
 }
 
-
 fn normalize(guess: &str) -> String {
     String::from(guess.to_lowercase()).nfc().collect::<String>()
 }
 
-
 /// Calculate the final score given the base score, the question's timeout, and how
 /// long it took to answer the question. Return `(score, timed_out)` where `timed_out`
 /// indicates whether the time limit was exceeded.
-fn calculate_score(
-    base_score: u64, timeout: Option<u64>, elapsed: time::Duration) -> (u64, bool) {
+fn calculate_score(base_score: u64, timeout: Option<u64>, elapsed: time::Duration) -> (u64, bool) {
     if let Some(timeout) = timeout {
         let e = elapsed.as_millis() as i128;
         let t = (timeout * 1000) as i128;
         if e <= t {
             (base_score, false)
-        } else if e < 2*t {
-            ((base_score as f64 * (-1.0 / (t as f64)) * (e - 2 * t) as f64) as u64, true)
+        } else if e < 2 * t {
+            (
+                (base_score as f64 * (-1.0 / (t as f64)) * (e - 2 * t) as f64) as u64,
+                true,
+            )
         } else {
             (0, true)
         }
@@ -546,15 +600,14 @@ fn calculate_score(
     }
 }
 
-
 /// Construct a `QuestionResult` object.
 fn mkresult(
     id: &str,
     text: &str,
     response: Option<String>,
     score: u64,
-    timed_out: bool) -> QuestionResult {
-
+    timed_out: bool,
+) -> QuestionResult {
     QuestionResult {
         id: String::from(id),
         text: Some(String::from(text)),
@@ -566,11 +619,8 @@ fn mkresult(
     }
 }
 
-
 /// Construct a `QuestionResult` object with a list of responses.
-fn mkresultlist(
-    id: &str, text: &str, responses: Vec<String>, score: u64) -> QuestionResult {
-
+fn mkresultlist(id: &str, text: &str, responses: Vec<String>, score: u64) -> QuestionResult {
     QuestionResult {
         id: String::from(id),
         text: Some(String::from(text)),
@@ -583,12 +633,10 @@ fn mkresultlist(
     }
 }
 
-
 const MAX_SCORE: u64 = 1000;
 pub fn score_to_perc(score: u64) -> f64 {
     (score as f64) / (MAX_SCORE as f64)
 }
-
 
 #[cfg(test)]
 mod tests {
