@@ -12,6 +12,7 @@ def init(precommit):
     precommit.check(checks.DoNotSubmit())
 
     precommit.check(checks.Command("E2ETests", ["./t"], slow=True))
+    precommit.check(checks.RustFormat())
 
     # Check Python format with black.
     precommit.check(checks.PythonFormat())
