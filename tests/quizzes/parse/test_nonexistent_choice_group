@@ -1,0 +1,7 @@
+choice-group cities
+- atl: Atlanta
+- nyc: New York City
+
+[1] What is the most populous county in Illinois?
+- choice-group: counties
+- choice-group-answer: cook

@@ -1,0 +1,13 @@
+choice-group cities
+- atlanta: Atlanta
+- nyc: New York City
+- chicago: Chicago
+- dallas: Dallas
+
+[1] What is the largest city in Georgia?
+- choice-group-answer: atlanta
+- choice-group: cities
+
+[2] What is the largest city in Illinois?
+- choice-group-answer: chicago
+- choice-group: cities

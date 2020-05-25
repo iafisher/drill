@@ -1,0 +1,7 @@
+choice-group cities
+- atl: Atlanta
+- nyc: New York City
+
+[1] What is the largest city in Illinois?
+- choice-group: cities
+- choice-group-answer: chicago

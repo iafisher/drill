@@ -1,0 +1,5 @@
+choice-group cities
+- nyc: New York City
+
+choice-group cities
+- atl: Atlanta

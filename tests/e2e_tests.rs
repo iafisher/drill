@@ -482,6 +482,35 @@ fn can_use_custom_script_for_flashcards() {
 }
 
 #[test]
+fn can_use_choice_groups() {
+    play_quiz(
+        "test_choice_group",
+        &["--no-save", "--in-order"],
+        &[
+            "(1) What is the largest city in Georgia?",
+            r"RE: \(a\) (Atlanta|New York City|Chicago|Dallas)",
+            r"RE: \(b\) (Atlanta|New York City|Chicago|Dallas)",
+            r"RE: \(c\) (Atlanta|New York City|Chicago|Dallas)",
+            r"RE: \(d\) (Atlanta|New York City|Chicago|Dallas)",
+            r"> a",
+            // Since the order of the choices is random, guessing 'a' may or may not
+            // have been correct.
+            r"RE: (Correct!|Incorrect\. The correct answer was Atlanta\.)",
+            "(2) What is the largest city in Illinois?",
+            r"RE: \(a\) (Atlanta|New York City|Chicago|Dallas)",
+            r"RE: \(b\) (Atlanta|New York City|Chicago|Dallas)",
+            r"RE: \(c\) (Atlanta|New York City|Chicago|Dallas)",
+            r"RE: \(d\) (Atlanta|New York City|Chicago|Dallas)",
+            r"> a",
+            r"RE: (Correct!|Incorrect\. The correct answer was Chicago\.)",
+            r"RE: (0|50%|100)% out of 2 questions",
+            r"RE: (0|1|2) correct",
+            r"RE: (0|1|2) incorrect",
+        ],
+    );
+}
+
+#[test]
 fn listing_tags_works() {
     let (stdout, stderr) = spawn_and_mock(
         &["--count", "--list-tags", "tests/quizzes/test_tags"]);
@@ -721,7 +750,65 @@ fn parse_error_field_on_wrong_question() {
 
 #[test]
 fn parse_error_duplicate_ids() {
-    assert_parse_error("test_duplicate_ids", "duplicate ID", 2, false);
+    assert_parse_error("test_duplicate_ids", "duplicate question ID", 2, false);
+}
+
+#[test]
+fn parse_error_duplicate_choice_groups() {
+    assert_parse_error(
+        "test_duplicate_choice_group_ids", "duplicate choice group ID", 4, false);
+}
+
+#[test]
+fn parse_error_nonexistent_choice_group() {
+    assert_parse_error(
+        "test_nonexistent_choice_group",
+        "choice group does not exist",
+        5,
+        true,
+    );
+}
+
+#[test]
+fn parse_error_nonexistent_choice_group_answer() {
+    assert_parse_error(
+        "test_nonexistent_choice_group_answer",
+        "choice group answer does not exist",
+        5,
+        true,
+    );
+}
+
+#[test]
+fn parse_error_missing_choice_group_answer() {
+    assert_parse_error(
+        "test_missing_choice_group_answer",
+        "question has choice-group but not choice-group-answer",
+        5,
+        true,
+    );
+}
+
+#[test]
+fn parse_error_choice_group_line_in_question() {
+    assert_parse_error(
+        "test_choice_group_line_in_question", "unexpected line in question", 3, false);
+}
+
+#[test]
+fn parse_error_unexpected_line_choice_group() {
+    assert_parse_error(
+        "test_unexpected_line_in_choice_group",
+        "unexpected line in choice group",
+        2,
+        false,
+    );
+}
+
+#[test]
+fn parse_error_nameless_choice_group() {
+    assert_parse_error(
+        "test_nameless_choice_group", "expected identifier", 1, false);
 }
 
 fn assert_parse_error(path: &str, message: &str, lineno: usize, whole_entry: bool) {
@@ -742,7 +829,7 @@ fn assert_match(got: &str, expected: &str) {
         assert!(
             re.is_match(&got.trim()),
             format!(
-                "Failed to match {:?} against pattern {:?}",
+                "\n\nFailed to match {:?} against pattern {:?}\n\n",
                 got.trim(),
                 expected,
             )
@@ -750,7 +837,11 @@ fn assert_match(got: &str, expected: &str) {
     } else {
         assert!(
             expected.trim() == got.trim(),
-            format!("Expected:\n  {:?}\n\ngot:\n  {:?}", expected.trim(), got.trim()),
+            format!(
+                "\n\nExpected:\n  {:?}\n\ngot:\n  {:?}\n\n",
+                expected.trim(),
+                got.trim()
+            ),
         );
     }
 }

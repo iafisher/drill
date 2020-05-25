@@ -68,3 +68,23 @@ Anthony Eden
 # to a question. In this case, the script modifies the answers to accept just
 # the last name of the Prime Minister as well as the full name. See the script
 # file itself for details.
+
+
+# Multiple-choice questions offer share the same set of choices, and listing
+# the full set each time for a large number of questions is tedious. You can
+# define a choice group as below that lets you reuse the same choices in more
+# than one question. The choice group must be defined before it is used.
+#
+# The string before the colon on each line defines the name of the choice, to
+# be used to identify which of the choices is the correct answer to a given
+# question. The text after the colon is displayed to the user.
+choice-group architecture
+- italianate: flat roofs, prominent eaves, towers, cupolas / prominent eaves, flat roofs, decorative elements like towers and cupolas
+- art-deco: bold geometric forms, bright colors, futuristic aesthetic
+- international-style: industrial materials, little or no ornamentation or color, modular forms, extensive use of glass
+- beaux-arts: predominantly neoclassical, with Gothic and Renaissance elements
+
+# This question uses the choice group defines above.
+[7] Which description best fits the Italianate style of architecture?
+- choice-group-answer: italianate
+- choice-group: architecture

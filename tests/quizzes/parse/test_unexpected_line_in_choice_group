@@ -1,0 +1,3 @@
+choice-group cities
+This line will cause a syntax error.
+- nyc: New York City

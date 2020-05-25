@@ -29,6 +29,7 @@ pub fn load_quiz(fullname: &Path) -> Result<Quiz> {
 
 
 type StoredResults = HashMap<String, Vec<QuestionResult>>;
+type ChoiceGroup = HashMap<String, String>;
 
 
 pub fn load_results(fullname: &Path) -> Result<StoredResults> {
@@ -112,19 +113,30 @@ fn parse(path: &Path, old_results: &StoredResults) -> Result<Quiz> {
 
     let mut questions = Vec::new();
     let mut used_ids = HashSet::new();
+    let mut choice_groups = HashMap::new();
     loop {
         match read_entry(path, &mut reader) {
-            Ok(Some(entry)) => {
-                let q = entry_to_question(&entry, &quiz_settings, old_results)?;
+            Ok(Some(FileEntry::QuestionEntry(entry))) => {
+                let q = entry_to_question(&entry, &choice_groups, &quiz_settings, old_results)?;
                 if used_ids.contains(&q.get_common().id) {
                     return Err(QuizError::Parse {
                         line: entry.location.line,
                         whole_entry: false,
-                        message: String::from("duplicate ID"),
+                        message: String::from("duplicate question ID"),
                     });
                 }
                 used_ids.insert(q.get_common().id.clone());
                 questions.push(q);
+            },
+            Ok(Some(FileEntry::ChoiceGroupEntry(entry))) => {
+                if choice_groups.contains_key(&entry.id) {
+                    return Err(QuizError::Parse {
+                        line: entry.location.line,
+                        whole_entry: false,
+                        message: String::from("duplicate choice group ID"),
+                    });
+                }
+                choice_groups.insert(entry.id.clone(), entry.choices.clone());
             },
             Ok(None) => {
                 break;
@@ -139,7 +151,8 @@ fn parse(path: &Path, old_results: &StoredResults) -> Result<Quiz> {
 }
 
 fn entry_to_question(
-    entry: &FileEntry,
+    entry: &QuestionEntry,
+    choice_groups: &HashMap<String, ChoiceGroup>,
     settings: &GlobalSettings,
     old_results: &StoredResults) -> Result<Box<Question>> {
 
@@ -201,6 +214,42 @@ fn entry_to_question(
                 timeout,
                 common,
             }));
+        } else if let Some(choice_group_name) = entry.attributes.get("choice-group") {
+            if let Some(answer_code) = entry.attributes.get("choice-group-answer") {
+                if let Some(choice_group) = choice_groups.get(choice_group_name) {
+                    if let Some(answer) = choice_group.get(answer_code) {
+                        let mut choices: Vec<String> = choice_group.values().map(|v| v.clone()).collect();
+                        let answer_index = choices.iter().position(|r| r == answer).unwrap();
+                        choices.remove(answer_index);
+                        return Ok(Box::new(MultipleChoiceQuestion {
+                            text,
+                            answer: split(&answer, "/"),
+                            choices: choices,
+                            timeout,
+                            common,
+                        }));
+                    } else {
+                        return Err(QuizError::Parse {
+                            line: lineno,
+                            whole_entry: true,
+                            message: String::from("choice group answer does not exist"),
+                        });
+                    }
+                } else {
+                    return Err(QuizError::Parse {
+                        line: lineno,
+                        whole_entry: true,
+                        message: String::from("choice group does not exist"),
+                    });
+                }
+            } else {
+                return Err(QuizError::Parse {
+                    line: lineno,
+                    whole_entry: true,
+                    message: String::from(
+                        "question has choice-group but not choice-group-answer"),
+                });
+            }
         } else {
             return Err(QuizError::Parse {
                 line: lineno,
@@ -247,7 +296,7 @@ fn entry_to_question(
 
 
 /// Create a new entry from the results of running a script.
-fn entry_from_script(entry: &FileEntry, script_name: &str) -> Result<FileEntry> {
+fn entry_from_script(entry: &QuestionEntry, script_name: &str) -> Result<QuestionEntry> {
     let mut script_path = if let Some(parent) = entry.location.path.parent() {
         parent.to_path_buf()
     } else {
@@ -275,7 +324,7 @@ fn entry_from_script(entry: &FileEntry, script_name: &str) -> Result<FileEntry> 
         let mut attributes = entry.attributes.clone();
         attributes.remove("script");
         let text = lines.remove(0);
-        Ok(FileEntry {
+        Ok(QuestionEntry {
             id: entry.id.clone(),
             text,
             following: lines,
@@ -370,7 +419,7 @@ fn read_entry(path: &Path, reader: &mut QuizReader) -> Result<Option<FileEntry>>
     loop {
         match reader.read_line()? {
             Some(FileLine::First(id, text)) => {
-                let mut entry = FileEntry {
+                let mut entry = QuestionEntry {
                     id,
                     text,
                     following: Vec::new(),
@@ -393,9 +442,42 @@ fn read_entry(path: &Path, reader: &mut QuizReader) -> Result<Option<FileEntry>>
                             reader.push(line.unwrap());
                             break;
                         }
+                        Some(_) => {
+                            return Err(QuizError::Parse {
+                                line: reader.line,
+                                whole_entry: false,
+                                message: String::from("unexpected line in question"),
+                            });
+                        },
                     }
                 }
-                return Ok(Some(entry));
+                return Ok(Some(FileEntry::QuestionEntry(entry)));
+            },
+            Some(FileLine::ChoiceGroup(id)) => {
+                let mut entry = ChoiceGroupEntry {
+                    id,
+                    choices: ChoiceGroup::new(),
+                    location: Location { line: reader.line, path: path.to_path_buf() },
+                };
+                loop {
+                    let line = reader.read_line()?;
+                    match line {
+                        Some(FileLine::Blank) | None => {
+                            break;
+                        },
+                        Some(FileLine::Pair(key, value)) => {
+                            entry.choices.insert(key, value);
+                        },
+                        Some(_) => {
+                            return Err(QuizError::Parse {
+                                line: reader.line,
+                                whole_entry: false,
+                                message: String::from("unexpected line in choice group"),
+                            });
+                        },
+                    }
+                }
+                return Ok(Some(FileEntry::ChoiceGroupEntry(entry)));
             },
             Some(FileLine::Blank) => {
                 continue;
@@ -422,17 +504,30 @@ fn split(s: &str, splitter: &str) -> Vec<String> {
 
 enum FileLine {
     First(String, String),
+    ChoiceGroup(String),
     Following(String),
     Pair(String, String),
     Blank,
 }
 
+enum FileEntry {
+    QuestionEntry(QuestionEntry),
+    ChoiceGroupEntry(ChoiceGroupEntry),
+}
+
 #[derive(Clone, Debug)]
-struct FileEntry {
+struct QuestionEntry {
     id: String,
     text: String,
     following: Vec<String>,
     attributes: HashMap<String, String>,
+    location: Location,
+}
+
+#[derive(Clone, Debug)]
+struct ChoiceGroupEntry {
+    id: String,
+    choices: ChoiceGroup,
     location: Location,
 }
 
@@ -499,6 +594,17 @@ impl QuizReader {
             let id = &trimmed[1..brace];
             let rest = &trimmed[brace+1..];
             Ok(Some(FileLine::First(id.trim().to_string(), rest.trim().to_string())))
+        } else if trimmed.starts_with("choice-group") {
+            let rest = &trimmed["choice-group".len()..].trim();
+            if rest.len() > 0 {
+                Ok(Some(FileLine::ChoiceGroup(rest.to_string())))
+            } else {
+                Err(QuizError::Parse {
+                    line: self.line,
+                    whole_entry: false,
+                    message: String::from("expected identifier"),
+                })
+            }
         } else {
             Ok(Some(FileLine::Following(trimmed.to_string())))
         }
