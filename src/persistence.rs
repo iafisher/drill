@@ -17,7 +17,7 @@ use std::str::FromStr;
 
 use super::common::{Location, QuizError, Result};
 use super::quiz::{
-    FlashcardQuestion, ListQuestion, MultipleChoiceQuestion, OrderedListQuestion, Question,
+    Answer, FlashcardQuestion, ListQuestion, MultipleChoiceQuestion, OrderedListQuestion, Question,
     QuestionCommon, QuestionResult, Quiz, QuizResult, ShortAnswerQuestion,
 };
 
@@ -28,7 +28,7 @@ pub fn load_quiz(fullname: &Path) -> Result<Quiz> {
 }
 
 type StoredResults = HashMap<String, Vec<QuestionResult>>;
-type ChoiceGroup = HashMap<String, String>;
+type ChoiceGroup = HashMap<String, Answer>;
 
 pub fn load_results(fullname: &Path) -> Result<StoredResults> {
     let results_path = get_results_path(fullname)?;
@@ -219,13 +219,21 @@ fn entry_to_question(
             if let Some(answer_code) = entry.attributes.get("choice-group-answer") {
                 if let Some(choice_group) = choice_groups.get(choice_group_name) {
                     if let Some(answer) = choice_group.get(answer_code) {
-                        let mut choices: Vec<String> =
-                            choice_group.values().map(|v| v.clone()).collect();
-                        let answer_index = choices.iter().position(|r| r == answer).unwrap();
-                        choices.remove(answer_index);
+                        // Copy all the possible choices, except for all the choices
+                        // corresponding to the correct answer.
+                        let mut choices = Vec::new();
+                        for (choice_code, choice) in choice_group {
+                            if choice_code == answer_code {
+                                continue;
+                            }
+
+                            for choice_variant in choice.iter() {
+                                choices.push(choice_variant.clone());
+                            }
+                        }
                         return Ok(Box::new(MultipleChoiceQuestion {
                             text,
-                            answer: split(&answer, "/"),
+                            answer: answer.clone(),
                             choices: choices,
                             timeout,
                             common,
@@ -474,7 +482,7 @@ fn read_entry(path: &Path, reader: &mut QuizReader) -> Result<Option<FileEntry>>
                             break;
                         }
                         Some(FileLine::Pair(key, value)) => {
-                            entry.choices.insert(key, value);
+                            entry.choices.insert(key, split(&value, "/"));
                         }
                         Some(_) => {
                             return Err(QuizError::Parse {

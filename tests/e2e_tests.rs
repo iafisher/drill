@@ -489,22 +489,22 @@ fn can_use_choice_groups() {
         &["--no-save", "--in-order"],
         &[
             "(1) What is the largest city in Georgia?",
-            r"RE: \(a\) (Atlanta|New York City|Chicago|Dallas)",
-            r"RE: \(b\) (Atlanta|New York City|Chicago|Dallas)",
-            r"RE: \(c\) (Atlanta|New York City|Chicago|Dallas)",
-            r"RE: \(d\) (Atlanta|New York City|Chicago|Dallas)",
+            r"RE: \(a\) (Atlanta|New York City|Chicago|Dallas|NYC)",
+            r"RE: \(b\) (Atlanta|New York City|Chicago|Dallas|NYC)",
+            r"RE: \(c\) (Atlanta|New York City|Chicago|Dallas|NYC)",
+            r"RE: \(d\) (Atlanta|New York City|Chicago|Dallas|NYC)",
             r"> a",
             // Since the order of the choices is random, guessing 'a' may or may not
             // have been correct.
             r"RE: (Correct!|Incorrect\. The correct answer was Atlanta\.)",
             "(2) What is the largest city in Illinois?",
-            r"RE: \(a\) (Atlanta|New York City|Chicago|Dallas)",
-            r"RE: \(b\) (Atlanta|New York City|Chicago|Dallas)",
-            r"RE: \(c\) (Atlanta|New York City|Chicago|Dallas)",
-            r"RE: \(d\) (Atlanta|New York City|Chicago|Dallas)",
+            r"RE: \(a\) (Atlanta|New York City|Chicago|Dallas|NYC)",
+            r"RE: \(b\) (Atlanta|New York City|Chicago|Dallas|NYC)",
+            r"RE: \(c\) (Atlanta|New York City|Chicago|Dallas|NYC)",
+            r"RE: \(d\) (Atlanta|New York City|Chicago|Dallas|NYC)",
             r"> a",
             r"RE: (Correct!|Incorrect\. The correct answer was Chicago\.)",
-            r"RE: (0|50%|100)% out of 2 questions",
+            r"RE: (0\.0|50\.0|100)% out of 2 questions",
             r"RE: (0|1|2) correct",
             r"RE: (0|1|2) incorrect",
         ],
@@ -873,7 +873,7 @@ fn assert_parse_error(path: &str, message: &str, lineno: usize, whole_entry: boo
 
 fn assert_match(got: &str, expected: &str) {
     if expected.starts_with("RE:") {
-        let expected = expected[3..].trim();
+        let expected = format!("^{}$", expected[3..].trim());
         let re = Regex::new(&expected).unwrap();
         assert!(
             re.is_match(&got.trim()),
