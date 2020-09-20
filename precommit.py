@@ -11,7 +11,9 @@ def init(precommit):
     precommit.check(checks.NoWhitespaceInFilePath())
     precommit.check(checks.DoNotSubmit())
 
-    precommit.check(checks.Command("E2ETests", ["./t"], slow=True))
+    precommit.check(
+        checks.Command("E2ETests", ["./t"], slow=True, exclude=["*.md", "precommit.py"])
+    )
     precommit.check(checks.RustFormat())
 
     # Check Python format with black.
