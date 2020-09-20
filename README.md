@@ -9,7 +9,7 @@ Installation requires [Rust](https://www.rust-lang.org/) and [Cargo](https://doc
 $ cargo install --git https://github.com/iafisher/drill.git
 ```
 
-Make a directory for your quizzes and create a quiz for yourself following the format in `sample_quiz`.
+Make a directory for your quizzes and create a quiz for yourself following the format in `sample.quiz`.
 
 Now, run
 
