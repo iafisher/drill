@@ -1,7 +1,5 @@
 # iafisher/drill
-Quiz yourself on trivia, general knowledge, foreign-language vocabulary etc. from the command-line used spaced repetition.
-
-**DISCLAIMER**: While anyone is welcome to use this tool, it is primarily for my personal use and I do not guarantee that backwards compability will be maintained.
+A command-line tool to learn information through spaced repetition.
 
 
 ## Installation and usage
@@ -48,8 +46,7 @@ drill is configurable with command-line flags. Run `drill --help` for details. F
 
 
 ### In-quiz commands
-While taking a quiz, you may find that one of your answers is erroneously marked incorrect. On the next question, you can enter `!!` to mark the previous answer correct. You can also enter `!e` or `!edit` to open up the previous question in a text editor,
-e.g. in case there is a typo in the question text.
+If a question is erroneously marked incorrect (e.g., because you made a typo), you can mark it correct by entering `!!` at the next question prompt. On the next question, you can enter `!!` to mark the previous answer correct. You can also enter `!e` or `!edit` to open up the previous question in a text editor, e.g. in case there is a typo in the question text.
 
 If all else fails, you can directly edit the results file that is created for each quiz.
 
