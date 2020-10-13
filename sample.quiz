@@ -70,7 +70,7 @@ Anthony Eden
 # file itself for details.
 
 
-# Multiple-choice questions offer share the same set of choices, and listing
+# Multiple-choice questions often share the same set of choices, and listing
 # the full set each time for a large number of questions is tedious. You can
 # define a choice group as below that lets you reuse the same choices in more
 # than one question. The choice group must be defined before it is used.
