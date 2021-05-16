@@ -637,8 +637,8 @@ take subcommand:
   --in-order         Ask questions in the order they appear in the quiz file.
   -n <N>             Number of questions to ask. Defaults to 20.
   --random           Choose questions randomly instead of according to spaced
-                     repetition.
-  --save             Save results without prompting.
+                       repetition.
+  --no-save          Don't save results for this session.
   --tag <tag>        Include only questions with given tag.
 
 
