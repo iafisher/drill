@@ -639,13 +639,13 @@ take subcommand:
   --random           Choose questions randomly instead of according to spaced
                      repetition.
   --save             Save results without prompting.
-  --tag <tag>        Include all questions with given tag.
+  --tag <tag>        Include only questions with given tag.
 
 
 count subcommand:
   --exclude <tag>    Exclude all questions with given tag.
   --list-tags        Count questions per tag.
-  --tag <tag>        Include all questions with given tag.
+  --tag <tag>        Include only questions with given tag.
 
 
 history subcommand:
@@ -659,4 +659,4 @@ results subcommand:
 
 search subcommand:
   --exclude <tag>    Exclude all questions with given tag.
-  --tag <tag>        Include all questions with given tag.";
+  --tag <tag>        Include only questions with given tag.";
