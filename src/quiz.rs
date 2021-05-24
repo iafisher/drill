@@ -1,7 +1,7 @@
 /**
  * Implementation of the core quiz data structures.
  *
- * Author:  Ian Fisher (iafisher@protonmail.com)
+ * Author:  Ian Fisher (iafisher@fastmail.com)
  * Version: October 2019
  */
 use std::mem;

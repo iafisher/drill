@@ -1,7 +1,7 @@
 /**
  * The command-line user interface for taking quizzes.
  *
- * Author:  Ian Fisher (iafisher@protonmail.com)
+ * Author:  Ian Fisher (iafisher@fastmail.com)
  * Version: October 2019
  */
 use std::io::Write;

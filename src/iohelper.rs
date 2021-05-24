@@ -1,7 +1,7 @@
 /**
  * Helper functions for input and output.
  *
- * Author:  Ian Fisher (iafisher@protonmail.com)
+ * Author:  Ian Fisher (iafisher@fastmail.com)
  * Version: October 2019
  */
 use colored::*;

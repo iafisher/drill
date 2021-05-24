@@ -11,7 +11,7 @@
  * consist roughly of 50% questions from Bucket 1, 20% questions each from Bucket 2 and
  * Bucket 3, and 10% questions from Bucket 4.
  *
- * Author:  Ian Fisher (iafisher@protonmail.com)
+ * Author:  Ian Fisher (iafisher@fastmail.com)
  * Version: October 2019
  */
 use std::cmp;

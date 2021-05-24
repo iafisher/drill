@@ -2,7 +2,7 @@
  * Definitions of data structures used by several modules, such as `QuizError` and the
  * various structs that hold command-line arguments.
  *
- * Author:  Ian Fisher (iafisher@protonmail.com)
+ * Author:  Ian Fisher (iafisher@fastmail.com)
  * Version: October 2019
  */
 use std::error;

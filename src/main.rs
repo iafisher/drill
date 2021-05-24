@@ -1,7 +1,7 @@
 /**
  * Take a pop quiz from the command line.
  *
- * Author:  Ian Fisher (iafisher@protonmail.com)
+ * Author:  Ian Fisher (iafisher@fastmail.com)
  * Version: October 2019
  */
 mod common;

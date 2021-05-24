@@ -2,7 +2,7 @@
  * Functions and data structures for reading and writing quiz and results files in the
  * filesystem.
  *
- * Author:  Ian Fisher (iafisher@protonmail.com)
+ * Author:  Ian Fisher (iafisher@fastmail.com)
  * Version: October 2019
  */
 use std::collections::{BTreeMap, HashMap, HashSet};
