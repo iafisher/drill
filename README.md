@@ -30,9 +30,6 @@ $ drill --results <name> -n 20 --sort least
 
 # Search for a question.
 $ drill --search <name> <keyword>
-
-# See per-question history.
-$ drill --history <name> <question-id>
 ```
 
 If `<name>` isn't supplied and isn't followed by a positional argument, then it defaults to `main`.

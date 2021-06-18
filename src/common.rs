@@ -91,7 +91,6 @@ pub struct Options {
 }
 
 pub enum Command {
-    History(HistoryOptions),
     Results(ResultsOptions),
     Search(SearchOptions),
     Take(TakeOptions),
@@ -101,11 +100,6 @@ pub enum Command {
 pub struct FilterOptions {
     pub exclude: Vec<String>,
     pub tags: Vec<String>,
-}
-
-pub struct HistoryOptions {
-    pub name: PathBuf,
-    pub id: String,
 }
 
 pub struct ResultsOptions {

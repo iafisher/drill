@@ -21,7 +21,7 @@ use std::path::PathBuf;
 use colored::*;
 
 use common::{Command, Options, QuizError, Result};
-use iohelper::{prettyprint, prettyprint_colored};
+use iohelper::prettyprint_colored;
 use quiz::QuestionResult;
 use ui::CmdUI;
 
@@ -39,7 +39,6 @@ fn main() {
     }
 
     let result = match options.cmd {
-        Command::History(options) => main_history(&options),
         Command::Results(options) => main_results(&options),
         Command::Search(options) => main_search(&options),
         Command::Take(options) => main_take(&options),
@@ -51,37 +50,6 @@ fn main() {
             ::std::process::exit(2);
         }
     }
-}
-
-pub fn main_history(options: &common::HistoryOptions) -> Result<()> {
-    let quiz = persistence::load_quiz(&options.name)?;
-    if let Some(pos) = quiz.find(&options.id) {
-        let q = &quiz.questions[pos];
-        let prefix = format!("[{}] ", q.get_common().id);
-        prettyprint_colored(&q.get_text(), &prefix, None, Some(Color::Cyan))?;
-        my_print!("\n")?;
-
-        let results = &q.get_common().prior_results;
-        if results.len() > 0 {
-            for result in results.iter() {
-                let date = result
-                    .time_asked
-                    .with_timezone(&chrono::Local)
-                    .format("%F %l:%M %p");
-                let score = colored_score(result.score);
-                let prefix = format!("{}: {} for ", date, score);
-                prettyprint(&response(&result), &prefix)?;
-            }
-
-            my_print!("\n")?;
-            print_stats(&results)?;
-        } else {
-            prettyprint("No results for this question.", "")?;
-        }
-    } else {
-        prettyprint(&format!("No question with id '{}' found.", options.id), "")?;
-    }
-    Ok(())
 }
 
 /// The main function for the `results` subcommand.
@@ -187,12 +155,6 @@ fn parse_options() -> common::Options {
     }
 
     match args[0].as_str() {
-        "--history" => {
-            return Options {
-                no_color,
-                cmd: common::Command::History(parse_history_options(&args)),
-            };
-        }
         "--results" => {
             return Options {
                 no_color,
@@ -221,21 +183,6 @@ fn parse_options() -> common::Options {
                 cmd: common::Command::Take(parse_take_options(&args)),
             };
         }
-    }
-}
-
-fn parse_history_options(args: &Vec<String>) -> common::HistoryOptions {
-    if args.len() != 3 {
-        cmd_error("Expected exactly two arguments to --history.");
-    }
-
-    if args[1].starts_with("-") {
-        cmd_error(&format!("Expected quiz name, not {}.", args[1]));
-    }
-
-    common::HistoryOptions {
-        name: PathBuf::from(&args[1]),
-        id: args[2].clone(),
     }
 }
 
@@ -400,18 +347,6 @@ fn cmd_error(msg: &str) -> ! {
     ::std::process::exit(1);
 }
 
-fn print_stats(results: &Vec<QuestionResult>) -> Result<()> {
-    my_println!("Sample: {}", format!("{:>6}", results.len()).cyan())?;
-    let mean = quiz::score_to_perc(results_mean(results).unwrap()) * 100.0;
-    my_println!("Mean:   {}", format!("{:>5.1}%", mean).cyan())?;
-    let median = quiz::score_to_perc(results_median(results)) * 100.0;
-    my_println!("Median: {}", format!("{:>5.1}%", median).cyan())?;
-    let max = quiz::score_to_perc(results_max(results)) * 100.0;
-    my_println!("Max:    {}", format!("{:>5.1}%", max).cyan())?;
-    let min = quiz::score_to_perc(results_min(results)) * 100.0;
-    my_println!("Min:    {}", format!("{:>5.1}%", min).cyan())
-}
-
 /// An alias for a commonly-used typed in comparison functions.
 /// (score, number of results, ID, question text)
 type CmpQuestionResult = (u64, usize, String, String);
@@ -473,16 +408,6 @@ fn is_broken_pipe(e: &QuizError) -> bool {
     false
 }
 
-fn response(result: &QuestionResult) -> String {
-    if let Some(response) = result.response.as_ref() {
-        format!("'{}'", response)
-    } else if let Some(response_list) = result.response_list.as_ref() {
-        format!("'{}'", response_list.join(" / "))
-    } else {
-        String::from("<response not recorded>")
-    }
-}
-
 fn results_mean(results: &Vec<QuestionResult>) -> Option<u64> {
     if results.len() > 0 {
         // Tried to do this with iterators but Rust's type checker couldn't handle it.
@@ -496,40 +421,10 @@ fn results_mean(results: &Vec<QuestionResult>) -> Option<u64> {
     }
 }
 
-fn results_median(results: &Vec<QuestionResult>) -> u64 {
-    let mut results: Vec<u64> = results.iter().map(|r| r.score).collect();
-    results.sort();
-    if results.len() % 2 == 0 {
-        (results[results.len() / 2] + results[(results.len() / 2) - 1]) / 2
-    } else {
-        results[results.len() / 2]
-    }
-}
-
-fn results_max(results: &Vec<QuestionResult>) -> u64 {
-    results.iter().map(|r| r.score).max().unwrap()
-}
-
-fn results_min(results: &Vec<QuestionResult>) -> u64 {
-    results.iter().map(|r| r.score).min().unwrap()
-}
-
-fn colored_score(score: u64) -> ColoredString {
-    let score = quiz::score_to_perc(score) * 100.0;
-    if score >= 80.0 {
-        format!("{:>5.1}%", score).green()
-    } else if score <= 20.0 {
-        format!("{:>5.1}%", score).red()
-    } else {
-        format!("{:>5.1}%", score).cyan()
-    }
-}
-
 const HELP: &'static str = r"drill: quiz yourself from the command line.
 
 Usage:
   drill <quiz>
-  drill --history <quiz> <question>
   drill --results <quiz>
   drill --search <quiz> <term>
   drill --help
@@ -547,10 +442,6 @@ take subcommand:
                        repetition.
   --no-save          Don't save results for this session.
   --tag <tag>        Include only questions with given tag.
-
-
-history subcommand:
-  <no special options>
 
 
 results subcommand:

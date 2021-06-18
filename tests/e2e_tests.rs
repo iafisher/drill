@@ -99,23 +99,6 @@ fn can_save_results_and_track_history() {
         &stdout,
         "50.0% of  2   [1] What is the capital of Mongolia?\n",
     );
-
-    let (stdout, stderr) = spawn_and_mock(&["--no-color", "--history", "tests/quizzes/test1", "1"]);
-    assert_match(&stderr, "");
-    assert_match(
-        &stdout,
-        r#"RE:
-\[1\] What is the capital of Mongolia\?
-
-20\d{2}-\d{2}-\d{2} [ 1]\d:\d{2} (AM|PM): 100.0% for 'Ulan Bator'
-20\d{2}-\d{2}-\d{2} [ 1]\d:\d{2} (AM|PM):   0.0% for 'Khovd'
-
-Sample:      2
-Mean:    50.0%
-Median:  50.0%
-Max:    100.0%
-Min:      0.0%"#,
-    );
 }
 
 #[test]
@@ -446,50 +429,6 @@ fn searching_questions_works() {
     assert_match(
         &stdout,
         "[2] What is the capital of Turkey?\n[3] What is the capital of Bulgaria?",
-    );
-}
-
-#[test]
-#[ignore] // Test is erroneously failing: #98
-fn history_subcommand_works() {
-    let (stdout, stderr) =
-        spawn_and_mock(&["--no-color", "--history", "tests/quizzes/long/long", "1"]);
-    assert_match(&stderr, "");
-    assert_match(
-        &stdout,
-        r"
-[1] What are the three core types of objects in the Git version control system?
-
-2019-11-01 10:36 PM: 100.0% for 'blobs / trees / commits'
-2019-11-02 12:51 PM:  66.6% for 'trees / commits / files'
-2019-11-08  5:29 PM:   0.0% for ''
-
-Sample:      3
-Mean:    55.5%
-Median:  66.6%
-Max:    100.0%
-Min:      0.0%
-        ",
-    );
-
-    let (stdout, stderr) =
-        spawn_and_mock(&["--no-color", "--history", "tests/quizzes/long/long", "3"]);
-    assert_match(&stderr, "");
-    assert_match(
-        &stdout,
-        r"
-[3] What application-level communications protocol is used to deliver mail
-    between email servers?
-
-2019-11-01 10:36 PM: 100.0% for 'SMTP'
-2019-11-02 12:51 PM: 100.0% for 'SMTP'
-
-Sample:      2
-Mean:   100.0%
-Median: 100.0%
-Max:    100.0%
-Min:    100.0%
-        ",
     );
 }
 
