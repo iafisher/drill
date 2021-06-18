@@ -5,7 +5,6 @@
  * Version: October 2019
  */
 use std::mem;
-use std::time;
 
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -45,10 +44,6 @@ impl Quiz {
             ui.instructions(&instructions)?;
         }
 
-        if questions.iter().any(|q| q.timed()) {
-            ui.warning("This quiz contains timed questions!")?;
-        }
-
         let mut results = Vec::new();
         let mut index = 0;
         ui.next();
@@ -66,7 +61,6 @@ impl Quiz {
                         let last = results.len() - 1;
                         if results[last].score < 1000 {
                             results[last].score = 1000;
-                            results[last].timed_out.replace(true);
                             ui.status("Previous answer marked correct.")?;
                         } else {
                             ui.status("Previous answer was already correct.")?;
@@ -129,9 +123,6 @@ pub trait Question: std::fmt::Debug {
     fn ask(&self, ui: &mut CmdUI) -> Result<QuestionResult>;
     fn get_common(&self) -> &QuestionCommon;
     fn get_text(&self) -> String;
-    fn timed(&self) -> bool {
-        false
-    }
     fn flip(&mut self) {}
 }
 
@@ -147,10 +138,6 @@ pub struct QuestionCommon {
 pub struct ShortAnswerQuestion {
     pub text: String,
     pub answer: Answer,
-    /// If specified, the number of seconds the user has to answer the question for full
-    /// credit. Once passed, the user can still get partial credit up if she answers
-    /// within `2*timeout` seconds.
-    pub timeout: Option<u64>,
     pub common: QuestionCommon,
 }
 
@@ -160,31 +147,20 @@ impl Question for ShortAnswerQuestion {
         if let Some(guess) = ui.prompt()? {
             if check(&self.answer, &guess) {
                 ui.correct()?;
-                let elapsed = ui.get_elapsed();
-                let (score, timed_out) = calculate_score(1000, self.timeout, elapsed);
-                if timed_out {
-                    ui.score(score, timed_out)?;
-                }
+                let score = 1000;
                 Ok(mkresult(
                     &self.get_common().id,
                     &self.text,
                     Some(guess),
                     score,
-                    timed_out,
                 ))
             } else {
                 ui.incorrect(Some(&self.answer[0]))?;
-                Ok(mkresult(
-                    &self.get_common().id,
-                    &self.text,
-                    Some(guess),
-                    0,
-                    false,
-                ))
+                Ok(mkresult(&self.get_common().id, &self.text, Some(guess), 0))
             }
         } else {
             ui.incorrect(Some(&self.answer[0]))?;
-            Ok(mkresult(&self.get_common().id, &self.text, None, 0, false))
+            Ok(mkresult(&self.get_common().id, &self.text, None, 0))
         }
     }
 
@@ -194,9 +170,6 @@ impl Question for ShortAnswerQuestion {
     fn get_text(&self) -> String {
         self.text.clone()
     }
-    fn timed(&self) -> bool {
-        self.timeout.is_some()
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -205,7 +178,6 @@ pub struct FlashcardQuestion {
     pub back: Answer,
     pub front_context: Option<String>,
     pub back_context: Option<String>,
-    pub timeout: Option<u64>,
     pub common: QuestionCommon,
 }
 
@@ -221,31 +193,15 @@ impl Question for FlashcardQuestion {
         if let Some(guess) = ui.prompt()? {
             if check(&self.back, &guess) {
                 ui.correct()?;
-                let elapsed = ui.get_elapsed();
-                let (score, timed_out) = calculate_score(1000, self.timeout, elapsed);
-                if timed_out {
-                    ui.score(score, timed_out)?;
-                }
-                Ok(mkresult(
-                    &self.get_common().id,
-                    &text,
-                    Some(guess),
-                    score,
-                    timed_out,
-                ))
+                let score = 1000;
+                Ok(mkresult(&self.get_common().id, &text, Some(guess), score))
             } else {
                 ui.incorrect(Some(&self.back[0]))?;
-                Ok(mkresult(
-                    &self.get_common().id,
-                    &text,
-                    Some(guess),
-                    0,
-                    false,
-                ))
+                Ok(mkresult(&self.get_common().id, &text, Some(guess), 0))
             }
         } else {
             ui.incorrect(Some(&self.back[0]))?;
-            Ok(mkresult(&self.get_common().id, &text, None, 0, false))
+            Ok(mkresult(&self.get_common().id, &text, None, 0))
         }
     }
 
@@ -254,9 +210,6 @@ impl Question for FlashcardQuestion {
     }
     fn get_text(&self) -> String {
         self.front[0].clone()
-    }
-    fn timed(&self) -> bool {
-        self.timeout.is_some()
     }
 
     fn flip(&mut self) {
@@ -340,7 +293,7 @@ impl Question for ListQuestion {
         }
         let score = (n - missed.len()) as f64 / (n as f64);
         let score = (score * 1000.0) as u64;
-        ui.score(score, false)?;
+        ui.score(score)?;
 
         Ok(mkresultlist(
             &self.get_common().id,
@@ -413,7 +366,7 @@ impl Question for OrderedListQuestion {
         }
         let score = (ncorrect as f64) / (self.answer_list.len() as f64);
         let score = (score * 1000.0) as u64;
-        ui.score(score, false)?;
+        ui.score(score)?;
         Ok(mkresultlist(
             &self.get_common().id,
             &self.text,
@@ -435,7 +388,6 @@ pub struct MultipleChoiceQuestion {
     pub text: String,
     pub answer: Answer,
     pub choices: Vec<String>,
-    pub timeout: Option<u64>,
     pub common: QuestionCommon,
 }
 
@@ -484,18 +436,8 @@ impl Question for MultipleChoiceQuestion {
                 break;
             }
         }
-        let (score, timed_out) = calculate_score(
-            if correct { 1000 } else { 0 },
-            self.timeout,
-            ui.get_elapsed(),
-        );
-        Ok(mkresult(
-            &self.get_common().id,
-            &self.text,
-            response,
-            score,
-            timed_out,
-        ))
+        let score = if correct { 1000 } else { 0 };
+        Ok(mkresult(&self.get_common().id, &self.text, response, score))
     }
 
     fn get_common(&self) -> &QuestionCommon {
@@ -503,9 +445,6 @@ impl Question for MultipleChoiceQuestion {
     }
     fn get_text(&self) -> String {
         self.text.clone()
-    }
-    fn timed(&self) -> bool {
-        self.timeout.is_some()
     }
 }
 
@@ -578,36 +517,8 @@ fn normalize(guess: &str) -> String {
     String::from(guess.to_lowercase()).nfc().collect::<String>()
 }
 
-/// Calculate the final score given the base score, the question's timeout, and how
-/// long it took to answer the question. Return `(score, timed_out)` where `timed_out`
-/// indicates whether the time limit was exceeded.
-fn calculate_score(base_score: u64, timeout: Option<u64>, elapsed: time::Duration) -> (u64, bool) {
-    if let Some(timeout) = timeout {
-        let e = elapsed.as_millis() as i128;
-        let t = (timeout * 1000) as i128;
-        if e <= t {
-            (base_score, false)
-        } else if e < 2 * t {
-            (
-                (base_score as f64 * (-1.0 / (t as f64)) * (e - 2 * t) as f64) as u64,
-                true,
-            )
-        } else {
-            (0, true)
-        }
-    } else {
-        (base_score, false)
-    }
-}
-
 /// Construct a `QuestionResult` object.
-fn mkresult(
-    id: &str,
-    text: &str,
-    response: Option<String>,
-    score: u64,
-    timed_out: bool,
-) -> QuestionResult {
+fn mkresult(id: &str, text: &str, response: Option<String>, score: u64) -> QuestionResult {
     QuestionResult {
         id: String::from(id),
         text: Some(String::from(text)),
@@ -615,7 +526,7 @@ fn mkresult(
         score,
         response,
         response_list: None,
-        timed_out: Some(timed_out),
+        timed_out: None,
     }
 }
 
@@ -628,8 +539,7 @@ fn mkresultlist(id: &str, text: &str, responses: Vec<String>, score: u64) -> Que
         score,
         response: None,
         response_list: Some(responses),
-        // List questions don't support time outs.
-        timed_out: Some(false),
+        timed_out: None,
     }
 }
 

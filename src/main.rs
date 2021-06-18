@@ -88,11 +88,7 @@ pub fn main_history(options: &common::HistoryOptions) -> Result<()> {
                     .with_timezone(&chrono::Local)
                     .format("%F %l:%M %p");
                 let score = colored_score(result.score);
-                let prefix = if let Some(true) = result.timed_out {
-                    format!("{}: {} (timeout) for ", date, score)
-                } else {
-                    format!("{}: {} for ", date, score)
-                };
+                let prefix = format!("{}: {} for ", date, score);
                 prettyprint(&response(&result), &prefix)?;
             }
 

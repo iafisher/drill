@@ -72,16 +72,9 @@ impl CmdUI {
         my_println!("{}", text)
     }
 
-    pub fn score(&mut self, score: u64, timed_out: bool) -> Result<()> {
+    pub fn score(&mut self, score: u64) -> Result<()> {
         let scorestr = format!("{:.1}%", (score as f64) / 10.0).cyan();
-        if timed_out {
-            my_println!(
-                "Score for this question: {} (exceeded time limit)",
-                scorestr
-            )
-        } else {
-            my_println!("Score for this question: {}", scorestr)
-        }
+        my_println!("Score for this question: {}", scorestr)
     }
 
     pub fn missed(&mut self, missed: &Vec<&str>) -> Result<()> {
@@ -98,10 +91,6 @@ impl CmdUI {
             prettyprint(choice, &prefix)?;
         }
         my_print!("\n")
-    }
-
-    pub fn get_elapsed(&self) -> time::Duration {
-        self.time_started.elapsed()
     }
 
     pub fn instructions(&mut self, text: &str) -> Result<()> {

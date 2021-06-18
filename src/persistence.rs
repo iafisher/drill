@@ -13,7 +13,6 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::str::FromStr;
 
 use super::common::{Location, QuizError, Result};
 use super::quiz::{
@@ -164,12 +163,6 @@ fn entry_to_question(
         location: entry.location.clone(),
     };
 
-    let timeout = if let Some(_timeout) = entry.attributes.get("timeout") {
-        Some(parse_u64(_timeout, lineno)?)
-    } else {
-        settings.timeout
-    };
-
     let script = settings.script.as_ref().or(entry.attributes.get("script"));
     let entry = if let Some(script) = script {
         entry_from_script(entry, script)?
@@ -180,7 +173,7 @@ fn entry_to_question(
     // TODO: Handle multiple question texts.
     let text = entry.text.clone();
     if entry.following.len() == 1 {
-        check_fields(&entry.attributes, &["choices", "tags", "timeout"], lineno)?;
+        check_fields(&entry.attributes, &["choices", "tags"], lineno)?;
 
         let answer = split(&entry.following[0], "/");
         if let Some(choices) = entry.attributes.get("choices") {
@@ -188,20 +181,18 @@ fn entry_to_question(
                 text,
                 answer,
                 choices: split(&choices, "/"),
-                timeout,
                 common,
             }));
         } else {
             return Ok(Box::new(ShortAnswerQuestion {
                 text,
                 answer,
-                timeout,
                 common,
             }));
         }
     } else if entry.following.len() == 0 {
         if let Some(equal) = entry.text.find("=") {
-            check_fields(&entry.attributes, &["tags", "timeout"], lineno)?;
+            check_fields(&entry.attributes, &["tags"], lineno)?;
 
             let frnt = entry.text[..equal].trim().to_string();
             let (front, front_context) = get_context(&frnt, lineno)?;
@@ -212,7 +203,6 @@ fn entry_to_question(
                 back: split(&back, "/"),
                 front_context,
                 back_context,
-                timeout,
                 common,
             }));
         } else if let Some(choice_group_name) = entry.attributes.get("choice-group") {
@@ -235,7 +225,6 @@ fn entry_to_question(
                             text,
                             answer: answer.clone(),
                             choices: choices,
-                            timeout,
                             common,
                         }));
                     } else {
@@ -367,7 +356,6 @@ fn run_script(script_path: &Path, arg1: &str, arg2: &str) -> io::Result<String> 
 struct GlobalSettings {
     instructions: Option<String>,
     script: Option<String>,
-    timeout: Option<u64>,
 }
 
 /// Read the initial settings from the file.
@@ -375,7 +363,6 @@ fn read_settings(reader: &mut QuizReader) -> Result<GlobalSettings> {
     let mut settings = GlobalSettings {
         instructions: None,
         script: None,
-        timeout: None,
     };
     let mut first_line = true;
     loop {
@@ -383,8 +370,6 @@ fn read_settings(reader: &mut QuizReader) -> Result<GlobalSettings> {
             Some(FileLine::Pair(key, val)) => {
                 if key == "instructions" {
                     settings.instructions.replace(val);
-                } else if key == "timeout" {
-                    settings.timeout.replace(parse_u64(&val, reader.line)?);
                 } else if key == "script" {
                     settings.script.replace(val);
                 } else {
@@ -628,14 +613,6 @@ impl QuizReader {
             Ok(Some(FileLine::Following(trimmed.to_string())))
         }
     }
-}
-
-fn parse_u64(s: &str, lineno: usize) -> Result<u64> {
-    u64::from_str(s).map_err(|_| QuizError::Parse {
-        line: lineno,
-        whole_entry: true,
-        message: String::from("could not parse integer"),
-    })
 }
 
 fn get_context(line: &str, lineno: usize) -> Result<(String, Option<String>)> {

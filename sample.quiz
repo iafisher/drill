@@ -49,16 +49,7 @@ Thomas Jefferson / Jefferson
 # The `choices` field makes this question into a multiple-choice question!
 
 
-[5] Quick: What's the capital of Paraguay?
-Asunción / Asuncion
-# ^ Unicode is fully supported!
-- timeout: 5
-# The user has 5 seconds to answer the question without being penalized. If
-# they answer correctly within twice the time limit, they will receive partial
-# credit.
-
-
-[6] List the first three post-war Prime Ministers of the United Kingdom.
+[5] List the first three post-war Prime Ministers of the United Kingdom.
 Winston Churchill
 Clement Attlee
 Anthony Eden
@@ -85,6 +76,6 @@ choice-group architecture
 - beaux-arts: predominantly neoclassical, with Gothic and Renaissance elements
 
 # This question uses the choice group defines above.
-[7] Which description best fits the Italianate style of architecture?
+[6] Which description best fits the Italianate style of architecture?
 - choice-group-answer: italianate
 - choice-group: architecture

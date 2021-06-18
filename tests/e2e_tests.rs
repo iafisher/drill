@@ -311,43 +311,6 @@ fn flashcards_context() {
 }
 
 #[test]
-fn timeouts_work() {
-    // This test can't use `play_quiz` because it needs to control how long the thread
-    // sleeps between answering questions.
-    let mut process = spawn(&[
-        "--no-color",
-        "tests/quizzes/test_timeouts",
-        "--in-order",
-        "--no-save",
-    ]);
-    let stdin = process.stdin.as_mut().expect("Failed to open stdin");
-    stdin_write(stdin, "Chisinau");
-    sleep(1200);
-    stdin_write(stdin, "Kiev");
-    sleep(1200);
-    stdin_write(stdin, "Sardinia");
-    stdin_write(stdin, "Sicily");
-
-    let result = process.wait_with_output().expect("Failed to read stdout");
-    let stdout = String::from_utf8_lossy(&result.stdout).to_string();
-
-    assert_in_order(
-        &stdout,
-        &[
-            "Warning: This quiz contains timed questions!",
-            "Correct!\n",
-            "Correct!\n",
-            "exceeded time limit",
-            "Correct!\n",
-            "Correct!\n",
-            // Make sure we got full credit for the list question.
-            "2 correct",
-            "1 partially correct",
-        ],
-    );
-}
-
-#[test]
 fn can_correct_questions_in_quiz() {
     play_quiz(
         "test_correction",
@@ -504,7 +467,7 @@ fn can_use_choice_groups() {
             r"RE: \(d\) (Atlanta|New York City|Chicago|Dallas|NYC)",
             r"> a",
             r"RE: (Correct!|Incorrect\. The correct answer was Chicago\.)",
-            r"RE: (0\.0|50\.0|100)% out of 2 questions",
+            r"RE: (0\.0|50\.0|100\.0)% out of 2 questions",
             r"RE: (0|1|2) correct",
             r"RE: (0|1|2) incorrect",
         ],
@@ -748,11 +711,6 @@ fn parse_error_no_first_line() {
 #[test]
 fn parse_error_bad_attribute() {
     assert_parse_error("test_bad_attribute", "expected colon", 3, false);
-}
-
-#[test]
-fn parse_error_bad_timeout_value() {
-    assert_parse_error("test_bad_timeout_value", "could not parse integer", 1, true);
 }
 
 #[test]
