@@ -233,7 +233,6 @@ fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
     let mut in_order = false;
     let mut no_save = false;
     let mut num_to_ask = 20;
-    let mut random = false;
     let mut exclude = Vec::new();
     let mut tags = Vec::new();
     let mut i = if args.len() > 0 && args[0] == "--take" {
@@ -256,9 +255,6 @@ fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
                 cmd_error("Expected integer argument to -n.");
             }
             i += 2;
-        } else if args[i] == "--random" {
-            random = true;
-            i += 1;
         } else if args[i] == "--no-save" {
             no_save = true;
             i += 1;
@@ -288,7 +284,6 @@ fn parse_take_options(args: &Vec<String>) -> common::TakeOptions {
         in_order,
         no_save,
         num_to_ask,
-        random,
         filter_opts: common::FilterOptions { exclude, tags },
     }
 }
@@ -388,8 +383,6 @@ take subcommand:
   --flip             Flip all flashcards in the quiz.
   --in-order         Ask questions in the order they appear in the quiz file.
   -n <N>             Number of questions to ask. Defaults to 20.
-  --random           Choose questions randomly instead of according to spaced
-                       repetition.
   --no-save          Don't save results for this session.
   --tag <tag>        Include only questions with given tag.
 

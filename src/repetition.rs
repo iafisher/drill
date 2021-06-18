@@ -43,13 +43,6 @@ pub fn choose_questions<'a>(
         }
     }
 
-    let mut rng = thread_rng();
-    if options.random {
-        candidates.shuffle(&mut rng);
-        candidates.truncate(options.num_to_ask);
-        return candidates;
-    }
-
     let mut buckets = Vec::new();
     for _ in 0..BUCKET_ALLOCATION.len() {
         buckets.push(Vec::new());
@@ -85,6 +78,7 @@ pub fn choose_questions<'a>(
     if options.in_order {
         chosen.sort_by(cmp_questions_in_order);
     } else {
+        let mut rng = thread_rng();
         chosen.shuffle(&mut rng);
     }
 

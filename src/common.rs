@@ -119,7 +119,6 @@ pub struct TakeOptions {
     pub in_order: bool,
     pub no_save: bool,
     pub num_to_ask: usize,
-    pub random: bool,
     pub filter_opts: FilterOptions,
 }
 
