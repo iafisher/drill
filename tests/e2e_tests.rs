@@ -677,23 +677,6 @@ fn play_quiz(name: &str, extra_args: &[&str], in_out: &[&str]) {
     }
 }
 
-fn assert_in_order(mock_stdout: &str, data: &[&str]) {
-    let mut last_pos = 0;
-    for datum in data {
-        if let Some(pos) = mock_stdout[last_pos..].find(datum) {
-            // `pos` must be adjusted by an offset of `last_pos` because it is an index
-            // in the slice `mock_stdout[last_pos..]` but we want it to be relative to
-            // `mock_stdout`.
-            last_pos = (pos + last_pos) + datum.len();
-        } else {
-            panic!(
-                "Missing: {:?}; Contents of stdout: {:?}",
-                datum, mock_stdout
-            );
-        }
-    }
-}
-
 fn spawn_and_mock(args: &[&str]) -> (String, String) {
     let child = spawn(args);
     let result = child.wait_with_output().expect("Failed to read stdout");

@@ -33,9 +33,9 @@ const DOWN_THRESHOLD: u64 = 400;
 
 /// Choose a set of questions, filtered by the command-line options.
 pub fn choose_questions<'a>(
-    questions: &'a Vec<Box<Question>>,
+    questions: &'a Vec<Box<dyn Question>>,
     options: &TakeOptions,
-) -> Vec<&'a Box<Question>> {
+) -> Vec<&'a Box<dyn Question>> {
     let mut candidates = Vec::new();
     for question in questions.iter() {
         if common::filter_tags(&question.get_common().tags, &options.filter_opts) {
@@ -102,7 +102,7 @@ fn get_bucket(results: &Vec<QuestionResult>) -> usize {
 
 /// Comparison function that sorts an array of `Question` objects in the order the
 /// questions appeared in the original quiz file based on the `location` field.
-fn cmp_questions_in_order(a: &&Box<Question>, b: &&Box<Question>) -> cmp::Ordering {
+fn cmp_questions_in_order(a: &&Box<dyn Question>, b: &&Box<dyn Question>) -> cmp::Ordering {
     let a_location = &a.get_common().location;
     let b_location = &b.get_common().location;
     if a_location.line < b_location.line {
@@ -119,7 +119,7 @@ fn cmp_questions_in_order(a: &&Box<Question>, b: &&Box<Question>) -> cmp::Orderi
 /// Comparison function that sorts an array of `Question` objects so that the questions
 /// that were least recently asked appear first. Questions that have never been asked
 /// will appear at the very front.
-fn cmp_questions_oldest_first(a: &&&Box<Question>, b: &&&Box<Question>) -> cmp::Ordering {
+fn cmp_questions_oldest_first(a: &&&Box<dyn Question>, b: &&&Box<dyn Question>) -> cmp::Ordering {
     // NOTE: This method assumes that the `prior_results` field of `Question` objects
     // is ordered chronologically, which should always be true.
     let a_common = a.get_common();

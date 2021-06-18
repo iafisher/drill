@@ -99,12 +99,6 @@ impl CmdUI {
         my_print!("\n")
     }
 
-    pub fn warning(&mut self, text: &str) -> Result<()> {
-        my_print!("\n")?;
-        prettyprint_colored(&format!("Warning: {}", text), "  ", Some(Color::Red), None)?;
-        my_print!("\n")
-    }
-
     pub fn results(&mut self, results: &QuizResult) -> Result<()> {
         if results.total > 0 {
             let score_as_str = format!("{:.1}%", (results.score as f64) / 10.0);

@@ -140,7 +140,7 @@ fn entry_to_question(
     entry: &QuestionEntry,
     choice_groups: &HashMap<String, ChoiceGroup>,
     old_results: &StoredResults,
-) -> Result<Box<Question>> {
+) -> Result<Box<dyn Question>> {
     let lineno = entry.location.line;
     let tags = entry
         .attributes
