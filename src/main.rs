@@ -74,20 +74,7 @@ pub fn main_results(options: &common::ResultsOptions) -> Result<()> {
     }
 
     aggregated.sort_by(cmp_results_id);
-    if options.sort == "best" {
-        aggregated.sort_by(cmp_results_best);
-    } else if options.sort == "worst" {
-        aggregated.sort_by(cmp_results_worst);
-    } else if options.sort == "most" {
-        aggregated.sort_by(cmp_results_most);
-    } else if options.sort == "least" {
-        aggregated.sort_by(cmp_results_least);
-    } else {
-    }
-
-    if let Some(n) = options.num_to_show {
-        aggregated.truncate(n);
-    }
+    aggregated.sort_by(cmp_results_best);
 
     for (score, attempts, id, text) in aggregated.iter() {
         let score = quiz::score_to_perc(*score) * 100.0;
@@ -188,32 +175,9 @@ fn parse_options() -> common::Options {
 
 fn parse_results_options(args: &Vec<String>) -> common::ResultsOptions {
     let mut name = None;
-    let mut num_to_show = None;
-    let mut sort = None;
     let mut i = 1;
     while i < args.len() {
-        if args[i] == "-n" {
-            cmd_assert_next(args, i);
-            if let Ok(n) = usize::from_str_radix(&args[i + 1], 10) {
-                num_to_show.replace(n);
-            } else {
-                cmd_error("Expected integer argument to -n.");
-            }
-            i += 2;
-        } else if args[i] == "-s" || args[i] == "--sort" {
-            cmd_assert_next(args, i);
-            if args[i + 1] != "best"
-                && args[i + 1] != "worst"
-                && args[i + 1] != "most"
-                && args[i + 1] != "least"
-            {
-                cmd_error(
-                    "Expected argument to --sort to be one of 'best', 'worst', 'most' or 'least'.",
-                );
-            }
-            sort.replace(args[i + 1].clone());
-            i += 2;
-        } else if args[i].starts_with("-") {
+        if args[i].starts_with("-") {
             cmd_error_unexpected_option(&args[i]);
         } else {
             if name.is_some() {
@@ -227,8 +191,6 @@ fn parse_results_options(args: &Vec<String>) -> common::ResultsOptions {
 
     common::ResultsOptions {
         name: name.unwrap_or(PathBuf::from("main")),
-        num_to_show,
-        sort: sort.unwrap_or(String::from("best")),
     }
 }
 
@@ -375,12 +337,6 @@ fn cmp_results_best(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
     }
 }
 
-/// Comparison function that sorts an array of question results such that the worst
-/// results come first.
-fn cmp_results_worst(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
-    return cmp_results_best(a, b).reverse();
-}
-
 /// Comparison function that sorts an array of question results such that the results
 /// with the most attempts come first.
 fn cmp_results_most(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
@@ -391,12 +347,6 @@ fn cmp_results_most(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
     } else {
         return Ordering::Equal;
     }
-}
-
-/// Comparison function that sorts an array of question results such that the results
-/// with the least attempts come first.
-fn cmp_results_least(a: &CmpQuestionResult, b: &CmpQuestionResult) -> Ordering {
-    return cmp_results_most(a, b).reverse();
 }
 
 fn is_broken_pipe(e: &QuizError) -> bool {
@@ -445,8 +395,7 @@ take subcommand:
 
 
 results subcommand:
-  -n <N>             Number of results to display.
-  -s, --sort <sort>  Sort order. One of 'best', 'worst', 'most' or 'least'.
+  <no special options>
 
 
 search subcommand:

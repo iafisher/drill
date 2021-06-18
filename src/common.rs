@@ -104,8 +104,6 @@ pub struct FilterOptions {
 
 pub struct ResultsOptions {
     pub name: PathBuf,
-    pub num_to_show: Option<usize>,
-    pub sort: String,
 }
 
 pub struct SearchOptions {

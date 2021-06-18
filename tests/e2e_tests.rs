@@ -456,50 +456,6 @@ fn results_subcommand_works() {
                control system?
         ",
     );
-
-    let (stdout, stderr) = spawn_and_mock(&[
-        "--no-color",
-        "--results",
-        "tests/quizzes/long/long",
-        "--sort",
-        "worst",
-        "-n",
-        "3",
-    ]);
-
-    assert_match(&stderr, "");
-    assert_match(
-        &stdout,
-        r"
- 55.5% of  3   [1] What are the three core types of objects in the Git version
-               control system?
- 58.3% of  3   [2] What are the four layers of the network stack, from lowest to
-               highest?
- 66.6% of  3   [6] For a connected graph, what is the term for the acyclic
-               connected subgraph with the minimum sum of edge weights?
-        ",
-    );
-
-    let (stdout, stderr) = spawn_and_mock(&[
-        "--no-color",
-        "--results",
-        "tests/quizzes/long/long",
-        "--sort",
-        "most",
-        "-n",
-        "2",
-    ]);
-
-    assert_match(&stderr, "");
-    assert_match(
-        &stdout,
-        r"
- 55.5% of  3   [1] What are the three core types of objects in the Git version
-               control system?
- 58.3% of  3   [2] What are the four layers of the network stack, from lowest to
-               highest?
-        ",
-    );
 }
 
 #[test]

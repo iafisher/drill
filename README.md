@@ -23,10 +23,6 @@ You can also try out these commands:
 ```shell
 # See previous results for a quiz.
 $ drill --results <name>
-$ drill --results <name> -n 20 --sort best
-$ drill --results <name> -n 20 --sort worst
-$ drill --results <name> -n 20 --sort most
-$ drill --results <name> -n 20 --sort least
 
 # Search for a question.
 $ drill --search <name> <keyword>
