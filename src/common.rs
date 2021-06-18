@@ -92,7 +92,6 @@ pub struct Options {
 
 pub enum Command {
     Results(ResultsOptions),
-    Search(SearchOptions),
     Take(TakeOptions),
 }
 
@@ -104,12 +103,6 @@ pub struct FilterOptions {
 
 pub struct ResultsOptions {
     pub name: PathBuf,
-}
-
-pub struct SearchOptions {
-    pub name: PathBuf,
-    pub term: String,
-    pub filter_opts: FilterOptions,
 }
 
 pub struct TakeOptions {

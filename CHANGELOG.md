@@ -1,7 +1,7 @@
 # Change log
 ## Unreleased
 ### Removed
-- The `--count` and `--history` subcommands have been removed. (#99)
+- The `--count`, `--history` and `--search` subcommands have been removed. (#99)
 - The `--sort` and `-n` options for the `--results` subcommand have been removed. The subcommand now always prints the results in order of best to worst. (#99)
 - The `--random` option has been removed. (#99)
 - Questions can no longer be timed, and the `timeout` setting for quizzes and questions has been removed. (#100)

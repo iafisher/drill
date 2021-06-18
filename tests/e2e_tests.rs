@@ -407,32 +407,6 @@ fn can_use_choice_groups() {
 }
 
 #[test]
-fn searching_questions_works() {
-    let (stdout, stderr) = spawn_and_mock(&[
-        "--no-color",
-        "--search",
-        "tests/quizzes/test_tags",
-        "Turkey",
-    ]);
-    assert_match(&stderr, "");
-    assert_match(&stdout, "[2] What is the capital of Turkey?\n");
-
-    let (stdout, stderr) = spawn_and_mock(&[
-        "--no-color",
-        "--search",
-        "tests/quizzes/test_tags",
-        "capital",
-        "--tag",
-        "europe",
-    ]);
-    assert_match(&stderr, "");
-    assert_match(
-        &stdout,
-        "[2] What is the capital of Turkey?\n[3] What is the capital of Bulgaria?",
-    );
-}
-
-#[test]
 fn results_subcommand_works() {
     let (stdout, stderr) = spawn_and_mock(&["--no-color", "--results", "tests/quizzes/long/long"]);
     assert_match(&stderr, "");

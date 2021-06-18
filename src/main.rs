@@ -40,7 +40,6 @@ fn main() {
 
     let result = match options.cmd {
         Command::Results(options) => main_results(&options),
-        Command::Search(options) => main_search(&options),
         Command::Take(options) => main_take(&options),
     };
 
@@ -90,29 +89,6 @@ pub fn main_results(options: &common::ResultsOptions) -> Result<()> {
     Ok(())
 }
 
-pub fn main_search(options: &common::SearchOptions) -> Result<()> {
-    let quiz = persistence::load_quiz(&options.name)?;
-
-    for question in quiz.questions.iter() {
-        let text = question.get_text();
-        let tags = &question.get_common().tags;
-        if !common::filter_tags(&tags, &options.filter_opts) {
-            continue;
-        }
-
-        if text.contains(&options.term) {
-            prettyprint_colored(
-                &text,
-                &format!("[{}] ", question.get_common().id),
-                None,
-                Some(Color::Cyan),
-            )?;
-        }
-    }
-
-    Ok(())
-}
-
 /// The main function for the `take` subcommand.
 pub fn main_take(options: &common::TakeOptions) -> Result<()> {
     let mut quiz = persistence::load_quiz(&options.name)?;
@@ -146,12 +122,6 @@ fn parse_options() -> common::Options {
             return Options {
                 no_color,
                 cmd: common::Command::Results(parse_results_options(&args)),
-            };
-        }
-        "--search" => {
-            return Options {
-                no_color,
-                cmd: common::Command::Search(parse_search_options(&args)),
             };
         }
         "--take" => {
@@ -191,39 +161,6 @@ fn parse_results_options(args: &Vec<String>) -> common::ResultsOptions {
 
     common::ResultsOptions {
         name: name.unwrap_or(PathBuf::from("main")),
-    }
-}
-
-fn parse_search_options(args: &Vec<String>) -> common::SearchOptions {
-    if args.len() < 3 {
-        cmd_error("Expected exactly at least two arguments to --search.");
-    }
-
-    if args[1].starts_with("-") {
-        cmd_error(&format!("Expected quiz name, not {}.", args[1]));
-    }
-
-    let mut i = 3;
-    let mut tags = Vec::new();
-    let mut exclude = Vec::new();
-    while i < args.len() {
-        if args[i] == "--tag" {
-            cmd_assert_next(args, i);
-            tags.push(args[i + 1].clone());
-            i += 2;
-        } else if args[i] == "--exclude" {
-            cmd_assert_next(args, i);
-            exclude.push(args[i + 1].clone());
-            i += 2;
-        } else {
-            cmd_error_unexpected_option(&args[i]);
-        }
-    }
-
-    common::SearchOptions {
-        name: PathBuf::from(&args[1]),
-        term: args[2].clone(),
-        filter_opts: common::FilterOptions { tags, exclude },
     }
 }
 
@@ -371,7 +308,6 @@ const HELP: &'static str = r"drill: quiz yourself from the command line.
 Usage:
   drill <quiz>
   drill --results <quiz>
-  drill --search <quiz> <term>
   drill --help
 
 If <quiz> is not provided, it defaults to 'main' as long as the subcommand
@@ -389,8 +325,4 @@ take subcommand:
 
 results subcommand:
   <no special options>
-
-
-search subcommand:
-  --exclude <tag>    Exclude all questions with given tag.
-  --tag <tag>        Include only questions with given tag.";
+";
