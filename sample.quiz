@@ -49,18 +49,6 @@ Thomas Jefferson / Jefferson
 # The `choices` field makes this question into a multiple-choice question!
 
 
-[5] List the first three post-war Prime Ministers of the United Kingdom.
-Winston Churchill
-Clement Attlee
-Anthony Eden
-- ordered: true
-- script: sample_script
-# The `script` field is used to programmatically modify the text and/or answers
-# to a question. In this case, the script modifies the answers to accept just
-# the last name of the Prime Minister as well as the full name. See the script
-# file itself for details.
-
-
 # Multiple-choice questions often share the same set of choices, and listing
 # the full set each time for a large number of questions is tedious. You can
 # define a choice group as below that lets you reuse the same choices in more
@@ -76,6 +64,6 @@ choice-group architecture
 - beaux-arts: predominantly neoclassical, with Gothic and Renaissance elements
 
 # This question uses the choice group defines above.
-[6] Which description best fits the Italianate style of architecture?
+[5] Which description best fits the Italianate style of architecture?
 - choice-group-answer: italianate
 - choice-group: architecture

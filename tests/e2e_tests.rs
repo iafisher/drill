@@ -395,57 +395,6 @@ fn unicode_normalization_works() {
 }
 
 #[test]
-fn can_use_custom_script() {
-    play_quiz(
-        "test_custom_script",
-        &["--no-save"],
-        &[
-            "(1) Who was the first President of the United States? (changed)",
-            "> Washington",
-            "Correct!",
-            "100.0% out of 1 question",
-            "1 correct",
-            "0 incorrect",
-        ],
-    );
-}
-
-#[test]
-fn can_use_global_custom_script() {
-    play_quiz(
-        "test_global_custom_script",
-        &["--no-save", "--in-order"],
-        &[
-            "(1) Who was the first President of the United States? (changed)",
-            "> Washington",
-            "Correct!",
-            "(2) Who was the second President of the United States? (changed)",
-            "> John Adams",
-            "Correct!",
-            "100.0% out of 2 questions",
-            "2 correct",
-            "0 incorrect",
-        ],
-    );
-}
-
-#[test]
-fn can_use_custom_script_for_flashcards() {
-    play_quiz(
-        "test_flashcard_script",
-        &["--no-save"],
-        &[
-            r"RE: \(1\) to comb( \[perf\])?",
-            "> чистить",
-            r"RE: Incorrect\. The correct answer was (причёсывать|причесать)\.",
-            "0.0% out of 1 question",
-            "0 correct",
-            "1 incorrect",
-        ],
-    );
-}
-
-#[test]
 fn can_use_choice_groups() {
     play_quiz(
         "test_choice_group",

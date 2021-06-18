@@ -8,11 +8,9 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::fs::File;
-use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 
 use super::common::{Location, QuizError, Result};
 use super::quiz::{
@@ -102,7 +100,7 @@ fn parse(path: &Path, old_results: &StoredResults) -> Result<Quiz> {
     loop {
         match read_entry(path, &mut reader) {
             Ok(Some(FileEntry::QuestionEntry(entry))) => {
-                let q = entry_to_question(&entry, &choice_groups, &quiz_settings, old_results)?;
+                let q = entry_to_question(&entry, &choice_groups, old_results)?;
                 if used_ids.contains(&q.get_common().id) {
                     return Err(QuizError::Parse {
                         line: entry.location.line,
@@ -141,7 +139,6 @@ fn parse(path: &Path, old_results: &StoredResults) -> Result<Quiz> {
 fn entry_to_question(
     entry: &QuestionEntry,
     choice_groups: &HashMap<String, ChoiceGroup>,
-    settings: &GlobalSettings,
     old_results: &StoredResults,
 ) -> Result<Box<Question>> {
     let lineno = entry.location.line;
@@ -163,14 +160,8 @@ fn entry_to_question(
         location: entry.location.clone(),
     };
 
-    let script = settings.script.as_ref().or(entry.attributes.get("script"));
-    let entry = if let Some(script) = script {
-        entry_from_script(entry, script)?
-    } else {
-        entry.clone()
-    };
-
     // TODO: Handle multiple question texts.
+    let entry = entry.clone();
     let text = entry.text.clone();
     if entry.following.len() == 1 {
         check_fields(&entry.attributes, &["choices", "tags"], lineno)?;
@@ -297,81 +288,20 @@ fn entry_to_question(
     };
 }
 
-/// Create a new entry from the results of running a script.
-fn entry_from_script(entry: &QuestionEntry, script_name: &str) -> Result<QuestionEntry> {
-    let mut script_path = if let Some(parent) = entry.location.path.parent() {
-        parent.to_path_buf()
-    } else {
-        PathBuf::new()
-    };
-
-    // If the script name isn't relative to any directory, it must begin with "./" or
-    // else the user's shell likely won't run it.
-    if script_path.components().count() == 0 {
-        script_path.push(".");
-    }
-    script_path.push(script_name);
-
-    let line1 = entry.text.clone();
-    let line2 = entry.following.join("\n");
-    let stdout = run_script(&script_path, &line1, &line2).map_err(|e| QuizError::Parse {
-        line: entry.location.line,
-        whole_entry: true,
-        message: format!("could not run script {} ({})", script_name, e),
-    })?;
-
-    let mut lines: Vec<String> = stdout.lines().map(|s| String::from(s)).collect();
-    if lines.len() > 0 {
-        let mut attributes = entry.attributes.clone();
-        attributes.remove("script");
-        let text = lines.remove(0);
-        Ok(QuestionEntry {
-            id: entry.id.clone(),
-            text,
-            following: lines,
-            attributes,
-            location: entry.location.clone(),
-        })
-    } else {
-        Err(QuizError::Parse {
-            line: entry.location.line,
-            whole_entry: true,
-            message: format!("script {} did not print anything", script_name),
-        })
-    }
-}
-
-fn run_script(script_path: &Path, arg1: &str, arg2: &str) -> io::Result<String> {
-    let result = Command::new(script_path)
-        .arg(arg1)
-        .arg(arg2)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .output()?;
-
-    Ok(String::from_utf8_lossy(&result.stdout).to_string())
-}
-
 #[derive(Debug)]
 struct GlobalSettings {
     instructions: Option<String>,
-    script: Option<String>,
 }
 
 /// Read the initial settings from the file.
 fn read_settings(reader: &mut QuizReader) -> Result<GlobalSettings> {
-    let mut settings = GlobalSettings {
-        instructions: None,
-        script: None,
-    };
+    let mut settings = GlobalSettings { instructions: None };
     let mut first_line = true;
     loop {
         match reader.read_line()? {
             Some(FileLine::Pair(key, val)) => {
                 if key == "instructions" {
                     settings.instructions.replace(val);
-                } else if key == "script" {
-                    settings.script.replace(val);
                 } else {
                     return Err(QuizError::Parse {
                         line: reader.line,
