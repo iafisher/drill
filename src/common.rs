@@ -91,17 +91,10 @@ pub struct Options {
 }
 
 pub enum Command {
-    Count(CountOptions),
     History(HistoryOptions),
     Results(ResultsOptions),
     Search(SearchOptions),
     Take(TakeOptions),
-}
-
-pub struct CountOptions {
-    pub name: PathBuf,
-    pub list_tags: bool,
-    pub filter_opts: FilterOptions,
 }
 
 /// These filtering options are shared between the `take` and `count` subcommands.

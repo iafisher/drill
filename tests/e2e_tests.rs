@@ -424,58 +424,6 @@ fn can_use_choice_groups() {
 }
 
 #[test]
-fn listing_tags_works() {
-    let (stdout, stderr) = spawn_and_mock(&["--count", "--list-tags", "tests/quizzes/test_tags"]);
-    assert_match(&stderr, "");
-    assert_match(
-        &stdout,
-        "africa (1)\nasia (2)\neurope (2)\noceania (1)\nsouth-america (1)\n",
-    );
-
-    let (stdout, stderr) = spawn_and_mock(&["--count", "--list-tags", "tests/quizzes/test1"]);
-    assert_match(&stderr, "");
-    assert_match(&stdout, "No questions have been assigned tags.\n");
-}
-
-#[test]
-fn counting_questions_works() {
-    let (stdout, stderr) = spawn_and_mock(&["--count", "tests/quizzes/test_tags"]);
-    assert_match(&stderr, "");
-    assert_match(&stdout, "6");
-
-    let (stdout, stderr) = spawn_and_mock(&["--count", "tests/quizzes/test_tags", "--tag", "asia"]);
-    assert_match(&stderr, "");
-    assert_match(&stdout, "2");
-
-    let (stdout, stderr) =
-        spawn_and_mock(&["--count", "tests/quizzes/test_tags", "--exclude", "oceania"]);
-    assert_match(&stderr, "");
-    assert_match(&stdout, "5");
-
-    let (stdout, stderr) = spawn_and_mock(&[
-        "--count",
-        "tests/quizzes/test_tags",
-        "--tag",
-        "asia",
-        "--tag",
-        "europe",
-    ]);
-    assert_match(&stderr, "");
-    assert_match(&stdout, "3");
-
-    let (stdout, stderr) = spawn_and_mock(&[
-        "--count",
-        "tests/quizzes/test_tags",
-        "--exclude",
-        "asia",
-        "--tag",
-        "europe",
-    ]);
-    assert_match(&stderr, "");
-    assert_match(&stdout, "1");
-}
-
-#[test]
 fn searching_questions_works() {
     let (stdout, stderr) = spawn_and_mock(&[
         "--no-color",

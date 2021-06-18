@@ -21,11 +21,6 @@ to take your quiz! The program will create a `results` directory alongside your 
 
 You can also try out these commands:
 ```shell
-# Count the questions in a quiz.
-$ drill --count <name>
-# Count the number of questions per tag.
-$ drill --count --list-tags
-
 # See previous results for a quiz.
 $ drill --results <name>
 $ drill --results <name> -n 20 --sort best

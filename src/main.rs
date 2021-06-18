@@ -13,7 +13,6 @@ mod repetition;
 mod ui;
 
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::env;
 use std::io;
 use std::io::Write;
@@ -23,7 +22,7 @@ use colored::*;
 
 use common::{Command, Options, QuizError, Result};
 use iohelper::{prettyprint, prettyprint_colored};
-use quiz::{QuestionResult, Quiz};
+use quiz::QuestionResult;
 use ui::CmdUI;
 
 fn main() {
@@ -40,7 +39,6 @@ fn main() {
     }
 
     let result = match options.cmd {
-        Command::Count(options) => main_count(&options),
         Command::History(options) => main_history(&options),
         Command::Results(options) => main_results(&options),
         Command::Search(options) => main_search(&options),
@@ -53,23 +51,6 @@ fn main() {
             ::std::process::exit(2);
         }
     }
-}
-
-pub fn main_count(options: &common::CountOptions) -> Result<()> {
-    let quiz = persistence::load_quiz(&options.name)?;
-    if options.list_tags {
-        list_tags(&quiz)?;
-    } else {
-        let mut count = 0;
-        for question in quiz.questions.iter() {
-            let tags = &question.get_common().tags;
-            if common::filter_tags(tags, &options.filter_opts) {
-                count += 1;
-            }
-        }
-        my_println!("{}", count)?;
-    }
-    Ok(())
 }
 
 pub fn main_history(options: &common::HistoryOptions) -> Result<()> {
@@ -206,12 +187,6 @@ fn parse_options() -> common::Options {
     }
 
     match args[0].as_str() {
-        "--count" => {
-            return Options {
-                no_color,
-                cmd: common::Command::Count(parse_count_options(&args)),
-            };
-        }
         "--history" => {
             return Options {
                 no_color,
@@ -246,43 +221,6 @@ fn parse_options() -> common::Options {
                 cmd: common::Command::Take(parse_take_options(&args)),
             };
         }
-    }
-}
-
-fn parse_count_options(args: &Vec<String>) -> common::CountOptions {
-    let mut name = None;
-    let mut list_tags = false;
-    let mut exclude = Vec::new();
-    let mut tags = Vec::new();
-    let mut i = 1;
-    while i < args.len() {
-        if args[i] == "--list-tags" {
-            list_tags = true;
-            i += 1;
-        } else if args[i] == "--tag" {
-            cmd_assert_next(args, i);
-            tags.push(args[i + 1].clone());
-            i += 2;
-        } else if args[i] == "--exclude" {
-            cmd_assert_next(args, i);
-            exclude.push(args[i + 1].clone());
-            i += 2;
-        } else if args[i].starts_with("-") {
-            cmd_error_unexpected_option(&args[i]);
-        } else {
-            if name.is_some() {
-                cmd_error(&format!("Unexpected positional argument '{}'.", args[i]));
-            } else {
-                name.replace(PathBuf::from(&args[i]));
-            }
-            i += 1;
-        }
-    }
-
-    common::CountOptions {
-        name: name.unwrap_or(PathBuf::from("main")),
-        list_tags,
-        filter_opts: common::FilterOptions { exclude, tags },
     }
 }
 
@@ -462,32 +400,6 @@ fn cmd_error(msg: &str) -> ! {
     ::std::process::exit(1);
 }
 
-/// Print a list of tags.
-fn list_tags(quiz: &Quiz) -> Result<()> {
-    // Count how many times each tag has been used.
-    let mut tags = HashMap::<&str, u32>::new();
-    for question in quiz.questions.iter() {
-        for tag in question.get_common().tags.iter() {
-            if let Some(n) = tags.get(tag.as_str()) {
-                tags.insert(tag.as_str(), n + 1);
-            } else {
-                tags.insert(tag.as_str(), 1);
-            }
-        }
-    }
-
-    if tags.len() == 0 {
-        my_println!("No questions have been assigned tags.")?;
-    } else {
-        let mut tags_in_order: Vec<(&str, u32)> = tags.into_iter().collect();
-        tags_in_order.sort();
-        for (tag, count) in tags_in_order.iter() {
-            my_println!("{} ({})", tag, count)?;
-        }
-    }
-    Ok(())
-}
-
 fn print_stats(results: &Vec<QuestionResult>) -> Result<()> {
     my_println!("Sample: {}", format!("{:>6}", results.len()).cyan())?;
     let mean = quiz::score_to_perc(results_mean(results).unwrap()) * 100.0;
@@ -617,7 +529,6 @@ const HELP: &'static str = r"drill: quiz yourself from the command line.
 
 Usage:
   drill <quiz>
-  drill --count <quiz>
   drill --history <quiz> <question>
   drill --results <quiz>
   drill --search <quiz> <term>
@@ -635,12 +546,6 @@ take subcommand:
   --random           Choose questions randomly instead of according to spaced
                        repetition.
   --no-save          Don't save results for this session.
-  --tag <tag>        Include only questions with given tag.
-
-
-count subcommand:
-  --exclude <tag>    Exclude all questions with given tag.
-  --list-tags        Count questions per tag.
   --tag <tag>        Include only questions with given tag.
 
 
