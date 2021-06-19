@@ -8,6 +8,7 @@ mod common;
 #[macro_use]
 mod iohelper;
 mod persistence;
+mod persistence2;
 mod quiz;
 mod repetition;
 mod ui;
@@ -24,6 +25,11 @@ use common::{Command, Options, QuizError, Result};
 use iohelper::prettyprint_colored;
 use quiz::QuestionResult;
 use ui::CmdUI;
+
+// fn main() {
+//     let quiz = persistence2::load_quiz(&PathBuf::from("whatever"));
+//     println!("{:?}", quiz);
+// }
 
 fn main() {
     let options = parse_options();

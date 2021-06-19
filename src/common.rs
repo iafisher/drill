@@ -10,6 +10,8 @@ use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
+use rusqlite;
+
 pub type Result<T> = ::std::result::Result<T, QuizError>;
 
 #[derive(Debug, Clone)]
@@ -26,6 +28,7 @@ pub enum QuizError {
     Json(serde_json::Error),
     CannotWriteToFile(PathBuf),
     Io(io::Error),
+    Sql(rusqlite::Error),
     ReadlineInterrupted,
     EmptyQuiz,
     Parse {
@@ -52,6 +55,7 @@ impl fmt::Display for QuizError {
                 write!(f, "could not write to file '{}'", path.to_string_lossy())
             }
             QuizError::Io(ref err) => write!(f, "IO error ({})", err),
+            QuizError::Sql(ref err) => write!(f, "SQL error ({})", err),
             QuizError::EmptyQuiz => write!(f, "no questions found"),
             QuizError::ReadlineInterrupted => Ok(()),
             QuizError::Parse {
