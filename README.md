@@ -25,8 +25,6 @@ drill is configurable with command-line flags. Run `drill --help` for details. F
 ### In-quiz commands
 If a question is erroneously marked incorrect (e.g., because you made a typo), you can mark it correct by entering `!!` at the next question prompt. On the next question, you can enter `!!` to mark the previous answer correct. You can also enter `!e` or `!edit` to open up the previous question in a text editor, e.g. in case there is a typo in the question text.
 
-If all else fails, you can directly edit the results file that is created for each quiz.
-
 
 ## Development
 Run the test suite with `./t`. Any arguments provided to `./t` will be passed on to `cargo test`.
