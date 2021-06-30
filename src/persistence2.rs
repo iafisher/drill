@@ -4,36 +4,7 @@ use std::path::Path;
 use rusqlite::Connection;
 
 use super::common::{QuizError, Result};
-
-#[derive(Debug)]
-pub struct Quiz2 {
-    instructions: Option<String>,
-    questions: Vec<Question2>,
-    version: String,
-}
-
-#[derive(Debug)]
-pub struct Question2 {
-    text: String,
-    question_type: QuestionType,
-    answers: Vec<Answer2>,
-}
-
-#[derive(Debug)]
-pub enum QuestionType {
-    ShortAnswer,
-    Ordered,
-    Unordered,
-    MultipleChoice,
-    Flashcard,
-}
-
-#[derive(Debug)]
-pub struct Answer2 {
-    variants: Vec<String>,
-    correct: bool,
-    no_credit: bool,
-}
+use super::quiz2::{Answer2, Question2, QuestionType, Quiz2};
 
 pub fn load_quiz(fullname: &Path) -> Result<Quiz2> {
     // let exists = fullname.exists();
@@ -165,7 +136,7 @@ pub fn load_quiz(fullname: &Path) -> Result<Quiz2> {
     let mut questions_map = HashMap::new();
     while let Some(row) = rows.next().map_err(QuizError::Sql)? {
         let id = row.get_unwrap::<usize, i64>(0);
-        if (!questions_map.contains_key(&id)) {
+        if !questions_map.contains_key(&id) {
             let question_text = row.get_unwrap::<usize, String>(1);
             let question_type_string = row.get_unwrap::<usize, String>(2);
             let question_type = if question_type_string == "multiple choice" {
@@ -176,6 +147,7 @@ pub fn load_quiz(fullname: &Path) -> Result<Quiz2> {
             questions_map.insert(
                 id,
                 Question2 {
+                    id: id,
                     text: question_text,
                     question_type: question_type,
                     answers: Vec::new(),

@@ -10,8 +10,11 @@ mod iohelper;
 mod persistence;
 mod persistence2;
 mod quiz;
+mod quiz2;
 mod repetition;
+mod repetition2;
 mod ui;
+mod ui2;
 
 use std::cmp::Ordering;
 use std::env;
@@ -27,9 +30,46 @@ use quiz::QuestionResult;
 use ui::CmdUI;
 
 // fn main() {
-//     let quiz = persistence2::load_quiz(&PathBuf::from("whatever"));
-//     println!("{:?}", quiz);
-// }
+fn main_v2() {
+    let options = parse_options();
+    if options.no_color {
+        colored::control::set_override(false);
+    }
+
+    if let Ok(val) = env::var("DRILL_HOME") {
+        if let Err(_) = env::set_current_dir(&val) {
+            eprintln!("{}: could not cd to $DRILL_HOME ({})", "Error".red(), val);
+            ::std::process::exit(2);
+        }
+    }
+
+    let result = match options.cmd {
+        Command::Results(options) => main_results_v2(&options),
+        Command::Take(options) => main_take_v2(&options),
+    };
+
+    if let Err(e) = result {
+        if !is_broken_pipe(&e) {
+            eprintln!("{}: {}", "Error".red(), e);
+            ::std::process::exit(2);
+        }
+    }
+}
+
+fn main_results_v2(options: &common::ResultsOptions) -> Result<()> {
+    Ok(())
+}
+
+fn main_take_v2(options: &common::TakeOptions) -> Result<()> {
+    let mut quiz = persistence2::load_quiz(&options.name)?;
+    let mut ui = ui2::CmdUI::new();
+    let results = quiz.take(&mut ui, &options)?;
+
+    // if results.total > 0 && !options.no_save {
+    //     persistence::save_results(&options.name, &results)?;
+    // }
+    Ok(())
+}
 
 fn main() {
     let options = parse_options();
