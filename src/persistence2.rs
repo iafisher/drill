@@ -7,7 +7,9 @@ use super::common::{QuizError, Result};
 
 #[derive(Debug)]
 pub struct Quiz2 {
+    instructions: Option<String>,
     questions: Vec<Question2>,
+    version: String,
 }
 
 #[derive(Debug)]
@@ -45,6 +47,8 @@ pub fn load_quiz(fullname: &Path) -> Result<Quiz2> {
             CREATE TABLE quizzes(
               id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
               name TEXT UNIQUE NOT NULL CHECK(name != ''),
+              instructions TEXT NOT NULL,
+              version TEXT NOT NULL CHECK(version != ''),
               created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             ",
@@ -180,6 +184,8 @@ pub fn load_quiz(fullname: &Path) -> Result<Quiz2> {
     }
 
     Ok(Quiz2 {
+        instructions: None,
+        version: String::from("1.0"),
         // Courtesy of https://stackoverflow.com/questions/56724014
         questions: questions_map.into_iter().map(|(_id, q)| q).collect(),
     })
