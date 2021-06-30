@@ -1,11 +1,16 @@
 import argparse
+import contextlib
 import os
 import sqlite3
 import sys
 
 
-def main(old, new):
+def main(old, new, *, overwrite=False):
     quiz = parse_quiz(old)
+
+    if overwrite:
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(new)
 
     exists = os.path.exists(new)
     db = sqlite3.connect(new)
@@ -61,6 +66,16 @@ def create_database_tables(db):
         """
     )
 
+    db.execute(
+        """
+        CREATE TABLE tags(
+          question INTEGER NOT NULL REFERENCES questions,
+          name TEXT NOT NULL CHECK(name != ''),
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
 
 def copy_quiz_to_database(db, quiz):
     cursor = db.cursor()
@@ -101,6 +116,17 @@ def copy_quiz_to_database(db, quiz):
                     "no_credit": answer.no_credit,
                     "correct": answer.correct,
                 },
+            )
+
+        for tag in question.tags:
+            cursor.execute(
+                """
+                INSERT INTO
+                  tags(question, name)
+                VALUES
+                  (:question, :name)
+                """,
+                {"question": question_id, "name": tag},
             )
 
 
@@ -152,7 +178,10 @@ def parse_question(lines, i):
         answers_as_strings.append(lines[i].strip())
         i += 1
 
-    attributes = {}
+    no_credit = set()
+    choices = []
+    ordered = False
+    tags = []
     while (
         i < len(lines)
         and lines[i]
@@ -162,29 +191,48 @@ def parse_question(lines, i):
         key, value = lines[i][1:].split(":", maxsplit=1)
         key = key.strip()
         value = value.strip()
-        attributes[key] = value
+
+        parse_error = False
+        if key == "nocredit":
+            for s in value.split("/"):
+                no_credit.add(s.strip())
+        elif key == "ordered":
+            if value == "true":
+                ordered = True
+            elif value == "false":
+                ordered = False
+            else:
+                parse_error = True
+        elif key == "choices":
+            choices = [choice.strip() for choice in value.split("/")]
+        elif key == "tags":
+            tags = [tag.strip() for tag in value.split(",")]
+        else:
+            parse_error = True
+
+        if parse_error:
+            return None, skip_non_whitespace(lines, i + 1)
+
         i += 1
 
     if answers_as_strings:
-        no_credit = set(attributes.get("no_credit", []))
         answers = [
             Answer(text, no_credit=bool(text in no_credit), correct=True)
             for text in answers_as_strings
         ]
 
         if len(answers) > 1:
-            type = "ordered" if attributes.get("ordered", False) else "unordered"
+            type = "ordered" if ordered else "unordered"
         else:
-            if "choices" in attributes:
+            if choices:
                 type = "multiple choice"
 
-                for choice in attributes["choices"].split("/"):
-                    choice = choice.strip()
+                for choice in choices:
                     answers.append(Answer(choice, no_credit=False, correct=False))
             else:
                 type = "short answer"
 
-        question = Question(text, type=type, answers=answers)
+        question = Question(text, type=type, answers=answers, tags=tags)
     else:
         if "=" in text:
             question = Question(text, type="flashcard", answers=[])
@@ -222,15 +270,16 @@ class Quiz:
 
 
 class Question:
-    def __init__(self, text, type, answers):
+    def __init__(self, text, type, answers, tags):
         self.text = text
         self.type = type
         self.answers = answers
+        self.tags = tags
 
     def __repr__(self):
         return (
             f"Question(text={self.text!r}, type={self.type!r}, "
-            + f"answers={self.answers!r})"
+            + f"answers={self.answers!r}, tags={self.tags!r})"
         )
 
 
@@ -256,5 +305,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--new", help="Path at which to create the SQLite database.", required=True
     )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=False,
+        help="Overwrite the destination if it exists.",
+    )
     args = parser.parse_args()
-    main(args.old, args.new)
+    main(args.old, args.new, overwrite=args.overwrite)

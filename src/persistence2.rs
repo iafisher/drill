@@ -61,7 +61,7 @@ pub fn load_quiz(fullname: &Path) -> Result<Quiz2> {
             CREATE TABLE questions(
               id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
               quiz INTEGER NOT NULL REFERENCES quizzes,
-              text TEXT NOT NULL CHECK (text != ''),
+              text TEXT NOT NULL CHECK(text != ''),
               type TEXT NOT NULL CHECK(
                 type = 'short answer' OR
                 type = 'ordered' OR
@@ -83,6 +83,18 @@ pub fn load_quiz(fullname: &Path) -> Result<Quiz2> {
               text TEXT NOT NULL CHECK(text != ''),
               correct BOOLEAN NOT NULL DEFAULT 1,
               no_credit BOOLEAN NOT NULL DEFAULT 0,
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            ",
+                [],
+            )
+            .map_err(QuizError::Sql)?;
+        connection
+            .execute(
+                "
+            CREATE TABLE tags(
+              question INTEGER NOT NULL REFERENCES questions,
+              name TEXT NOT NULL CHECK(name != ''),
               created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             ",
