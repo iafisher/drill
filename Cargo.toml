@@ -10,7 +10,7 @@ colored = "1.8.0"
 dirs = "1.0"
 libc = "0.2"
 rand = "0.6"
-rusqlite = "0.25.3"
+rusqlite = "0.25.4"
 rustyline = "4.1.0"
 serde = { version = "1.0.92", features = ["derive"] }
 serde_json = "1.0.39"
